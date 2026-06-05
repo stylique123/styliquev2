@@ -1,0 +1,13 @@
+**/node_modules
+**/.git
+**/build
+**/dist
+**/.turbo
+**/.cache
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+apps/web/public/tryon
+apps/web/public/_gen
+**/.shopify

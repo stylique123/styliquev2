@@ -1,0 +1,2278 @@
+{
+  "cycle": 1,
+  "timestamp": "2026-05-31T20:01:34.869Z",
+  "summary": {
+    "totalScenarios": 50,
+    "passed": 41,
+    "partial": 9,
+    "failed": 0,
+    "passRate": 82,
+    "evolutionScore": 7.5,
+    "trend": "regressing",
+    "delta": -0.1
+  },
+  "scores": {
+    "stylist": 9,
+    "emotional": 7,
+    "sales": 6.8,
+    "intelligence": 6.8,
+    "overall": 7.5
+  },
+  "failurePatterns": [
+    {
+      "type": "wrong_route",
+      "count": 8,
+      "percentage": 16,
+      "affectedArchetypes": [
+        "overwhelmed_shopper",
+        "vague_emotional",
+        "emotional_shopper",
+        "returning_shopper",
+        "focused_pdp_visitor"
+      ]
+    },
+    {
+      "type": "missing_unmet_flag",
+      "count": 1,
+      "percentage": 2,
+      "affectedArchetypes": [
+        "catalog_gap_seeker"
+      ]
+    }
+  ],
+  "proposals": [
+    {
+      "priority": "P0",
+      "failureType": "wrong_route",
+      "occurrences": 8,
+      "percentage": 16,
+      "rootCause": "route selection logic mismatch",
+      "proposedFix": "Add to ROUTE SELECTION prompt: \"I've looked at everything and I can't de\" → talk_only",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() ROUTE SELECTION",
+      "affectedSection": "ROUTE SELECTION examples",
+      "implementationNote": "Add more disambiguation examples to ROUTE SELECTION block"
+    },
+    {
+      "priority": "P2",
+      "failureType": "missing_unmet_flag",
+      "occurrences": 1,
+      "percentage": 2,
+      "rootCause": "CATALOG GAPS prompt not triggering for this message pattern",
+      "proposedFix": "Add to gap examples in system prompt: \"show me navy blue trousers\"",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() CATALOG GAPS",
+      "affectedSection": "CATALOG GAPS block",
+      "implementationNote": "Add more gap trigger phrases to CATALOG GAPS block"
+    }
+  ],
+  "hiddenFutureFailures": [
+    {
+      "risk": "Hesitation recovery may trigger try-on too early before the hesitation reason is known",
+      "likelihood": 0.5,
+      "mitigation": "Gate try-on offer: first ask 'what's holding you back?' — only offer try-on if answer is about appearance"
+    },
+    {
+      "risk": "Mira may become repetitive if shopper compares more than 3 times — recommendation loop",
+      "likelihood": 0.6,
+      "mitigation": "Add counter: after 2 comparisons in one session, offer to narrow by a concrete criterion instead of picking again"
+    },
+    {
+      "risk": "Mira may recommend based on category/price rather than the emotional goal — 'interview' needs power, not just formal",
+      "likelihood": 0.55,
+      "mitigation": "Add emotional intent classifier: map 'interview' → power/authority, 'first date' → attraction/confidence. Drive recommendation from the emotional goal."
+    },
+    {
+      "risk": "Mira may recommend a product the shopper already owns if that handle isn't in shownHandles",
+      "likelihood": 0.7,
+      "mitigation": "Pass purchased product handles in shownHandles when returning shopper identity is known"
+    }
+  ],
+  "allHiddenFailures": [
+    {
+      "risk": "Hesitation recovery may trigger try-on too early before the hesitation reason is known",
+      "likelihood": 0.5,
+      "mitigation": "Gate try-on offer: first ask 'what's holding you back?' — only offer try-on if answer is about appearance"
+    },
+    {
+      "risk": "If the anchor product changes during the session, look board may be built around wrong anchor",
+      "likelihood": 0.3,
+      "mitigation": "Confirm anchor: 'Are you building the look around this piece, or a different one?'"
+    },
+    {
+      "risk": "Mira may become repetitive if shopper compares more than 3 times — recommendation loop",
+      "likelihood": 0.6,
+      "mitigation": "Add counter: after 2 comparisons in one session, offer to narrow by a concrete criterion instead of picking again"
+    },
+    {
+      "risk": "Cultural luxury signaling may fail for non-Western luxury shoppers",
+      "likelihood": 0.4,
+      "mitigation": "Add cultural context awareness to luxury shopper handling — 'premium' means different things in different markets"
+    },
+    {
+      "risk": "Mira may recommend based on category/price rather than the emotional goal — 'interview' needs power, not just formal",
+      "likelihood": 0.55,
+      "mitigation": "Add emotional intent classifier: map 'interview' → power/authority, 'first date' → attraction/confidence. Drive recommendation from the emotional goal."
+    },
+    {
+      "risk": "Mira may recommend a product the shopper already owns if that handle isn't in shownHandles",
+      "likelihood": 0.7,
+      "mitigation": "Pass purchased product handles in shownHandles when returning shopper identity is known"
+    }
+  ],
+  "detailedResults": [
+    {
+      "id": "casual_browser_0",
+      "shopperType": "casual_browser",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "just looking around",
+      "scores": {
+        "stylist": 5,
+        "emotional": 5,
+        "sales": 5,
+        "intelligence": 5,
+        "overall": 5
+      },
+      "failures": [],
+      "warnings": [
+        "API fallback / timeout — Gemini overloaded, not a behavioral failure"
+      ],
+      "successes": [],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": false,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "focused_pdp_visitor_0",
+      "shopperType": "focused_pdp_visitor",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "hi",
+      "scores": {
+        "stylist": 5,
+        "emotional": 5,
+        "sales": 5,
+        "intelligence": 5,
+        "overall": 5
+      },
+      "failures": [],
+      "warnings": [
+        "API fallback / timeout — Gemini overloaded, not a behavioral failure"
+      ],
+      "successes": [],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": false,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "hesitant_shopper_0",
+      "shopperType": "hesitant_shopper",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "I keep coming back to this but I'm not sure",
+      "scores": {
+        "stylist": 5,
+        "emotional": 5,
+        "sales": 5,
+        "intelligence": 5,
+        "overall": 5
+      },
+      "failures": [],
+      "warnings": [
+        "API fallback / timeout — Gemini overloaded, not a behavioral failure"
+      ],
+      "successes": [],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": false,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Hesitation recovery may trigger try-on too early before the hesitation reason is known",
+            "likelihood": 0.5,
+            "mitigation": "Gate try-on offer: first ask 'what's holding you back?' — only offer try-on if answer is about appearance"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outfit_seeker_0",
+      "shopperType": "outfit_seeker",
+      "shopperState": "outfit_seeking",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "what goes with this?",
+      "scores": {
+        "stylist": 5,
+        "emotional": 5,
+        "sales": 5,
+        "intelligence": 5,
+        "overall": 5
+      },
+      "failures": [],
+      "warnings": [
+        "API fallback / timeout — Gemini overloaded, not a behavioral failure"
+      ],
+      "successes": [],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": false,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "If the anchor product changes during the session, look board may be built around wrong anchor",
+            "likelihood": 0.3,
+            "mitigation": "Confirm anchor: 'Are you building the look around this piece, or a different one?'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "size_uncertain_0",
+      "shopperType": "size_uncertain",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "what size should I get?",
+      "voice": "Good question — this one runs a little differently. Let's get the exact size for you.",
+      "route": "size_form",
+      "handle": "onyx-silk-slip",
+      "intent": "size",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Correct route: size_form",
+        "Intent correctly classified: size"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "price_sensitive_0",
+      "shopperType": "price_sensitive",
+      "shopperState": "price_sensitive",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "this is too expensive",
+      "voice": "Point taken. Let me show you the easiest pieces in the collection.",
+      "route": "reco_filter",
+      "intent": "price",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: reco_filter",
+        "Intent correctly classified: price"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "comparison_shopper_0",
+      "shopperType": "comparison_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "which is better, the slip or the gown?",
+      "voice": "The gown is the statement piece — more dramatic, more formal. The slip rewears more easily. Which matters more for the o",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "PDP context correctly referenced: \"Onyx Silk Slip\"",
+        "Comparison handled with a confident opinion",
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may become repetitive if shopper compares more than 3 times — recommendation loop",
+            "likelihood": 0.6,
+            "mitigation": "Add counter: after 2 comparisons in one session, offer to narrow by a concrete criterion instead of picking again"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trust_low_0",
+      "shopperType": "trust_low",
+      "shopperState": "trust_low",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "is this actually good quality or just expensive?",
+      "voice": "It's the real thing. The quality is in the bias cut — that's what makes it hang properly instead of clinging.",
+      "route": "suitability",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Answer-first rule followed correctly",
+        "Correct route: suitability",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "overwhelmed_shopper_0",
+      "shopperType": "overwhelmed_shopper",
+      "shopperState": "overwhelmed",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "I've looked at everything and I can't decide",
+      "voice": "I'll make this easy. Here's the one I'd send you home with.",
+      "route": "navigate",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "discover",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"navigate\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "luxury_shopper_0",
+      "shopperType": "luxury_shopper",
+      "shopperState": "style_conscious",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "I want something that reads as genuinely expensive",
+      "voice": "Yes, this is the one for that. The bias cut and the weight of the silk are what make it look and feel expensive — it's n",
+      "route": "suitability",
+      "handle": "onyx-silk-slip",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"suitability\" is acceptable alternative to \"reco_filter\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "PDP context correctly referenced: \"Onyx Silk Slip\"",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Cultural luxury signaling may fail for non-Western luxury shoppers",
+            "likelihood": 0.4,
+            "mitigation": "Add cultural context awareness to luxury shopper handling — 'premium' means different things in different markets"
+          }
+        ]
+      }
+    },
+    {
+      "id": "catalog_gap_seeker_0",
+      "shopperType": "catalog_gap_seeker",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "do you have any boots?",
+      "voice": "Not yet — we're clothing only for now. If you tell me the outfit, I can find the piece it's built around.",
+      "route": "talk_only",
+      "intent": "discover",
+      "unmet": true,
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Answer-first rule followed correctly",
+        "Correct route: talk_only",
+        "Catalog gap correctly flagged with unmet=true",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "near_miss_seeker_0",
+      "shopperType": "near_miss_seeker",
+      "shopperState": "browsing",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "do you have this but cropped?",
+      "voice": "A cropped version of the slip would be a camisole — I've got one in silk. Let me pull it up.",
+      "route": "reco_handle",
+      "handle": "ivory-silk-camisole",
+      "intent": "specific",
+      "nearMiss": true,
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "PDP context correctly referenced: \"Onyx Silk Slip\"",
+        "Near-miss correctly flagged: attribute=\"cropped\"",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "decision_ready_0",
+      "shopperType": "decision_ready",
+      "shopperState": "decision_ready",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "ok I think I want this",
+      "voice": "Done — want me to finish the look before checkout?",
+      "route": "add_to_cart",
+      "intent": "specific",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 10,
+        "intelligence": 7,
+        "overall": 8.8
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: add_to_cart",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "emotional_shopper_0",
+      "shopperType": "emotional_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "I have a big interview next week and I need to look incredible",
+      "voice": "For an interview like that, the piece that does the work for you is a perfectly cut blazer. I've got the one.",
+      "route": "navigate",
+      "handle": "tailored-blazer-double",
+      "intent": "occasion",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"navigate\" is acceptable alternative to \"reco_handle\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: occasion"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend based on category/price rather than the emotional goal — 'interview' needs power, not just formal",
+            "likelihood": 0.55,
+            "mitigation": "Add emotional intent classifier: map 'interview' → power/authority, 'first date' → attraction/confidence. Drive recommendation from the emotional goal."
+          }
+        ]
+      }
+    },
+    {
+      "id": "returning_shopper_0",
+      "shopperType": "returning_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "onyx-silk-slip",
+      "message": "I bought the linen shirt before and loved it, what's similar?",
+      "voice": "Since you liked the easy fit of the shirt, you'll like how our trousers are cut. Let me show you the Atelier wide-leg.",
+      "route": "reco_handle",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "discover",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"reco_handle\" is acceptable alternative to \"look\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend a product the shopper already owns if that handle isn't in shownHandles",
+            "likelihood": 0.7,
+            "mitigation": "Pass purchased product handles in shownHandles when returning shopper identity is known"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vague_emotional_0",
+      "shopperType": "vague_emotional",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "I just want something beautiful",
+      "voice": "I know exactly what you mean. Come look at this.",
+      "route": "navigate",
+      "handle": "midnight-silk-gown",
+      "intent": "discover",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"navigate\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "casual_browser_1",
+      "shopperType": "casual_browser",
+      "shopperState": "browsing",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "what do you have?",
+      "voice": "What are you shopping for today?",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "focused_pdp_visitor_1",
+      "shopperType": "focused_pdp_visitor",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "tell me about this",
+      "voice": "That's the silk camisole — the deep V is the whole point of it. I can size it for you, or show you how I'd style it.",
+      "route": "talk_only",
+      "intent": "specific",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "PDP context correctly referenced: \"Ivory Silk Camisole\"",
+        "Correct route: talk_only",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "hesitant_shopper_1",
+      "shopperType": "hesitant_shopper",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "I like it but I don't know if I should get it",
+      "voice": "This one rewears more easily than it looks. You can dress it up with a skirt, or down with denim. What's holding you bac",
+      "route": "talk_only",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Hesitation recovery may trigger try-on too early before the hesitation reason is known",
+            "likelihood": 0.5,
+            "mitigation": "Gate try-on offer: first ask 'what's holding you back?' — only offer try-on if answer is about appearance"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outfit_seeker_1",
+      "shopperType": "outfit_seeker",
+      "shopperState": "outfit_seeking",
+      "pageType": "cart",
+      "productHandle": "ivory-silk-camisole",
+      "message": "how do I wear this?",
+      "voice": "This piece works best with a bit of texture contrast — I'd pair it with the pleated satin skirt. Let me pull the look to",
+      "route": "look",
+      "intent": "look",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: look",
+        "Intent correctly classified: look"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "If the anchor product changes during the session, look board may be built around wrong anchor",
+            "likelihood": 0.3,
+            "mitigation": "Confirm anchor: 'Are you building the look around this piece, or a different one?'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "size_uncertain_1",
+      "shopperType": "size_uncertain",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "I'm usually a medium, will that work?",
+      "voice": "Yes, the Medium is the right one for this camisole — it runs true to size.",
+      "route": "fit",
+      "intent": "size",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"fit\" is acceptable alternative to \"size_form\""
+      ],
+      "successes": [
+        "Intent correctly classified: size"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "price_sensitive_1",
+      "shopperType": "price_sensitive",
+      "shopperState": "price_sensitive",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "do you have anything cheaper?",
+      "voice": "Of course. Here are the pieces with the easiest price point.",
+      "route": "reco_filter",
+      "intent": "price",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: reco_filter",
+        "Intent correctly classified: price"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "comparison_shopper_1",
+      "shopperType": "comparison_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "should I get the coat or the blazer?",
+      "voice": "The blazer is more versatile — you can wear it indoors or out. The coat is the warmer, more serious piece. Which job doe",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Answer-first rule followed correctly",
+        "Comparison handled with a confident opinion",
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may become repetitive if shopper compares more than 3 times — recommendation loop",
+            "likelihood": 0.6,
+            "mitigation": "Add counter: after 2 comparisons in one session, offer to narrow by a concrete criterion instead of picking again"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trust_low_1",
+      "shopperType": "trust_low",
+      "shopperState": "trust_low",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "will this actually look good on a normal person?",
+      "voice": "Yes — the secret is the adjustable straps, which let you set the neckline exactly where you want it. Want me to find you",
+      "route": "suitability",
+      "handle": "ivory-silk-camisole",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Answer-first rule followed correctly",
+        "Correct route: suitability",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "overwhelmed_shopper_1",
+      "shopperType": "overwhelmed_shopper",
+      "shopperState": "overwhelmed",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "there's too much, I don't know where to start",
+      "voice": "I'll make this easy for you. This is the one piece I'd send you home with. Let's start here.",
+      "route": "navigate",
+      "handle": "onyx-silk-slip",
+      "intent": "discover",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"navigate\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "luxury_shopper_1",
+      "shopperType": "luxury_shopper",
+      "shopperState": "style_conscious",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "what's the most premium piece you have?",
+      "voice": "That would be the leather trench. It's a serious piece — full-grain hide, cut and stitched in Italy. Let me show you.",
+      "route": "navigate",
+      "handle": "leather-trench",
+      "intent": "price",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"navigate\" is acceptable alternative to \"reco_filter\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: price"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Cultural luxury signaling may fail for non-Western luxury shoppers",
+            "likelihood": 0.4,
+            "mitigation": "Add cultural context awareness to luxury shopper handling — 'premium' means different things in different markets"
+          }
+        ]
+      }
+    },
+    {
+      "id": "catalog_gap_seeker_1",
+      "shopperType": "catalog_gap_seeker",
+      "shopperState": "browsing",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "I'm looking for a leather mini skirt",
+      "voice": "I love that look, but I don't have a leather mini right now. If you tell me the occasion, I can pull the closest thing w",
+      "route": "talk_only",
+      "intent": "specific",
+      "unmet": true,
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Catalog gap correctly flagged with unmet=true",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": false,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "near_miss_seeker_1",
+      "shopperType": "near_miss_seeker",
+      "shopperState": "browsing",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "I want this in burgundy",
+      "voice": "We don't have burgundy, but the closest I have is a deep red called Cardinal. Let me show you.",
+      "route": "reco_handle",
+      "handle": "cashmere-v-neck",
+      "intent": "specific",
+      "nearMiss": true,
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Color precision correctly handled: \"burgundy\" acknowledged as adjacent",
+        "Near-miss correctly flagged: attribute=\"in burgundy\"",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "decision_ready_1",
+      "shopperType": "decision_ready",
+      "shopperState": "decision_ready",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "I'll take it",
+      "voice": "Done. Want me to finish the look for you before checkout?",
+      "route": "add_to_cart",
+      "handle": "ivory-silk-camisole",
+      "intent": "specific",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 10,
+        "intelligence": 7,
+        "overall": 8.8
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Correct route: add_to_cart",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "emotional_shopper_1",
+      "shopperType": "emotional_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "my ex is going to be at this party and I need to look amazing",
+      "voice": "Say no more. This camisole with the right skirt is the answer. Let me show you the full look.",
+      "route": "look",
+      "intent": "occasion",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"reco_handle\", got \"look\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "PDP context correctly referenced: \"Ivory Silk Camisole\"",
+        "Intent correctly classified: occasion"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend based on category/price rather than the emotional goal — 'interview' needs power, not just formal",
+            "likelihood": 0.55,
+            "mitigation": "Add emotional intent classifier: map 'interview' → power/authority, 'first date' → attraction/confidence. Drive recommendation from the emotional goal."
+          }
+        ]
+      }
+    },
+    {
+      "id": "returning_shopper_1",
+      "shopperType": "returning_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "ivory-silk-camisole",
+      "message": "I have the trouser already, what else goes with it?",
+      "voice": "The camisole you're looking at is the perfect piece for the Atelier trouser. Want me to size it for you?",
+      "route": "fit",
+      "handle": "ivory-silk-camisole",
+      "intent": "look",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"look\", got \"fit\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: look"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend a product the shopper already owns if that handle isn't in shownHandles",
+            "likelihood": 0.7,
+            "mitigation": "Pass purchased product handles in shownHandles when returning shopper identity is known"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vague_emotional_1",
+      "shopperType": "vague_emotional",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "I don't know what I want but I'll know it when I see it",
+      "voice": "I know the feeling. When you're ready, just say the word and I'll pull the one piece I think is worth seeing first.",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "casual_browser_2",
+      "shopperType": "casual_browser",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "show me something nice",
+      "voice": "I can do that. Are you thinking of a special occasion, or something for every day?",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "focused_pdp_visitor_2",
+      "shopperType": "focused_pdp_visitor",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "is this worth it?",
+      "voice": "Yes — the value is in the cut. It's the kind of tailoring that makes everything else you wear look more considered. Want",
+      "route": "suitability",
+      "intent": "price",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"suitability\" is acceptable alternative to \"talk_only\""
+      ],
+      "successes": [
+        "Answer-first rule followed correctly",
+        "Intent correctly classified: price"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "hesitant_shopper_2",
+      "shopperType": "hesitant_shopper",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "it looks good but I'm not convinced",
+      "voice": "I hear you. The thing about this trouser is how it rewears — it works for the office with a blazer, but also weekends wi",
+      "route": "talk_only",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "PDP context correctly referenced: \"Atelier Wide-Leg Trouser\"",
+        "Correct route: talk_only",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Hesitation recovery may trigger try-on too early before the hesitation reason is known",
+            "likelihood": 0.5,
+            "mitigation": "Gate try-on offer: first ask 'what's holding you back?' — only offer try-on if answer is about appearance"
+          }
+        ]
+      }
+    },
+    {
+      "id": "outfit_seeker_2",
+      "shopperType": "outfit_seeker",
+      "shopperState": "outfit_seeking",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "build me a look around this",
+      "voice": "The key is balancing the wide leg with a closer fit on top. I'd pair it with this ribbed merino turtleneck.",
+      "route": "look",
+      "intent": "look",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: look",
+        "Intent correctly classified: look"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "If the anchor product changes during the session, look board may be built around wrong anchor",
+            "likelihood": 0.3,
+            "mitigation": "Confirm anchor: 'Are you building the look around this piece, or a different one?'"
+          }
+        ]
+      }
+    },
+    {
+      "id": "size_uncertain_2",
+      "shopperType": "size_uncertain",
+      "shopperState": "hesitating",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "I'm between small and medium",
+      "voice": "For this specific trouser, I'd put you in the Medium. It's cut true to size in the waist, and the fit will be better thr",
+      "route": "fit",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "size",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"fit\" is acceptable alternative to \"size_form\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: size"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "price_sensitive_2",
+      "shopperType": "price_sensitive",
+      "shopperState": "price_sensitive",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "what's your most affordable piece?",
+      "voice": "The best value in the whole collection is this linen shirt — let me pull it up.",
+      "route": "reco_handle",
+      "handle": "linen-relaxed-shirt",
+      "intent": "price",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"reco_handle\" is acceptable alternative to \"reco_filter\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: price"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "comparison_shopper_2",
+      "shopperType": "comparison_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "the cashmere or the merino — which do I pick?",
+      "voice": "The merino is the better choice for these trousers — the fitted shape balances the wide leg. The cashmere is softer, but",
+      "route": "reco_handle",
+      "handle": "merino-ribbed-turtleneck",
+      "intent": "specific",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"reco_handle\" is acceptable alternative to \"talk_only\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "PDP context correctly referenced: \"Atelier Wide-Leg Trouser\"",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may become repetitive if shopper compares more than 3 times — recommendation loop",
+            "likelihood": 0.6,
+            "mitigation": "Add counter: after 2 comparisons in one session, offer to narrow by a concrete criterion instead of picking again"
+          }
+        ]
+      }
+    },
+    {
+      "id": "trust_low_2",
+      "shopperType": "trust_low",
+      "shopperState": "trust_low",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "I've bought expensive things that looked bad, why is this different?",
+      "voice": "It's the cut. A lot of expensive trousers are just a wide tube — this one is tailored through the waist and hip, so the ",
+      "route": "suitability",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 10,
+        "emotional": 8,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 8.1
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "PDP context correctly referenced: \"Atelier Wide-Leg Trouser\"",
+        "Correct route: suitability",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "overwhelmed_shopper_2",
+      "shopperType": "overwhelmed_shopper",
+      "shopperState": "overwhelmed",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "just pick something for me",
+      "voice": "I'll make this easy — here's the one I'd send you home with.",
+      "route": "navigate",
+      "handle": "onyx-silk-slip",
+      "intent": "discover",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"navigate\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "luxury_shopper_2",
+      "shopperType": "luxury_shopper",
+      "shopperState": "style_conscious",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "I don't care about price, I care about quality",
+      "voice": "Good eye — with these trousers, the quality is all in the Italian wool and the cut. You feel it when you wear them. Want",
+      "route": "suitability",
+      "intent": "suitability",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"suitability\" is acceptable alternative to \"reco_filter\""
+      ],
+      "successes": [
+        "PDP context correctly referenced: \"Atelier Wide-Leg Trouser\"",
+        "Intent correctly classified: suitability"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Cultural luxury signaling may fail for non-Western luxury shoppers",
+            "likelihood": 0.4,
+            "mitigation": "Add cultural context awareness to luxury shopper handling — 'premium' means different things in different markets"
+          }
+        ]
+      }
+    },
+    {
+      "id": "catalog_gap_seeker_2",
+      "shopperType": "catalog_gap_seeker",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "show me navy blue trousers",
+      "voice": "Not navy exactly — we have our Atelier trouser in Ink, which is a deep blue-black. Let me pull that one up.",
+      "route": "reco_handle",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "specific",
+      "nearMiss": true,
+      "scores": {
+        "stylist": 7,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.7
+      },
+      "failures": [
+        {
+          "type": "missing_unmet_flag",
+          "detail": "Catalog gap scenario but unmet flag not set"
+        }
+      ],
+      "warnings": [
+        "Route \"reco_handle\" is acceptable alternative to \"talk_only\""
+      ],
+      "successes": [
+        "Valid catalog handle returned",
+        "Color precision correctly handled: \"navy\" acknowledged as adjacent",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "near_miss_seeker_2",
+      "shopperType": "near_miss_seeker",
+      "shopperState": "browsing",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "do you have this in beige?",
+      "voice": "Not in beige, no — the closest shade we carry in this trouser is Camel. Want to see it?",
+      "route": "look",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "specific",
+      "unmet": false,
+      "nearMiss": true,
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "PDP context correctly referenced: \"Atelier Wide-Leg Trouser\"",
+        "Answer-first rule followed correctly",
+        "Color precision correctly handled: \"beige\" acknowledged as adjacent",
+        "Near-miss correctly flagged: attribute=\"in beige\"",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "decision_ready_2",
+      "shopperType": "decision_ready",
+      "shopperState": "decision_ready",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "I love it, add it to my bag",
+      "voice": "In the bag. Want me to show you the top that finishes the look?",
+      "route": "add_to_cart",
+      "handle": "atelier-wide-leg-trouser",
+      "intent": "specific",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 10,
+        "intelligence": 7,
+        "overall": 8.8
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Correct route: add_to_cart",
+        "Intent correctly classified: specific"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "emotional_shopper_2",
+      "shopperType": "emotional_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "I just got promoted and want to treat myself",
+      "voice": "Congratulations! That calls for something special. Let's find you a piece that feels like a promotion.",
+      "route": "talk_only",
+      "intent": "occasion",
+      "scores": {
+        "stylist": 9.5,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.8
+      },
+      "failures": [],
+      "warnings": [
+        "Route \"talk_only\" is acceptable alternative to \"reco_handle\""
+      ],
+      "successes": [
+        "Intent correctly classified: occasion"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend based on category/price rather than the emotional goal — 'interview' needs power, not just formal",
+            "likelihood": 0.55,
+            "mitigation": "Add emotional intent classifier: map 'interview' → power/authority, 'first date' → attraction/confidence. Drive recommendation from the emotional goal."
+          }
+        ]
+      }
+    },
+    {
+      "id": "returning_shopper_2",
+      "shopperType": "returning_shopper",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "atelier-wide-leg-trouser",
+      "message": "I want to add to my existing wardrobe from here",
+      "voice": "The wide-leg trouser is the natural next piece — it works perfectly with the relaxed fit of the linen shirt you already ",
+      "route": "look",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: look",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": [
+          {
+            "risk": "Mira may recommend a product the shopper already owns if that handle isn't in shownHandles",
+            "likelihood": 0.7,
+            "mitigation": "Pass purchased product handles in shownHandles when returning shopper identity is known"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vague_emotional_2",
+      "shopperType": "vague_emotional",
+      "shopperState": "browsing",
+      "pageType": "homepage",
+      "productHandle": null,
+      "message": "surprise me",
+      "voice": "Alright, I'll make this easy. Here's the one piece I'd send you home with.",
+      "route": "navigate",
+      "handle": "onyx-silk-slip",
+      "intent": "discover",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"navigate\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "casual_browser_3",
+      "shopperType": "casual_browser",
+      "shopperState": "browsing",
+      "pageType": "collection",
+      "productHandle": null,
+      "message": "I dunno, just browsing",
+      "voice": "All yours — say the word and I'll pull the one piece worth your time.",
+      "route": "talk_only",
+      "intent": "discover",
+      "scores": {
+        "stylist": 10,
+        "emotional": 7,
+        "sales": 7,
+        "intelligence": 7,
+        "overall": 7.9
+      },
+      "failures": [],
+      "warnings": [],
+      "successes": [
+        "Correct route: talk_only",
+        "Intent correctly classified: discover"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": true,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": true,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": false,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    },
+    {
+      "id": "focused_pdp_visitor_3",
+      "shopperType": "focused_pdp_visitor",
+      "shopperState": "focused_intent",
+      "pageType": "pdp",
+      "productHandle": "linen-relaxed-shirt",
+      "message": "can I see how this fits?",
+      "voice": "Let's put it in the fitting room.",
+      "route": "try_on",
+      "handle": "linen-relaxed-shirt",
+      "intent": "try_on",
+      "scores": {
+        "stylist": 7.5,
+        "emotional": 7,
+        "sales": 6,
+        "intelligence": 7,
+        "overall": 6.9
+      },
+      "failures": [
+        {
+          "type": "wrong_route",
+          "detail": "Expected \"talk_only\", got \"try_on\""
+        }
+      ],
+      "warnings": [],
+      "successes": [
+        "Valid catalog handle returned",
+        "Intent correctly classified: try_on"
+      ],
+      "critique": {
+        "understoodShopper": true,
+        "respondedNaturally": true,
+        "reducedUncertainty": true,
+        "guidedIntelligently": false,
+        "askedRightQuestion": true,
+        "missedHesitation": false,
+        "closedCorrectly": true,
+        "usedRightTool": false,
+        "emittedEvents": true,
+        "improvedMerchantIntelligence": true,
+        "feltHuman": true,
+        "hiddenFutureFailures": []
+      }
+    }
+  ],
+  "memory": {
+    "cycleCount": 6,
+    "evolutionScores": [
+      {
+        "cycle": 1,
+        "score": 7.7,
+        "timestamp": "2026-05-31T19:24:17.961Z"
+      },
+      {
+        "cycle": 2,
+        "score": 7.7,
+        "timestamp": "2026-05-31T19:24:54.294Z"
+      },
+      {
+        "cycle": 3,
+        "score": 5.8,
+        "timestamp": "2026-05-31T19:27:34.593Z"
+      },
+      {
+        "cycle": 4,
+        "score": 7.8,
+        "timestamp": "2026-05-31T19:29:52.794Z"
+      },
+      {
+        "cycle": 5,
+        "score": 7.6,
+        "timestamp": "2026-05-31T19:56:55.213Z"
+      },
+      {
+        "cycle": 6,
+        "score": 7.5,
+        "timestamp": "2026-05-31T20:01:34.866Z"
+      }
+    ],
+    "strongPhraseCount": 24,
+    "weakPhraseCount": 1,
+    "totalProposalsAccumulated": 4
+  }
+}

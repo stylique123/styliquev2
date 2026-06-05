@@ -1,0 +1,5 @@
+
+
+> @stylique/core@0.0.0 typecheck /Users/apple/Desktop/stylique  re build/fashion/packages/core
+> tsc --noEmit
+

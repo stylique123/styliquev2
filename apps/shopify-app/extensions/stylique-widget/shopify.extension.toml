@@ -1,0 +1,11 @@
+api_version = "2025-01"
+uid = "4fc91a17-6511-d956-6ad1-233da7f8997854e05515"
+
+[[extensions]]
+name = "Stylique widget"
+handle = "stylique-widget"
+type = "theme"
+
+[extensions.capabilities]
+network_access = true
+block_progress = false

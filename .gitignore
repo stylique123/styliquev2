@@ -1,0 +1,20 @@
+.env
+.env.local
+.env.staging
+.env.production
+.env.*.local
+apps/*/.env
+apps/*/.env.local
+node_modules
+.next
+build
+dist
+coverage
+*.tsbuildinfo
+
+# hardened — never commit real-secret backups/templates
+.env.save
+.env.*.save
+*.env.save
+apps/*/.env.*-template
+.env.stylee-template

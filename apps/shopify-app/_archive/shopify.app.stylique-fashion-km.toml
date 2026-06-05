@@ -1,0 +1,33 @@
+# Deprecated generated config. Do not use for Fashion runtime.
+# Kept only so old Shopify CLI references do not resurrect the default app URL.
+
+client_id = "cd23507550c3446a48f041df8fb44f0d"
+name = "stylique-fashion"
+handle = "stylique-fashion"
+application_url = "https://localhost"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_command = "pnpm exec remix vite:dev --host 0.0.0.0 --port 3000"
+
+[webhooks]
+api_version = "2026-07"
+
+[access_scopes]
+scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://localhost/auth/callback"
+]
+
+[app_proxy]
+url = "https://localhost/proxy/shopper"
+subpath = "stylique"
+prefix = "apps"
+
+[pos]
+embedded = false

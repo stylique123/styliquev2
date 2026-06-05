@@ -1,0 +1,96 @@
+/* Stylique web — dark editorial brand. Matches the storefront widget + dashboard
+   tokens exactly so the marketing site, embedded admin, and on-site Mira are
+   one coherent design language. */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:           #08070A;
+  --surface:      #14111A;
+  --surface-2:    rgba(255,255,255,0.025);
+  --line:         rgba(255,255,255,0.08);
+  --line-2:       rgba(255,255,255,0.14);
+  --line-acc:     rgba(201,181,255,0.35);
+  --text:         #F4F2EE;
+  --mute:         #8E8A99;
+  --mute-2:       #5A5663;
+  --electric:     #8B5CF6;
+  --pink:         #E879C8;
+  --grad:         linear-gradient(135deg, #8B5CF6 0%, #C26BE6 55%, #E879C8 100%);
+  --grad-soft:    linear-gradient(135deg, rgba(139,92,246,.16) 0%, rgba(232,121,200,.10) 100%);
+  --glow:         radial-gradient(60% 60% at 50% 50%, rgba(139,92,246,.45) 0%, rgba(232,121,200,.10) 45%, rgba(0,0,0,0) 70%);
+  --shadow:       0 24px 60px rgba(0,0,0,.55);
+
+  --serif:        "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --sans:         "Manrope", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --mono:         "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --ease-spring:  cubic-bezier(.2,.8,.2,1);
+  --ease-fade:    cubic-bezier(.4,0,.2,1);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+
+.serif { font-family: var(--serif); font-weight: 400; }
+.mono  { font-family: var(--mono); font-size: 11.5px; letter-spacing: .35px; color: var(--mute); }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+@media (max-width: 768px) { .container { padding: 0 20px; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 768px) {
+  .sq-hero-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+  .sq-module-grid { grid-template-columns: 1fr !important; }
+  .sq-tryon-panel { grid-template-columns: 1fr !important; }
+  .sq-studio-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .sq-story-grid { grid-template-columns: 1fr !important; gap: 48px !important; }
+  .sq-pdp-grid { grid-template-columns: 1fr !important; padding: 24px 20px 80px !important; gap: 32px !important; }
+  .sq-pdp-aside { position: static !important; top: auto !important; }
+  .sq-collection-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .sq-featured-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (max-width: 480px) {
+  .sq-collection-grid { grid-template-columns: 1fr !important; }
+  .sq-product-grid { grid-template-columns: 1fr !important; }
+  .sq-featured-grid { grid-template-columns: 1fr !important; }
+  .sq-module-grid { gap: 0 !important; }
+}
+
+/* Section padding responsive */
+@media (max-width: 768px) {
+  section { padding-left: 20px !important; padding-right: 20px !important; }
+}
+/* Smooth scroll for all overflow containers */
+.sq-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.sq-scroll-x::-webkit-scrollbar { display: none; }
+/* iOS safe area */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .sq-dock-fixed { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+/* CTA hover effects (pointer devices only) */
+@media (hover: hover) {
+  .sq-cta-primary:hover { opacity: 0.85; }
+  .sq-cta-ghost:hover { border-color: var(--line-acc) !important; color: var(--text) !important; }
+}
+/* Ken Burns on hero image */
+@keyframes sq-ken-burns {
+  0%   { transform: scale(1.00) translate(0, 0); }
+  50%  { transform: scale(1.02) translate(-0.5%, -0.5%); }
+  100% { transform: scale(1.00) translate(0, 0); }
+}
+.sq-hero-img { animation: sq-ken-burns 12s ease-in-out infinite; }

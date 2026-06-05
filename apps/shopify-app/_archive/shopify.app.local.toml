@@ -1,0 +1,38 @@
+# Stylique Fashion — LOCAL development config.
+# Use with: pnpm dev:shopify
+#
+# Omitted vs staging/production:
+#   handle     — omitted so Shopify CLI derives it from client_id.
+#                Setting it here causes "App handle must be unique" when CLI
+#                validates the config against the Partner Dashboard.
+#   [app_proxy] — omitted because App Proxy requires a stable public host.
+#                 Shopify's proxy infrastructure cannot reach localhost or a
+#                 dynamic Cloudflare tunnel URL. App Proxy belongs only in
+#                 shopify.app.staging.toml and shopify.app.production.toml
+#                 where the host is a fixed public domain.
+#                 In local dev the widget calls the tunnel URL directly.
+
+client_id = "cd23507550c3446a48f041df8fb44f0d"
+name = "stylique-fashion"
+application_url = "https://localhost"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_command = "./node_modules/.bin/remix vite:dev --host 0.0.0.0 --port 3000"
+
+[webhooks]
+api_version = "2026-07"
+
+[access_scopes]
+scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://localhost/auth/callback"
+]
+
+[pos]
+embedded = false

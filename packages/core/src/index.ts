@@ -1,0 +1,37 @@
+export * from "./plans/index.js";
+export * from "./plans/service.js";
+export * from "./plans/features.js";
+export * from "./usage/service.js";
+export * from "./analytics/index.js";
+export * from "./analytics/service.js";
+export * from "./colors/rules.js";
+export * from "./catalog/index.js";
+export * from "./fit/service.js";
+export * from "./style/service.js";
+// D40 — combo color harmony engine + structured combo scoring.
+export * from "./style/harmony.js";
+export * from "./style/score.js";
+// D40 — multi-garment sequential VTO chain.
+export * from "./tryon/combo.js";
+export * from "./recommendations/service.js";
+// Intelligence loop — measure→learn (Outcome tracking).
+export * from "./outcomes/index.js";
+export * from "./embeddings/service.js";
+export * from "./embeddings/image-match.js";
+export * from "./tryon/service.js";
+// D35 — image-quality pipeline + Shopify size-chart metafield parser.
+export * from "./imagery/index.js";
+export * from "./sizing/index.js";
+// OI-25 — at-app AES-256-GCM encryption for sensitive DB fields.
+export * from "./crypto.js";
+// PB6 reversal — multi-language infrastructure stub.
+export { t, detectLocale } from "./i18n/index.js";
+export type { SupportedLocale, TranslationKey } from "./i18n/index.js";
+// Creative Studio — provider-agnostic image generation (Vertex Imagen primary,
+// Replicate FLUX fallback, stub for dev). See packages/core/src/studio/service.ts.
+export * from "./studio/index.js";
+// Shared Vertex AI auth helpers (JWT signing, OAuth token exchange, token cache).
+export * from "./vertex/auth.js";
+// Stylique Beauty — skin analysis, shade matching, routine builder, ingredient analyzer,
+// merchant intelligence dashboard. Imported by beauty-brain.server.ts + worker jobs.
+export * from "./beauty/index.js";

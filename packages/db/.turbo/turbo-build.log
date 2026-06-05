@@ -1,0 +1,5 @@
+
+
+> @stylique/db@0.0.0 build /Users/apple/Desktop/stylique  re build/fashion/packages/db
+> tsc -p tsconfig.json
+

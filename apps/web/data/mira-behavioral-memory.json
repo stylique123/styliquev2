@@ -1,0 +1,143 @@
+{
+  "version": 7,
+  "lastUpdated": "2026-05-31T20:01:34.866Z",
+  "cycleCount": 6,
+  "evolutionScores": [
+    {
+      "cycle": 1,
+      "score": 7.7,
+      "timestamp": "2026-05-31T19:24:17.961Z"
+    },
+    {
+      "cycle": 2,
+      "score": 7.7,
+      "timestamp": "2026-05-31T19:24:54.294Z"
+    },
+    {
+      "cycle": 3,
+      "score": 5.8,
+      "timestamp": "2026-05-31T19:27:34.593Z"
+    },
+    {
+      "cycle": 4,
+      "score": 7.8,
+      "timestamp": "2026-05-31T19:29:52.794Z"
+    },
+    {
+      "cycle": 5,
+      "score": 7.6,
+      "timestamp": "2026-05-31T19:56:55.213Z"
+    },
+    {
+      "cycle": 6,
+      "score": 7.5,
+      "timestamp": "2026-05-31T20:01:34.866Z"
+    }
+  ],
+  "successPatterns": [],
+  "failurePatterns": [],
+  "proposedImprovements": [
+    {
+      "priority": "P0",
+      "failureType": "wrong_route",
+      "occurrences": 44,
+      "percentage": 25,
+      "rootCause": "route selection logic mismatch",
+      "proposedFix": "Add to ROUTE SELECTION prompt: \"is this actually good quality or just ex\" → suitability",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() ROUTE SELECTION",
+      "affectedSection": "ROUTE SELECTION examples",
+      "implementationNote": "Add more disambiguation examples to ROUTE SELECTION block",
+      "firstSeen": "2026-05-31T19:24:17.961Z",
+      "lastSeen": "2026-05-31T20:01:34.866Z"
+    },
+    {
+      "priority": "P2",
+      "failureType": "generic_voice",
+      "occurrences": 8,
+      "percentage": 3,
+      "rootCause": "HOW TO TALK rules not followed",
+      "proposedFix": "Add to BANNED words list in buildSystem()",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() HOW TO TALK",
+      "affectedSection": "HOW TO TALK + BANNED words list",
+      "implementationNote": "Add to BANNED list, add counter-example showing natural alternative",
+      "firstSeen": "2026-05-31T19:24:54.294Z",
+      "lastSeen": "2026-05-31T19:27:34.593Z"
+    },
+    {
+      "priority": "P2",
+      "failureType": "missing_near_miss_flag",
+      "occurrences": 4,
+      "percentage": 3,
+      "rootCause": "NEAR-MISS prompt not triggering for this message pattern",
+      "proposedFix": "Add near-miss example: \"I want this in burgundy\" → nearMiss=true + nearMissAttribute",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() NEAR-MISS",
+      "affectedSection": "NEAR-MISS block",
+      "implementationNote": "Add more near-miss patterns. Test: 'this but in [color]', 'do you have this [variant]'",
+      "firstSeen": "2026-05-31T19:24:54.294Z",
+      "lastSeen": "2026-05-31T19:56:55.213Z"
+    },
+    {
+      "priority": "P2",
+      "failureType": "missing_unmet_flag",
+      "occurrences": 2,
+      "percentage": 2,
+      "rootCause": "CATALOG GAPS prompt not triggering for this message pattern",
+      "proposedFix": "Add to gap examples in system prompt: \"show me navy blue trousers\"",
+      "affectedFile": "apps/web/app/api/mira/route.ts → buildSystem() CATALOG GAPS",
+      "affectedSection": "CATALOG GAPS block",
+      "implementationNote": "Add more gap trigger phrases to CATALOG GAPS block",
+      "firstSeen": "2026-05-31T19:56:55.213Z",
+      "lastSeen": "2026-05-31T20:01:34.866Z"
+    }
+  ],
+  "appliedImprovements": [],
+  "stylistPhrases": {
+    "strong": [
+      "It's a beautiful dress. What's the thing that's holding you back?",
+      "This one's cut on the bias, so getting the size right is everything. Let me find the perfect fit for you.",
+      "It's a beautiful piece. Is it the fit you're wondering about? It can be a little tricky with this cut.",
+      "Good question — this one runs a little small, so let's get the fit just right. I'll size it for you now.",
+      "I hear you. Is it the fit that you're not sure about, or how you'd wear it?",
+      "Yes, Medium is the one. This camisole runs true to size, and you can adjust the straps to get the fit just right.",
+      "In the bag. Want me to show you the skirt that finishes the look?",
+      "It's the cut that makes this one special. What's the main thing holding you back?",
+      "Yes, based on your measurements from before, the Medium is the right one for this camisole. It's cut true to size.",
+      "Yes, it's designed to. The straps adjust so you can get the height just right for you — the V-neck is quite deep, though, just so you know.",
+      "Done — want me to finish the look before checkout?",
+      "It's one of those pieces that's either perfect or not quite. What's the one thing holding you back?",
+      "Good question — this one's cut on the bias, so the fit is specific. Let me get the exact size for you.",
+      "It's the real thing — heavyweight silk, cut on the bias so it hangs just right. The main thing is getting the size perfect, as the cut is unforgiving. Want me to size it for you?",
+      "Done. Want me to finish the look before checkout?",
+      "It's a beautiful piece. Is it the fit you're wondering about, or how you'd wear it?",
+      "It's one of those pieces you have to get right. What's the thing holding you back?",
+      "This one runs a little small, especially on the bias cut. Let me find your exact size.",
+      "It's good. You're paying for the bias cut, which is what makes it hang correctly — it's a harder and more expensive way to make a dress. Want me to size it for you?",
+      "This rewears more easily than it looks — it shifts between evening and smart casual depending on what you pair it with. What's holding you back?",
+      "Good question — this one runs a little differently. Let's get the exact size for you.",
+      "It's the real thing. The quality is in the bias cut — that's what makes it hang properly instead of clinging.",
+      "This one rewears more easily than it looks. You can dress it up with a skirt, or down with denim. What's holding you back?",
+      "Yes, the Medium is the right one for this camisole — it runs true to size."
+    ],
+    "weak": [
+      "Good eye — that silk slip is a classic. The cut is beautiful but very specific, so let me know if you want me to size it, style it, or put it in the fitting room for you."
+    ]
+  },
+  "routingMemory": {
+    "correctMappings": [],
+    "incorrectMappings": []
+  },
+  "emotionalPatterns": {
+    "effectiveReassurance": [],
+    "missedHesitation": [],
+    "correctTiming": [],
+    "incorrectTiming": []
+  },
+  "outfitMemory": {
+    "highPerforming": [],
+    "lowPerforming": []
+  },
+  "catalogGapMemory": {
+    "repeatedGaps": [],
+    "successfulRedirects": []
+  }
+}

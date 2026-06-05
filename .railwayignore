@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.shopify
+**/.shopify
+**/build
+**/dist
+**/.turbo
+**/.cache
+apps/web/.next
+*.log
+**/*.log

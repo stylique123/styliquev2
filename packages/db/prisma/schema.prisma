@@ -1,0 +1,879 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+model Shop {
+  id                String                @id @default(cuid())
+  shopifyDomain     String                @unique
+  accessToken       String
+  scopes            String
+  installedAt       DateTime              @default(now())
+  uninstalledAt     DateTime?
+  events            AnalyticsEvent[]
+  brandProfile      BrandProfile?
+  brandRecs         BrandRecommendation[]
+  brandSources      BrandSource[]
+  brandSnapshots    BrandTasteSnapshot[]
+  cartIntents       CartIntent[]
+  catalogGaps       CatalogGap[]
+  creatives         Creative[]
+  creativeSets      CreativeSet[]
+  fitSessions       FitSession[]
+  notifications     Notification[]
+  outcomes          Outcome[]
+  plan              Plan?
+  products          Product[]
+  productAudits     ProductAudit[]
+  productEmbeddings ProductEmbedding[]
+  savedRoutines     SavedRoutine[]
+  styleSessions     StyleSession[]
+  tryOnSessions     TryOnSession[]
+  usageCounters     UsageCounter[]
+
+  @@index([shopifyDomain])
+}
+
+model Plan {
+  id                   String         @id @default(cuid())
+  shopId               String         @unique
+  tier                 PlanTier       @default(STARTER)
+  monthlyTryOnPersonal Int?
+  monthlyTryOnBody     Int?
+  monthlyCreatives     Int?
+  monthlyCreativeSets  Int?
+  monthlyStylistTurns  Int?
+  monthlyStyleRecs     Int?
+  monthlyFitRecs       Int?
+  creativeSets         Int?
+  analyticsLevel       AnalyticsLevel @default(BASIC)
+  supportLevel         SupportLevel   @default(STANDARD)
+  planFeaturesJson     Json?
+  fairUseWarnAt        Float          @default(0.8)
+  renewsAt             DateTime?
+  updatedAt            DateTime       @updatedAt
+  shop                 Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model UsageCounter {
+  id          String      @id @default(cuid())
+  shopId      String
+  metric      UsageMetric
+  periodStart DateTime
+  count       Int         @default(0)
+  shop        Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, metric, periodStart])
+  @@index([shopId, metric])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  shopId    String
+  kind      NotificationKind
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  shop      Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, readAt])
+}
+
+model BrandProfile {
+  id              String    @id @default(cuid())
+  shopId          String    @unique
+  paletteJson     Json?
+  toneJson        Json?
+  styleVectors    Json?
+  trainedAt       DateTime?
+  updatedAt       DateTime  @updatedAt
+  referenceAssets Asset[]
+  shop            Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model BrandSource {
+  id           String            @id @default(cuid())
+  shopId       String
+  kind         BrandSourceKind
+  identifier   String?
+  payload      Json?
+  status       BrandSourceStatus @default(PENDING)
+  lastSyncedAt DateTime?
+  error        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, kind])
+}
+
+model Product {
+  id                      String                @id @default(cuid())
+  shopId                  String
+  shopifyId               String
+  handle                  String
+  title                   String
+  productType             String?
+  vendor                  String?
+  tags                    String[]
+  // Product description HTML (Shopify body_html). MANY brands paste their size
+  // chart as a <table> or measurement text directly into the description — it's
+  // the #1 size-chart source for stores with no metafields. Synced so the
+  // size-chart extractor can read text/HTML charts from it.
+  descriptionHtml         String?
+  primaryColor            String?
+  colorFamily             String?
+  category                String?
+  primaryTryonImageId     String?
+  tryonReady              Boolean               @default(false)
+  widgetTier              Int                   @default(1)
+  qualityComputedAt       DateTime?
+  sizeChartJson           Json?
+  sizeChartSource         String?
+  sizeChartCandidatesJson Json?
+  sizeChartExtractedAt    DateTime?
+  updatedAt               DateTime              @updatedAt
+  brandRecs               BrandRecommendation[]
+  creatives               Creative[]
+  creativeSets            CreativeSet[]
+  fitSessions             FitSession[]
+  shop                    Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  audits                  ProductAudit[]
+  embedding               ProductEmbedding?
+  images                  ProductImage[]
+  variants                ProductVariant[]
+  styleSessions           StyleSession[]
+  tryOnSessions           TryOnSession[]
+
+  @@unique([shopId, shopifyId])
+  @@index([shopId, category])
+  @@index([shopId, tryonReady])
+}
+
+model ProductVariant {
+  id                 String    @id @default(cuid())
+  productId          String
+  shopifyId          String
+  sku                String?
+  size               String?
+  color              String?
+  priceCents         Int?
+  inventoryQuantity  Int?
+  availableForSale   Boolean?
+  inventorySyncedAt  DateTime?
+  measurementsJson   Json?
+  measurementsSource String?
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, shopifyId])
+  @@index([productId, color])
+}
+
+model ProductImage {
+  id               String       @id @default(cuid())
+  productId        String
+  shopifyId        String?
+  url              String
+  position         Int          @default(0)
+  role             ImageRole    @default(CATALOG)
+  qualityScore     Float?
+  qualityCheckedAt DateTime?
+  qualityReasons   String[]
+  qualityProvider  String?
+  widthPx          Int?
+  heightPx         Int?
+  bytes            Int?
+  garmentRole      GarmentRole?
+  preppedUrl       String?
+  preppedAt        DateTime?
+  product          Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, qualityScore])
+}
+
+model Asset {
+  id             String        @id @default(cuid())
+  brandProfileId String?
+  url            String
+  kind           AssetKind
+  meta           Json?
+  createdAt      DateTime      @default(now())
+  brandProfile   BrandProfile? @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
+}
+
+model CreativeSet {
+  id           String            @id @default(cuid())
+  shopId       String
+  productId    String?
+  status       CreativeSetStatus @default(PENDING)
+  brief        Json?
+  providerMeta Json?
+  qcState      QcState           @default(NONE)
+  retryCount   Int               @default(0)
+  error        String?
+  triggeredBy  String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  creatives    Creative[]
+  product      Product?          @relation(fields: [productId], references: [id])
+  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, productId])
+  @@index([shopId, status])
+}
+
+model Creative {
+  id              String       @id @default(cuid())
+  shopId          String
+  productId       String?
+  setId           String?
+  role            CreativeRole @default(STILL)
+  assetKind       AssetKind    @default(GENERATED)
+  sourceComboName String?
+  sourceComboIds  String[]     @default([])
+  prompt          String
+  imageUrl        String?
+  videoUrl        String?
+  status          JobStatus    @default(PENDING)
+  providerJob     String?
+  error           String?
+  createdAt       DateTime     @default(now())
+  product         Product?     @relation(fields: [productId], references: [id])
+  set             CreativeSet? @relation(fields: [setId], references: [id], onDelete: Cascade)
+  shop            Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, setId])
+}
+
+model ProductAudit {
+  id                 String   @id @default(cuid())
+  shopId             String
+  productId          String
+  missingSizeChart   Boolean  @default(false)
+  weakImageQuality   Boolean  @default(false)
+  missingStyling     Boolean  @default(false)
+  missingTryOnReady  Boolean  @default(false)
+  missingColorCombos Boolean  @default(false)
+  recommendations    Json
+  priorityScore      Float
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop               Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, productId])
+  @@index([shopId, priorityScore])
+}
+
+model ShopperSession {
+  id                     String           @id @default(cuid())
+  sessionId              String           @unique
+  shopifyDomain          String
+  shopifyCustomerId      String?
+  heightCm               Int?
+  weightKg               Int?
+  chestCm                Float?
+  waistCm                Float?
+  hipCm                  Float?
+  fitPreference          FitPreference?
+  bodyType               String?
+  photoAssetId           String?
+  budgetMin              Float?
+  budgetMax              Float?
+  budgetCurrency         String?          @default("USD")
+  skinTone               String?
+  skinTypeBeauty         String?
+  skinConcernsJson       Json?
+  skinDepth              String?
+  skinUndertone          String?
+  skinHex                String?
+  skinAnalyzedAt         DateTime?
+  routinePreference      String?
+  skinRoutineSavedAt     DateTime?
+  savedBeautyRoutineJson Json?
+  email                  String?
+  displayName            String?
+  marketingOptIn         Boolean          @default(false)
+  accountClaimedAt       DateTime?
+  emailVerifyToken       String?
+  emailVerifyExpiry      DateTime?
+  emailVerified          Boolean          @default(false)
+  emailVerifyAttempts    Int              @default(0)
+  emailVerifyLockedAt    DateTime?
+  chatHistoryJson        Json?
+  signupOfferedAt        DateTime?
+  sentimentLabel         String?
+  sentimentThemes        String[]
+  sentimentSummary       String?
+  sentimentFoundItem     String?
+  sentimentExtractedAt   DateTime?
+  tasteVectorJson        Json?
+  tasteComputedAt        DateTime?
+  signalCount            Int              @default(0)
+  createdAt              DateTime         @default(now())
+  lastSeenAt             DateTime         @default(now())
+  events                 AnalyticsEvent[]
+  cartIntents            CartIntent[]
+  catalogGaps            CatalogGap[]
+  fits                   FitSession[]
+  savedRoutines          SavedRoutine[]
+  styles                 StyleSession[]
+  tryOns                 TryOnSession[]
+
+  @@index([shopifyDomain, shopifyCustomerId])
+  @@index([shopifyDomain])
+  @@index([email])
+  @@index([shopifyDomain, skinDepth, skinUndertone])
+}
+
+model TryOnSession {
+  id             String         @id @default(cuid())
+  shopId         String
+  shopperId      String
+  productId      String
+  mode           TryOnMode
+  status         JobStatus      @default(PENDING)
+  inputPhotoUrl  String?
+  outputImageUrl String?
+  providerJob    String?
+  error          String?
+  createdAt      DateTime       @default(now())
+  providerKey    String?
+  modelKey       String?
+  modelHint      String?
+  latencyMs      Int?
+  completedAt    DateTime?
+  cacheKey       String?
+  product        Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop           Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper        ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, productId])
+  @@index([shopperId])
+  @@index([shopId, cacheKey])
+}
+
+model FitSession {
+  id              String         @id @default(cuid())
+  shopId          String
+  shopperId       String
+  productId       String
+  recommendedSize String
+  confidence      Float
+  reasoning       Json?
+  chosenSize      String?
+  sizeDelta       Int?
+  createdAt       DateTime       @default(now())
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper         ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, productId])
+}
+
+model StyleSession {
+  id              String         @id @default(cuid())
+  shopId          String
+  shopperId       String
+  productId       String
+  outfitJson      Json
+  colorCombosJson Json
+  createdAt       DateTime       @default(now())
+  product         Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop            Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper         ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, productId])
+}
+
+model AnalyticsEvent {
+  id         String          @id @default(cuid())
+  shopId     String
+  shopperId  String?
+  name       EventName
+  productId  String?
+  variantId  String?
+  payload    Json
+  url        String?
+  userAgent  String?
+  variantTag String?
+  createdAt  DateTime        @default(now())
+  shop       Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper    ShopperSession? @relation(fields: [shopperId], references: [id])
+
+  @@index([shopId, name, createdAt])
+  @@index([shopId, productId, createdAt])
+}
+
+model CatalogGap {
+  id              String          @id @default(cuid())
+  shopId          String
+  shopperId       String?
+  rawQuery        String
+  normalizedQuery String
+  resultCount     Int
+  category        String?
+  colorFamily     String?
+  source          String
+  createdAt       DateTime        @default(now())
+  shop            Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper         ShopperSession? @relation(fields: [shopperId], references: [id])
+
+  @@index([shopId, normalizedQuery])
+  @@index([shopId, createdAt])
+}
+
+model BrandRecommendation {
+  id            String                 @id @default(cuid())
+  shopId        String
+  productId     String?
+  kind          RecommendationKind
+  severity      RecommendationSeverity @default(INFO)
+  title         String
+  body          String
+  evidence      Json
+  source        String
+  surface       RecommendationSurface
+  minTierToView PlanTier
+  actionUrl     String?
+  ctaLabel      String?
+  dedupeKey     String
+  generatedAt   DateTime               @default(now())
+  dismissedAt   DateTime?
+  takenAt       DateTime?
+  product       Product?               @relation(fields: [productId], references: [id])
+  shop          Shop                   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  outcome       Outcome?
+
+  @@unique([shopId, kind, dedupeKey])
+  @@index([shopId, dismissedAt, severity])
+  @@index([shopId, surface, generatedAt])
+}
+
+model BrandTasteSnapshot {
+  id              String   @id @default(cuid())
+  shopId          String
+  snapshotDate    DateTime
+  colorFamilyJson Json
+  silhouetteJson  Json
+  categoryJson    Json
+  priceTierJson   Json
+  moodJson        Json
+  modelJson       Json
+  chatSessions    Int      @default(0)
+  combosProposed  Int      @default(0)
+  cartConfirmed   Int      @default(0)
+  signupsClaimed  Int      @default(0)
+  tryOnSessions   Int      @default(0)
+  fitSubmitted    Int      @default(0)
+  creativesCount  Int      @default(0)
+  comboCtr        Float    @default(0)
+  signupRate      Float    @default(0)
+  fitToCartRate   Float    @default(0)
+  sampleSize      Int      @default(0)
+  createdAt       DateTime @default(now())
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, snapshotDate])
+  @@index([shopId, snapshotDate])
+}
+
+model NetworkBenchmark {
+  id           String   @id @default(cuid())
+  dimension    String
+  computedAt   DateTime @default(now())
+  p25          Float
+  p50          Float
+  p75          Float
+  p90          Float
+  mean         Float
+  sampleBrands Int
+  segment      String?  @default("all")
+
+  @@unique([dimension, segment, computedAt])
+  @@index([dimension, segment, computedAt])
+}
+
+model CartIntent {
+  id         String         @id @default(cuid())
+  shopId     String
+  shopperId  String
+  productIds String[]
+  comboName  String?
+  status     String         @default("pending")
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  shop       Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  session    ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, shopperId])
+}
+
+model SavedRoutine {
+  id            String         @id @default(cuid())
+  shopId        String
+  shopifyDomain String
+  shopperId     String
+  productIds    String[]
+  stepOrder     Json
+  routineType   String?
+  status        String         @default("active")
+  miraSummary   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopper       ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, shopperId, status])
+  @@index([shopId, routineType, createdAt])
+}
+
+model Experiment {
+  id            String    @id @default(cuid())
+  shopId        String?
+  key           String    @unique
+  description   String?
+  active        Boolean   @default(false)
+  startedAt     DateTime?
+  endedAt       DateTime?
+  allocation    Json
+  variantConfig Json
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([shopId, active])
+}
+
+model ProductEmbedding {
+  id         String   @id @default(cuid())
+  shopId     String
+  productId  String   @unique
+  vector     Float[]
+  modelKey   String
+  computedAt DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+}
+
+model Outcome {
+  id                   String               @id @default(cuid())
+  shopId               String
+  recommendationId     String?              @unique
+  recommendationType   String
+  workflowId           String?
+  entityId             String?
+  entityType           String?
+  beforeMetrics        Json
+  afterMetrics         Json
+  delta                Json
+  status               OutcomeStatus        @default(PENDING)
+  resultClass          OutcomeResult?
+  confidenceScore      Float                @default(0)
+  resolutionWindowDays Int                  @default(7)
+  resolutionDue        DateTime
+  resolvedAt           DateTime?
+  learnedSignal        String               @default("")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  recommendation       BrandRecommendation? @relation(fields: [recommendationId], references: [id])
+  shop                 Shop                 @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, status])
+  @@index([shopId, recommendationType])
+  @@index([recommendationId])
+  @@index([resolutionDue, status])
+}
+
+enum PlanTier {
+  STARTER
+  GROWTH
+  ULTIMATE
+}
+
+enum AnalyticsLevel {
+  BASIC
+  ADVANCED
+  ULTIMATE
+}
+
+enum SupportLevel {
+  STANDARD
+  PRIORITY
+  DEDICATED
+}
+
+enum UsageMetric {
+  TRYON_PERSONAL
+  TRYON_BODY
+  CREATIVE_GENERATED
+  CREATIVE_SET_GENERATED
+  STYLE_RECOMMENDATION
+  FIT_RECOMMENDATION
+  VISION_TURN
+}
+
+enum NotificationKind {
+  FAIR_USE_REACHED
+  CATALOG_SYNC_FAILED
+  CATALOG_SYNC_COMPLETED
+  INSTALL_COMPLETE
+  CREATIVE_JOB_FAILED
+  PLAN_RENEWED
+  PRODUCT_AUDIT_READY
+  APP_UNINSTALLED
+}
+
+enum BrandSourceKind {
+  SHOPIFY
+  INSTAGRAM
+  WEBSITE
+  UPLOADED_REFERENCE
+  MANUAL_INPUT
+}
+
+enum BrandSourceStatus {
+  PENDING
+  SYNCING
+  READY
+  FAILED
+}
+
+enum ImageRole {
+  CATALOG
+  GENERATED
+  TRYON_OUTPUT
+  BRAND_REFERENCE
+}
+
+enum GarmentRole {
+  FRONT
+  BACK
+  DETAIL
+  LIFESTYLE
+  SWATCH
+}
+
+enum AssetKind {
+  BRAND_REFERENCE
+  INSTAGRAM_REFERENCE
+  USER_PHOTO
+  GENERATED
+  VIDEO
+}
+
+enum CreativeSetStatus {
+  PENDING
+  GENERATING
+  READY
+  PARTIAL
+  FAILED
+}
+
+enum QcState {
+  NONE
+  AUTO_PASSED
+  AUTO_FLAGGED
+  HUMAN_APPROVED
+  HUMAN_REJECTED
+}
+
+enum CreativeRole {
+  STILL
+  MOTION
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum FitPreference {
+  FITTED
+  SLIM
+  REGULAR
+  RELAXED
+  OVERSIZED
+}
+
+enum TryOnMode {
+  BODY_MODEL
+  PERSONAL_PHOTO
+}
+
+enum EventName {
+  WIDGET_VIEWED
+  TRYON_STARTED
+  TRYON_COMPLETED
+  TRYON_PHOTO_UPLOADED
+  FIT_RECOMMENDED
+  SIZE_SELECTED
+  STYLE_VIEWED
+  STYLE_PRODUCT_CLICKED
+  COLOR_COMBO_VIEWED
+  CREATIVE_IMPRESSION
+  CREATIVE_SET_GENERATED
+  PRODUCT_AUDIT_GENERATED
+  ADD_TO_CART
+  CHECKOUT_STARTED
+  PURCHASE
+  DEMO_PRODUCT_VIEWED
+  DEMO_TRYON_BODY_SELECTED
+  DEMO_TRYON_PHOTO_REQUESTED
+  DEMO_FIT_SUBMITTED
+  DEMO_STYLE_RECOMMENDATION_VIEWED
+  DEMO_COLOR_COMBO_VIEWED
+  DEMO_AUDIT_VIEWED
+  WIDGET_OPENED
+  WIDGET_CLOSED
+  WIDGET_CTA_CLICKED
+  WIDGET_BODY_MODEL_SELECTED
+  WIDGET_FIT_SUBMITTED
+  WIDGET_STYLE_VIEWED
+  CHAT_OPENED
+  CHAT_CLOSED
+  CHAT_MESSAGE_SENT
+  CHAT_REPLY_RECEIVED
+  CHAT_PRODUCT_CLICKED
+  CHAT_COMBO_PROPOSED
+  CHAT_SEARCH_RUN
+  CHAT_IMAGE_MATCH_RUN
+  CHAT_NAV_REQUESTED
+  CHAT_CART_REQUESTED
+  CART_CONFIRMED
+  CART_CANCELLED
+  CART_FAILED
+  SIGNUP_OFFERED
+  SIGNUP_CARD_SHOWN
+  SIGNUP_CLAIMED
+  SIGNUP_DISMISSED
+  ACCOUNT_CLAIMED
+  WIDGET_STEP_VIEWED
+  WIDGET_MOOD_SELECTED
+  WIDGET_MODEL_SELECTED
+  WIDGET_EXPERIENCE_SELECTED
+  PDP_TRYON_CLICKED
+  TRYON_RENDER_REQUESTED
+  TRYON_RENDER_COMPLETED
+  TRYON_RENDER_FAILED
+  TRYON_ABANDONED
+  CHAT_PROFILE_CAPTURED
+  CHAT_COMBO_VOTED
+  WIDGET_COMBO_VIEWED
+  COMBO_TRYON_REQUESTED
+  COMBO_ADD_ALL
+  COMBO_PIECE_SWAPPED
+  PRODUCT_DWELL_LONG
+  STYLE_VOTED
+  PRODUCT_VIEWED
+  MIRA_ASSISTED_ORDER
+  CART_FROM_MIRA
+  CART_FROM_TRYON
+  CART_FROM_WIDGET_STYLE
+  CHAT_STOCK_CHECKED
+  CHAT_SIZE_CHART_VIEWED
+  BEAUTY_REPLENISHMENT_TRIGGERED
+  BEAUTY_SKIN_PROFILE_CAPTURED
+  BEAUTY_SHADE_MATCHED
+  BEAUTY_ROUTINE_BUILT
+  BEAUTY_ROUTINE_ADD_ALL
+  BEAUTY_ROUTINE_ADDED_TO_CART
+  BEAUTY_SHADE_GAP_LOGGED
+  BEAUTY_INGREDIENT_CONCERN
+  BEAUTY_RESTOCK_ALL
+  PRODUCT_CREATED_VIA_AI
+  CHAT_NEAR_MISS
+  CREATIVE_CLICKED
+  CREATIVE_APPROVED
+  CREATIVE_REJECTED
+  CREATIVE_CONVERTED
+  OUTCOME_RESOLVED
+  MIRA_OPENED
+  MIRA_PROACTIVE_TRIGGERED
+  MIRA_INTENT_CAPTURED
+  MIRA_PRODUCT_EXPLAINED
+  MIRA_PRODUCT_RECOMMENDED
+  MIRA_OUTFIT_RECOMMENDED
+  MIRA_OUTFIT_ACCEPTED
+  MIRA_OUTFIT_REJECTED
+  MIRA_SIZE_HELP_STARTED
+  MIRA_SIZE_SAVED
+  MIRA_TRYON_OFFERED
+  MIRA_TRYON_STARTED
+  MIRA_TRYON_COMPLETED
+  MIRA_ADD_TO_CART_ASSIST
+  MIRA_CART_COMPLETED
+  MIRA_HESITATION_DETECTED
+  MIRA_UNMET_DEMAND
+  MIRA_NEAR_MISS
+  MIRA_NAVIGATION_FAILED
+  MIRA_SHOPPER_STATE_DETECTED
+  MIRA_BEHAVIORAL_TRIGGER_FIRED
+  MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED
+}
+
+enum RecommendationKind {
+  CATALOG_GAP
+  WEAK_PDP_CREATIVE
+  FIT_ACCURACY_DRIFT
+  TOP_COMBO_TO_PROMOTE
+  UNDERUSED_MOOD
+  TASTE_SEGMENT_EMERGING
+  CART_ABANDON_PATTERN
+  STUDIO_PRODUCT_OPPORTUNITY
+  STYLIST_DEMAND_SIGNAL
+  CROSS_OFFERING
+}
+
+enum RecommendationSeverity {
+  INFO
+  ATTENTION
+  URGENT
+}
+
+enum RecommendationSurface {
+  STUDIO
+  WIDGET
+  STYLIST
+  CATALOG
+  CROSS
+}
+
+enum OutcomeStatus {
+  PENDING
+  RESOLVED
+  INCONCLUSIVE
+  ABANDONED
+}
+
+enum OutcomeResult {
+  IMPROVED
+  NO_CHANGE
+  WORSENED
+}

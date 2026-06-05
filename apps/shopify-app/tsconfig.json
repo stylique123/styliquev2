@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/.server/**/*.ts", "**/.client/**/*.ts"],
+  "exclude": ["node_modules", "build", "server.ts"],
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "isolatedModules": true,
+    "moduleResolution": "Bundler",
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "allowImportingTsExtensions": false,
+    "baseUrl": ".",
+    "paths": { "~/*": ["app/*"] }
+  }
+}

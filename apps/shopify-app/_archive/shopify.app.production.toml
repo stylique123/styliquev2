@@ -1,0 +1,34 @@
+# Stylique Fashion production Shopify config.
+# Production must use its own Shopify app credentials before public launch.
+
+client_id = "replace_with_stylique_fashion_production_client_id"
+name = "stylique-fashion"
+handle = "stylique-fashion"
+application_url = "https://app.stylique.ai"
+embedded = true
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = false
+dev_command = "./node_modules/.bin/remix vite:dev --host 0.0.0.0 --port 3000"
+
+[webhooks]
+api_version = "2026-07"
+
+[access_scopes]
+scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://app.stylique.ai/auth/callback"
+]
+
+[app_proxy]
+url = "https://app.stylique.ai/proxy/shopper"
+subpath = "stylique"
+prefix = "apps"
+
+[pos]
+embedded = false

@@ -1,0 +1,49 @@
+{
+  "name": "stylique",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db exec prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db exec prisma migrate dev --schema=prisma/schema.prisma",
+    "db:deploy": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db exec prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:reset": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db exec prisma migrate reset --schema=prisma/schema.prisma",
+    "db:studio": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db exec prisma studio --schema=prisma/schema.prisma",
+    "db:seed": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/db seed",
+    "worker:dev": "pnpm dev:worker",
+    "web:dev": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/web dev",
+    "web:build": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/web build",
+    "widget:build": "pnpm --filter @stylique/widget build",
+    "widget:watch": "pnpm --filter @stylique/widget watch",
+    "shopify:app-server": "dotenv -e .env.local -e .env -- pnpm --filter @stylique/shopify-app exec remix vite:dev --host 0.0.0.0 --port 3000",
+    "shopify:tunnel": "cloudflared tunnel --url http://localhost:3000",
+    "shopify:link-tunnel": "node scripts/set-tunnel-url.mjs",
+    "shopify:deploy": "dotenv -e .env.local -e .env -- pnpm --dir apps/shopify-app exec shopify app deploy --config shopify.app.toml",
+    "shopify:dev": "pnpm dev:shopify",
+    "dev:shopify": "dotenv -e .env.local -e .env -- sh -c 'cd apps/shopify-app && INIT_CWD=$PWD shopify app dev --config shopify.app.toml'",
+    "dev:worker": "dotenv -e .env.local -e .env -- pnpm --dir apps/worker dev",
+    "dev:all": "concurrently -k -n worker,shopify -c blue,green \"pnpm dev:worker\" \"pnpm dev:shopify\"",
+    "check:health": "node scripts/check-http.mjs http://localhost:3000/api/health ok",
+    "check:ready": "node scripts/check-http.mjs http://localhost:3000/api/ready ready",
+    "check:worker": "node scripts/check-http.mjs http://localhost:3001/health ok",
+    "check:db": "dotenv -e .env.local -e .env -- node scripts/check-db.mjs",
+    "check:shopify-config": "node scripts/check-shopify-config.mjs",
+    "shopify:smoke": "pnpm infra:up && pnpm db:generate && concurrently -k -n worker,app,tunnel -c blue,green,magenta \"pnpm worker:dev\" \"pnpm shopify:app-server\" \"pnpm shopify:tunnel\"",
+    "smoke:beauty": "dotenv -e .env -- pnpm tsx scripts/smoke-test-beauty.ts",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "dotenv-cli": "^7.4.2",
+    "turbo": "^2.1.0",
+    "typescript": "^5.6.0"
+  }
+}

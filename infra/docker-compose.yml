@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stylique-postgres
+    environment:
+      POSTGRES_USER: stylique
+      POSTGRES_PASSWORD: stylique
+      POSTGRES_DB: stylique
+    ports:
+      - "5432:5432"
+    volumes:
+      - stylique-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stylique -d stylique"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: stylique-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - stylique-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  stylique-pg:
+  stylique-redis:

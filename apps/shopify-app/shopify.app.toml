@@ -1,0 +1,66 @@
+# Stylique Fashion — default TOML (local dev fallback).
+# Active default when no --config flag is supplied.
+# Beauty must use a separate app/config.
+#
+# handle and [app_proxy] are intentionally omitted here — see
+# shopify.app.local.toml comments for the full rationale.
+# [app_proxy] belongs only in shopify.app.staging.toml and
+# shopify.app.production.toml where the host is a stable public domain.
+
+client_id = "5d64194b12c927c4cbe2507fd4824250"
+name = "stylique-fashion"
+application_url = "https://stylique-app-production.up.railway.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = false
+dev_command = "./node_modules/.bin/remix vite:dev"
+
+[webhooks]
+# MUST match ApiVersion in app/shopify.server.ts (ApiVersion.January25) — a
+# mismatch ships versioned payload shapes the handlers don't expect.
+api_version = "2025-01"
+
+# Declarative subscriptions — registered by Shopify at `app deploy` time,
+# independent of afterAuth. With the new embedded/token-exchange auth strategy,
+# afterAuth does NOT reliably fire on install, so the code-side `webhooks: {}` +
+# registerWebhooks() never created these on the shop (live webhookSubscriptions
+# was EMPTY → no catalog/inventory/size-chart auto-sync). Declaring them here is
+# the reliable registration path. Keep in sync with app/shopify.server.ts.
+[[webhooks.subscriptions]]
+topics = ["products/create", "products/update", "products/delete"]
+uri = "/webhooks/products"
+
+[[webhooks.subscriptions]]
+topics = ["app/uninstalled"]
+uri = "/webhooks/app-uninstalled"
+
+[[webhooks.subscriptions]]
+topics = ["orders/create"]
+uri = "/webhooks/orders"
+
+[[webhooks.subscriptions]]
+topics = ["orders/fulfilled"]
+uri = "/webhooks/orders/fulfilled"
+
+[[webhooks.subscriptions]]
+topics = ["refunds/create"]
+uri = "/webhooks/orders/returned"
+
+[access_scopes]
+scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products,write_script_tags"
+optional_scopes = []
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [
+  "https://stylique-app-production.up.railway.app/auth/callback"
+]
+
+[app_proxy]
+url = "https://stylique-app-production.up.railway.app/proxy/shopper"
+subpath = "stylique"
+prefix = "apps"
+
+[pos]
+embedded = false

@@ -1,0 +1,36 @@
+{
+  "cycles": [
+    {
+      "cycle": 1,
+      "score": 7.7,
+      "timestamp": "2026-05-31T19:24:17.964Z"
+    },
+    {
+      "cycle": 1,
+      "score": 7.7,
+      "timestamp": "2026-05-31T19:24:54.296Z"
+    },
+    {
+      "cycle": 1,
+      "score": 5.8,
+      "timestamp": "2026-05-31T19:27:34.596Z"
+    },
+    {
+      "cycle": 1,
+      "score": 7.8,
+      "timestamp": "2026-05-31T19:29:52.796Z"
+    },
+    {
+      "cycle": 1,
+      "score": 7.6,
+      "timestamp": "2026-05-31T19:56:55.218Z"
+    },
+    {
+      "cycle": 1,
+      "score": 7.5,
+      "timestamp": "2026-05-31T20:01:34.869Z"
+    }
+  ],
+  "trend": "regressing",
+  "delta": -0.1
+}

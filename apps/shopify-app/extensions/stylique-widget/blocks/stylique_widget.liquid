@@ -1,0 +1,114 @@
+{% comment %}
+  Stylique app embed.
+
+  Two custom elements ship from one Shopify app:
+    • <stylique-widget>  — the 3-step Try-On / Fit / Look modal. Product pages only.
+    • <stylique-stylist> — the AI shopping companion dock. Site-wide.
+
+  Both surfaces share permissions through the SAME App Proxy at
+  /apps/<subpath>/*. The sq_shopper_id cookie carries memory across both,
+  so the stylist knows what the widget recorded and vice versa.
+{% endcomment %}
+
+{% assign api_base = '/apps/' | append: block.settings.app_proxy_prefix | default: '/apps/stylique' %}
+
+{%- comment -%} ── Fonts — preload so widgets render immediately in brand typefaces. {%- endcomment -%}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap"></noscript>
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+{%- comment -%} ── Stylique — THE ONE INTERFACE (the demo's Mira + try-on) ──────
+  tryon.js bundles the demo's REAL MiraWidget + TryOnPanel (the exact React
+  components, run on Preact) and self-mounts a fixed launcher site-wide. It calls
+  the deployed demo backend (Mira chat + try-on render) — so the storefront shows
+  EXACTLY the demo, identical behaviour. The old vanilla widget.js + stylist.js
+  surfaces are retired; there is now ONE implementation, shared with the demo.
+{%- endcomment -%}
+{% if block.settings.enable_stylist or block.settings.enable_widget %}
+  <script src="{{ 'tryon.js' | asset_url }}" defer></script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Stylique",
+  "target": "head",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Surfaces"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_widget",
+      "label": "Enable Try-On widget (product pages)",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_stylist",
+      "label": "Enable AI Stylist dock (site-wide)",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_pdp_inline",
+      "label": "Show 'Ask the stylist' button on product pages",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Widget"
+    },
+    {
+      "type": "text",
+      "id": "cta_label",
+      "label": "Widget CTA label",
+      "default": "Try It On"
+    },
+    {
+      "type": "select",
+      "id": "placement",
+      "label": "Widget entry style",
+      "default": "floating",
+      "options": [
+        { "value": "floating",       "label": "Floating intelligence card (recommended)" },
+        { "value": "near_atc",       "label": "Near Add to Cart" },
+        { "value": "below_gallery",  "label": "Below product gallery" }
+      ]
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent color",
+      "default": "#8B5CF6"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_size",
+      "label": "Show Find My Size",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_style",
+      "label": "Show Complete The Look",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Advanced"
+    },
+    {
+      "type": "text",
+      "id": "app_proxy_prefix",
+      "label": "App proxy subpath",
+      "default": "stylique",
+      "info": "Must match the [app_proxy].subpath in shopify.app.toml."
+    }
+  ]
+}
+{% endschema %}
