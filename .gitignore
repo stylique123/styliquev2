@@ -18,3 +18,8 @@ coverage
 *.env.save
 apps/*/.env.*-template
 .env.stylee-template
+
+# Turborepo build cache — never commit (regenerable, huge)
+.turbo
+.turbo/
+**/.turbo
