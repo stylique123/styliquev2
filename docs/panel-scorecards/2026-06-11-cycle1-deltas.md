@@ -52,3 +52,48 @@ in the bag'" exception.
 - Floors held: tonality, climate, objection, no-fake-cart, repeat-tell.
 - Floors to recover: closing/sizing/complete-look (the soft-cap relax
   should bring these back next round).
+
+---
+
+## Cycle 2/3 follow-up (this autonomous tick)
+
+**Soft-cap relax verified stable.** Latency 1664ms, mean 24 words per voice line.
+The earlier cycle-2 "regressions" turned out to be test-harness artifacts —
+`warm-pdp` and `complete-look` were being sent WITHOUT a `currentProductHandle`,
+so Mira correctly asked "which jacket?" because no PDP context existed.
+
+**Fix applied:** `apps/web/scripts/panel-personas.mjs` now sends real handles
+on `warm-pdp` (`wrap-coat-camel`), `fabric-question` (`wrap-coat-camel`),
+`complete-look` (`atelier-wide-leg-trouser`), `size-question`
+(`tailored-blazer-double`).
+
+### Cycle 3 measurement (32 turns, PDP context now correct)
+
+| Metric              | Cycle 1 | Cycle 2 (bad harness) | **Cycle 3 (real PDP)** |
+|---------------------|---------|------------------------|------------------------|
+| "Which jacket?" hits| 2/8     | 2/8                    | **0/8** ✅              |
+| Banned phrase       | 1/8     | 1/8                    | **0/8** ✅              |
+| Repeat-tell         | 0       | 0                      | **0**                   |
+| False cart claims   | 0       | 0                      | **0**                   |
+| Climate echo        | 100%    | 100%                   | **100%**                |
+| Objection mirror    | 100%    | 100%                   | **100%**                |
+| Chatbot phrasings   | 0%      | 0%                     | **0%**                  |
+| Latency mean (ms)   | 1592    | 1725                   | **1664**                |
+
+### Verbatim Mira voices the panel measured this cycle
+
+- warm-PDP T1: *"Let's size the Camel Wrap Coat properly rather than guess between sizes."*
+- warm-PDP T4: *"Right, dropping the Medium Camel Wrap Coat in your bag now. Want me to build a full look around it?"*
+- complete-look T1: *"The Atelier Wide-Leg Trouser pairs beautifully with the Merino Ribbed Turtleneck, a tonal match that feels very put-together. They're $830 for both."*
+- size-question T1: *"Post-baby and looking for ease, the Tailored Double-Breasted Blazer runs slim, especially through the body."*
+
+### Verdict by aspect
+
+- **Copywriter panel (voice/density/variety/register/friend-test):** 8-9/10 across the board. Recent fixes held.
+- **CX panel:** still 2/10 on Return-reason capture and 1/10 on Bracketing. NOT cleared.
+- **Payments panel:** Express Checkout buttons still 1/10. Cart correctness 5/10.
+- **Performance marketer:** dashboard hero KPI lands → Attribution ~8/10; Cohort export still 2/10.
+- **Mobile PM:** Touch targets 8/10 (44px now); visualViewport keyboard handler still pending.
+
+Per the loop rule "8+/10 on every field then new panel," **we are NOT there
+yet on CX + Payments + Cohort export.** Same-panel work continues.

@@ -1,0 +1,836 @@
+{
+  "url": "http://localhost:3001/api/mira",
+  "ranAt": "2026-06-10T20:39:44.343Z",
+  "out": [
+    {
+      "persona": "cold-opener",
+      "label": "Cold opener (browsing, no context)",
+      "turns": [
+        {
+          "shopper": "hey",
+          "status": 200,
+          "latencyMs": 1522,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"greeting\",\"productHandle\":\"ivory-silk-camisole\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "greeting",
+              "productHandle": "ivory-silk-camisole"
+            }
+          }
+        },
+        {
+          "shopper": "just looking honestly, not sure what I need",
+          "status": 200,
+          "latencyMs": 1573,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"discover\",\"productHandle\":\"ivory-silk-camisole\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "discover",
+              "productHandle": "ivory-silk-camisole"
+            }
+          }
+        },
+        {
+          "shopper": "I guess something for date nights",
+          "status": 200,
+          "latencyMs": 1817,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, for date nights. The Ivory Silk Camisole is lovely for that, it's silk, soft and easy. Want me to size it for you, or see it on?\",\"route\":\"reco_handle\",\"productHandle\":\"ivory-silk-camisole\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, for date nights. The Ivory Silk Camisole is lovely for that, it's silk, soft and easy. Want me to size it for you, or see it on?",
+              "route": "reco_handle",
+              "productHandle": "ivory-silk-camisole",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "what would you actually recommend",
+          "status": 200,
+          "latencyMs": 1761,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"If you're unsure, I'd suggest the Onyx Silk Slip. It's easy to dress up or down for a date night. Want me to size it for you?\",\"route\":\"reco_handle\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"discover\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "If you're unsure, I'd suggest the Onyx Silk Slip. It's easy to dress up or down for a date night. Want me to size it for you?",
+              "route": "reco_handle",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "discover"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "warm-pdp",
+      "label": "Warm PDP (on a product, leaning in)",
+      "turns": [
+        {
+          "shopper": "does it run small?",
+          "status": 200,
+          "latencyMs": 1742,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Let's size the Camel Wrap Coat properly rather than guess between sizes.\",\"route\":\"size_form\",\"quickReplies\":[\"Start sizing\",\"See it on you\",\"Build the look\",\"Add after sizing\"],\"intent\":\"size\",\"productHandle\":\"wrap-coat-camel\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Let's size the Camel Wrap Coat properly rather than guess between sizes.",
+              "route": "size_form",
+              "quickReplies": [
+                "Start sizing",
+                "See it on you",
+                "Build the look",
+                "Add after sizing"
+              ],
+              "intent": "size",
+              "productHandle": "wrap-coat-camel"
+            }
+          }
+        },
+        {
+          "shopper": "I'm 5'9, usually a M",
+          "status": 200,
+          "latencyMs": 1530,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, at 5'9\\\" and a usual Medium, you'd be a Medium in this one. It's cut generously through the shoulder and body, designed to layer over a blazer.\",\"route\":\"fit\",\"quickReplies\":[\"Start sizing\",\"See it on you\",\"Build the look\",\"Add after sizing\"],\"intent\":\"size\",\"productHandle\":\"wrap-coat-camel\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, at 5'9\" and a usual Medium, you'd be a Medium in this one. It's cut generously through the shoulder and body, designed to layer over a blazer.",
+              "route": "fit",
+              "quickReplies": [
+                "Start sizing",
+                "See it on you",
+                "Build the look",
+                "Add after sizing"
+              ],
+              "intent": "size",
+              "productHandle": "wrap-coat-camel"
+            }
+          }
+        },
+        {
+          "shopper": "ok how does it fit in the shoulders",
+          "status": 200,
+          "latencyMs": 1524,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Camel Wrap Coat is quite generous through the shoulder, it's designed to fit comfortably over a blazer without feeling tight. What are you usually wearing underneath your coats?\",\"route\":\"talk_only\",\"quickReplies\":[\"Just a top\",\"A knit\",\"A blazer\"],\"productHandle\":\"wrap-coat-camel\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Camel Wrap Coat is quite generous through the shoulder, it's designed to fit comfortably over a blazer without feeling tight. What are you usually wearing underneath your coats?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Just a top",
+                "A knit",
+                "A blazer"
+              ],
+              "productHandle": "wrap-coat-camel"
+            }
+          }
+        },
+        {
+          "shopper": "alright add the M",
+          "status": 200,
+          "latencyMs": 1959,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, dropping the Medium Camel Wrap Coat in your bag now. Want me to build a full look around it?\",\"route\":\"add_to_cart\",\"productHandle\":\"wrap-coat-camel\",\"quickReplies\":[\"Yes, build the look\",\"Checkout\"],\"intent\":\"specific\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, dropping the Medium Camel Wrap Coat in your bag now. Want me to build a full look around it?",
+              "route": "add_to_cart",
+              "productHandle": "wrap-coat-camel",
+              "quickReplies": [
+                "Yes, build the look",
+                "Checkout"
+              ],
+              "intent": "specific"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "price-objection",
+      "label": "Price objection",
+      "turns": [
+        {
+          "shopper": "I like it but this is way too expensive",
+          "status": 200,
+          "latencyMs": 1326,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"That's fair. What were you hoping it would come in around?\",\"route\":\"talk_only\",\"quickReplies\":[\"Under $300\",\"Under $500\",\"Open\"],\"intent\":\"price\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "That's fair. What were you hoping it would come in around?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Under $300",
+                "Under $500",
+                "Open"
+              ],
+              "intent": "price"
+            }
+          }
+        },
+        {
+          "shopper": "I was hoping more like $200",
+          "status": 200,
+          "latencyMs": 2059,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"I want to be straight with you: nothing here is inside that ceiling. The closest piece is the Linen Relaxed Shirt at 280 in the store's currency.\",\"route\":\"talk_only\",\"quickReplies\":[\"Show the closest\",\"Change the budget\",\"Keep browsing\"],\"intent\":\"price\",\"unmet\":true,\"unmetCategory\":\"price<200\",\"unmetReason\":\"Shopper wanted under ",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "I want to be straight with you: nothing here is inside that ceiling. The closest piece is the Linen Relaxed Shirt at 280 in the store's currency.",
+              "route": "talk_only",
+              "quickReplies": [
+                "Show the closest",
+                "Change the budget",
+                "Keep browsing"
+              ],
+              "intent": "price",
+              "unmet": true,
+              "unmetCategory": "price<200",
+              "unmetReason": "Shopper wanted under $200; catalog floor is $280."
+            }
+          }
+        },
+        {
+          "shopper": "is there anything in that range that looks similar",
+          "status": 200,
+          "latencyMs": 1512,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, so nothing at $200. The Linen Relaxed Shirt is the closest in aesthetic, clean and easy. Does that sound like the kind of thing you're looking for?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"price\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, so nothing at $200. The Linen Relaxed Shirt is the closest in aesthetic, clean and easy. Does that sound like the kind of thing you're looking for?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "price"
+            }
+          }
+        },
+        {
+          "shopper": "hmm not sure, let me think",
+          "status": 200,
+          "latencyMs": 1412,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Start here: the Linen Relaxed Shirt. Where would you wear it?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"suitability\",\"productHandle\":\"linen-relaxed-shirt\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Start here: the Linen Relaxed Shirt. Where would you wear it?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "suitability",
+              "productHandle": "linen-relaxed-shirt"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "wedding-occasion",
+      "label": "Wedding occasion",
+      "turns": [
+        {
+          "shopper": "I need an outfit for a wedding in Lake Como in July",
+          "status": 200,
+          "latencyMs": 1411,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, Lake Como in July, that calls for something special. Are we thinking more formal and elegant, or a bit more relaxed and chic for the setting?\",\"route\":\"talk_only\",\"quickReplies\":[\"Formal & elegant\",\"Relaxed & chic\",\"Surprise me\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, Lake Como in July, that calls for something special. Are we thinking more formal and elegant, or a bit more relaxed and chic for the setting?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Formal & elegant",
+                "Relaxed & chic",
+                "Surprise me"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "outdoor, late afternoon ceremony",
+          "status": 200,
+          "latencyMs": 1673,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, outdoor and late afternoon, that shifts the focus a bit. I'd lean towards something like the Onyx Silk Slip, it's elegant without feeling heavy for the setting. Want to see it on you?\",\"route\":\"reco_handle\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"inte",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, outdoor and late afternoon, that shifts the focus a bit. I'd lean towards something like the Onyx Silk Slip, it's elegant without feeling heavy for the setting. Want to see it on you?",
+              "route": "reco_handle",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "I'd want something tailored but breathable",
+          "status": 200,
+          "latencyMs": 1770,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Tailored and breathable, I understand. The Atelier Wide-Leg Trouser in Ink with the Ivory Silk Camisole would be a stunning and comfortable pairing for that setting. The two together are $860.\",\"route\":\"look\",\"quickReplies\":[\"Show me the trousers\",\"Show me the camisole\",\"Something else\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Tailored and breathable, I understand. The Atelier Wide-Leg Trouser in Ink with the Ivory Silk Camisole would be a stunning and comfortable pairing for that setting. The two together are $860.",
+              "route": "look",
+              "quickReplies": [
+                "Show me the trousers",
+                "Show me the camisole",
+                "Something else"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "can I see the look on me",
+          "status": 200,
+          "latencyMs": 1502,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Let's put the Atelier Wide-Leg Trouser and the Ivory Silk Camisole in the fitting room so you can see the whole look.\",\"route\":\"try_on\",\"quickReplies\":[\"Add the look\",\"Show another look\"],\"intent\":\"try_on\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Let's put the Atelier Wide-Leg Trouser and the Ivory Silk Camisole in the fitting room so you can see the whole look.",
+              "route": "try_on",
+              "quickReplies": [
+                "Add the look",
+                "Show another look"
+              ],
+              "intent": "try_on"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "climate",
+      "label": "Climate (Mumbai monsoon)",
+      "turns": [
+        {
+          "shopper": "I'm in Mumbai and it's monsoon, what works",
+          "status": 200,
+          "latencyMs": 1977,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, Mumbai monsoon. This Linen Relaxed Shirt is what I'd reach for, it's breathable and handles humidity well. Want to see it closer?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, Mumbai monsoon. This Linen Relaxed Shirt is what I'd reach for, it's breathable and handles humidity well. Want to see it closer?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "I sweat a lot, nothing clingy",
+          "status": 200,
+          "latencyMs": 1516,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, nothing clingy. The Linen Relaxed Shirt is definitely cut for that, it's designed to hang away from the body. Want me to size it, or see it on you?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"suitability\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, nothing clingy. The Linen Relaxed Shirt is definitely cut for that, it's designed to hang away from the body. Want me to size it, or see it on you?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "suitability"
+            }
+          }
+        },
+        {
+          "shopper": "do you have linen?",
+          "status": 200,
+          "latencyMs": 1456,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Yes, the Linen Relaxed Shirt is exactly that, 100% linen. It's designed to be breathable and not cling.\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Yes, the Linen Relaxed Shirt is exactly that, 100% linen. It's designed to be breathable and not cling.",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "ok show me the best one",
+          "status": 200,
+          "latencyMs": 1943,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Okay, the Linen Relaxed Shirt is the one I'd put you in for that. It's truly breathable. Want me to size it for you, or see it on?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"specific\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Okay, the Linen Relaxed Shirt is the one I'd put you in for that. It's truly breathable. Want me to size it for you, or see it on?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "specific"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "fabric-question",
+      "label": "Fabric question (informed shopper)",
+      "turns": [
+        {
+          "shopper": "is this wool or wool-blend",
+          "status": 200,
+          "latencyMs": 1651,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Camel Wrap Coat is a wool blend, designed to give a lovely drape and warmth without being too heavy. What are you looking to wear it for?\",\"route\":\"fabric\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"fabric\",\"productHandle\":\"wrap-coat-camel\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Camel Wrap Coat is a wool blend, designed to give a lovely drape and warmth without being too heavy. What are you looking to wear it for?",
+              "route": "fabric",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "fabric",
+              "productHandle": "wrap-coat-camel"
+            }
+          }
+        },
+        {
+          "shopper": "how does it handle rain",
+          "status": 200,
+          "latencyMs": 1915,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"It's a wool blend, so it will handle a light drizzle, but for heavy rain I'd suggest the Leather Trench instead. That's built for proper weather.\",\"route\":\"reco_handle\",\"productHandle\":\"leather-trench\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "It's a wool blend, so it will handle a light drizzle, but for heavy rain I'd suggest the Leather Trench instead. That's built for proper weather.",
+              "route": "reco_handle",
+              "productHandle": "leather-trench",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "and dry-clean only?",
+          "status": 200,
+          "latencyMs": 1615,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Yes, it's dry-clean only to keep the wool blend looking its best. Is that a dealbreaker, or can I show you the trench for an easier care option?\",\"route\":\"talk_only\",\"quickReplies\":[\"Show the trench\",\"Tell me about this one\",\"What about fit?\"],\"intent\":\"fabric\",\"productHandle\":\"wrap-coat-camel\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Yes, it's dry-clean only to keep the wool blend looking its best. Is that a dealbreaker, or can I show you the trench for an easier care option?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Show the trench",
+                "Tell me about this one",
+                "What about fit?"
+              ],
+              "intent": "fabric",
+              "productHandle": "wrap-coat-camel"
+            }
+          }
+        },
+        {
+          "shopper": "fine, I'll take the L",
+          "status": 200,
+          "latencyMs": 1577,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, the Camel Wrap Coat in Large. Dropping it in your bag now. Want me to build a full look around it, or are you all set?\",\"route\":\"add_to_cart\",\"productHandle\":\"wrap-coat-camel\",\"quickReplies\":[\"Build the look\",\"All set\"],\"intent\":\"specific\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, the Camel Wrap Coat in Large. Dropping it in your bag now. Want me to build a full look around it, or are you all set?",
+              "route": "add_to_cart",
+              "productHandle": "wrap-coat-camel",
+              "quickReplies": [
+                "Build the look",
+                "All set"
+              ],
+              "intent": "specific"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "complete-look",
+      "label": "Complete-the-look (AOV)",
+      "turns": [
+        {
+          "shopper": "what goes with this",
+          "status": 200,
+          "latencyMs": 1542,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Atelier Wide-Leg Trouser pairs beautifully with the Merino Ribbed Turtleneck, a tonal match that feels very put-together. They're $830 for both.\",\"route\":\"look\",\"productHandle\":\"atelier-wide-leg-trouser\",\"quickReplies\":[\"Size the pieces\",\"See whole look\",\"Add full look\",\"Show another look\"],\"intent\":\"look\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Atelier Wide-Leg Trouser pairs beautifully with the Merino Ribbed Turtleneck, a tonal match that feels very put-together. They're $830 for both.",
+              "route": "look",
+              "productHandle": "atelier-wide-leg-trouser",
+              "quickReplies": [
+                "Size the pieces",
+                "See whole look",
+                "Add full look",
+                "Show another look"
+              ],
+              "intent": "look"
+            }
+          }
+        },
+        {
+          "shopper": "I like the white shirt option",
+          "status": 200,
+          "latencyMs": 1848,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"You mean the Ivory Silk Camisole. That's a lovely choice, it brings a soft contrast to the trousers. The two pieces together would be $860.\",\"route\":\"look\",\"productHandle\":\"atelier-wide-leg-trouser\",\"quickReplies\":[\"Size the pieces\",\"See whole look\",\"Add full look\",\"Show another look\"],\"intent\":\"look\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "You mean the Ivory Silk Camisole. That's a lovely choice, it brings a soft contrast to the trousers. The two pieces together would be $860.",
+              "route": "look",
+              "productHandle": "atelier-wide-leg-trouser",
+              "quickReplies": [
+                "Size the pieces",
+                "See whole look",
+                "Add full look",
+                "Show another look"
+              ],
+              "intent": "look"
+            }
+          }
+        },
+        {
+          "shopper": "what about a layer for evening",
+          "status": 200,
+          "latencyMs": 1811,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"For an evening layer, the Tailored Double-Breasted Blazer in Charcoal would give a sharp, intentional look over the camisole and trousers. That full three-piece outfit comes to $1750.\",\"route\":\"look\",\"productHandle\":\"tailored-blazer-double\",\"quickReplies\":[\"Size the pieces\",\"See whole look\",\"Add full look\",\"Show another look\"],\"int",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "For an evening layer, the Tailored Double-Breasted Blazer in Charcoal would give a sharp, intentional look over the camisole and trousers. That full three-piece outfit comes to $1750.",
+              "route": "look",
+              "productHandle": "tailored-blazer-double",
+              "quickReplies": [
+                "Size the pieces",
+                "See whole look",
+                "Add full look",
+                "Show another look"
+              ],
+              "intent": "look"
+            }
+          }
+        },
+        {
+          "shopper": "add all three",
+          "status": 200,
+          "latencyMs": 1508,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"I'll put the Atelier Wide-Leg Trouser in your bag. Want the full look with it, or straight to checkout?\",\"route\":\"add_to_cart\",\"quickReplies\":[\"Build the look\",\"Checkout\"],\"intent\":\"specific\",\"productHandle\":\"atelier-wide-leg-trouser\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "I'll put the Atelier Wide-Leg Trouser in your bag. Want the full look with it, or straight to checkout?",
+              "route": "add_to_cart",
+              "quickReplies": [
+                "Build the look",
+                "Checkout"
+              ],
+              "intent": "specific",
+              "productHandle": "atelier-wide-leg-trouser"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "size-question",
+      "label": "Size question (post-baby)",
+      "turns": [
+        {
+          "shopper": "I'm post-baby and not sure what size to get for this",
+          "status": 200,
+          "latencyMs": 1567,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Post-baby and looking for ease, the Tailored Double-Breasted Blazer runs slim, especially through the body. Let's get your measurements to find the exact size.\",\"route\":\"size_form\",\"quickReplies\":[\"Start sizing\",\"See it on you\",\"Build the look\",\"Add after sizing\"],\"intent\":\"size\",\"productHandle\":\"tailored-blazer-double\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Post-baby and looking for ease, the Tailored Double-Breasted Blazer runs slim, especially through the body. Let's get your measurements to find the exact size.",
+              "route": "size_form",
+              "quickReplies": [
+                "Start sizing",
+                "See it on you",
+                "Build the look",
+                "Add after sizing"
+              ],
+              "intent": "size",
+              "productHandle": "tailored-blazer-double"
+            }
+          }
+        },
+        {
+          "shopper": "I was a M before, probably L now, ribcage wider",
+          "status": 200,
+          "latencyMs": 1622,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, a wider ribcage. The blazer is cut slim, so going up to an L sounds like a good move, but let's get your measurements to be sure this one fits perfectly.\",\"route\":\"size_form\",\"quickReplies\":[\"Start sizing\",\"See it on you\",\"Build the look\",\"Add after sizing\"],\"intent\":\"size\",\"productHandle\":\"tailored-blazer-double\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, a wider ribcage. The blazer is cut slim, so going up to an L sounds like a good move, but let's get your measurements to be sure this one fits perfectly.",
+              "route": "size_form",
+              "quickReplies": [
+                "Start sizing",
+                "See it on you",
+                "Build the look",
+                "Add after sizing"
+              ],
+              "intent": "size",
+              "productHandle": "tailored-blazer-double"
+            }
+          }
+        },
+        {
+          "shopper": "will this be forgiving around the waist",
+          "status": 200,
+          "latencyMs": 1730,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"It's designed to be slim, so it will follow your shape closely, but the double-breasted cut means it won't pull across the front. If you're still unsure, we can easily check the measurements for you.\",\"route\":\"talk_only\",\"quickReplies\":[\"Check my size\",\"Show another blazer\",\"What goes with it?\"],\"intent\":\"suitability\",\"productHandl",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "It's designed to be slim, so it will follow your shape closely, but the double-breasted cut means it won't pull across the front. If you're still unsure, we can easily check the measurements for you.",
+              "route": "talk_only",
+              "quickReplies": [
+                "Check my size",
+                "Show another blazer",
+                "What goes with it?"
+              ],
+              "intent": "suitability",
+              "productHandle": "tailored-blazer-double"
+            }
+          }
+        },
+        {
+          "shopper": "ok size me",
+          "status": 200,
+          "latencyMs": 1885,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Okay, let's get you sized for this one. The form will help us find your exact fit.\",\"route\":\"size_form\",\"quickReplies\":[\"Start sizing\",\"See it on you\",\"Build the look\",\"Add after sizing\"],\"intent\":\"size\",\"productHandle\":\"tailored-blazer-double\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Okay, let's get you sized for this one. The form will help us find your exact fit.",
+              "route": "size_form",
+              "quickReplies": [
+                "Start sizing",
+                "See it on you",
+                "Build the look",
+                "Add after sizing"
+              ],
+              "intent": "size",
+              "productHandle": "tailored-blazer-double"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

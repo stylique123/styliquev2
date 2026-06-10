@@ -44,8 +44,9 @@ const PERSONAS = [
   {
     id: "warm-pdp",
     label: "Warm PDP (on a product, leaning in)",
+    productHandle: "wrap-coat-camel",
     turns: [
-      "I'm looking at this jacket, does it run small?",
+      "does it run small?",
       "I'm 5'9, usually a M",
       "ok how does it fit in the shoulders",
       "alright add the M",
@@ -84,6 +85,7 @@ const PERSONAS = [
   {
     id: "fabric-question",
     label: "Fabric question (informed shopper)",
+    productHandle: "wrap-coat-camel",
     turns: [
       "is this wool or wool-blend",
       "how does it handle rain",
@@ -94,18 +96,20 @@ const PERSONAS = [
   {
     id: "complete-look",
     label: "Complete-the-look (AOV)",
+    productHandle: "atelier-wide-leg-trouser",
     turns: [
-      "I added the trousers, what goes with them",
+      "what goes with this",
       "I like the white shirt option",
-      "what about shoes",
-      "add the shirt and the loafers",
+      "what about a layer for evening",
+      "add all three",
     ],
   },
   {
     id: "size-question",
     label: "Size question (post-baby)",
+    productHandle: "tailored-blazer-double",
     turns: [
-      "I'm post-baby and not sure what size to get",
+      "I'm post-baby and not sure what size to get for this",
       "I was a M before, probably L now, ribcage wider",
       "will this be forgiving around the waist",
       "ok size me",
@@ -130,12 +134,16 @@ async function pickEndpoint() {
   return { url: null, ok: false };
 }
 
-async function callMira(url, messages) {
+async function callMira(url, messages, currentProductHandle) {
   const t0 = Date.now();
   const res = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ message: messages[messages.length - 1]?.content || "", history: messages.slice(0, -1).map(m => ({ from: m.role === "user" ? "user" : "mira", text: m.content })) }),
+    body: JSON.stringify({
+      message: messages[messages.length - 1]?.content || "",
+      history: messages.slice(0, -1).map(m => ({ from: m.role === "user" ? "user" : "mira", text: m.content })),
+      ...(currentProductHandle ? { currentProductHandle } : {}),
+    }),
     signal: AbortSignal.timeout(30000),
   });
   const text = await res.text();
@@ -200,7 +208,7 @@ async function main() {
       messages.push({ role: "user", content: msg });
       let r;
       try {
-        r = await callMira(url, messages);
+        r = await callMira(url, messages, p.productHandle);
       } catch (e) {
         r = {
           status: 0,
