@@ -170,6 +170,9 @@ const BodySchema = z.object({
     returns: z.string().max(800).optional(),
     shipping: z.string().max(800).optional(),
   }).optional(),
+  // Audit P1: currency code (ISO 4217) so catalogDigest can prefix the right
+  // symbol — PKR/INR/JPY stores see ₹/Rs/¥ instead of fictitious `$`.
+  injectedCurrency: z.string().regex(/^[A-Za-z]{3}$/).optional(),
 });
 
 // ─── Catalog validation, strip hallucinated handles before they reach client ─
@@ -201,12 +204,32 @@ function extractBodyContext(history: { from: string; text: string }[]): string {
   return "";
 }
 
+// ─── Currency presentation helpers ─────────────────────────────────────────
+// Audit P1 (this session): catalogDigest used to hardcode `$` for every price
+// — so a PKR/INR/JPY store had its real rupee/yen amounts presented to the
+// model as dollars and Mira parroted them back as `$`. The numbers were
+// right; the symbol was wrong. Now buildSystem accepts a currencyCode and
+// catalogDigest prefixes the actual symbol / ISO code (no fictitious FX).
+const CURRENCY_SYMBOL: Record<string, string> = {
+  USD: "$", EUR: "€", GBP: "£", JPY: "¥", CNY: "¥", INR: "₹",
+  PKR: "Rs ", AED: "AED ", SAR: "SAR ", AUD: "A$", CAD: "C$",
+  NZD: "NZ$", SGD: "S$", HKD: "HK$", MYR: "RM ", THB: "฿",
+  KRW: "₩", VND: "₫", IDR: "Rp ", PHP: "₱", BRL: "R$", MXN: "Mex$",
+  ZAR: "R ", TRY: "₺", RUB: "₽", PLN: "zł ", CHF: "CHF ",
+  SEK: "SEK ", NOK: "NOK ", DKK: "DKK ", ILS: "₪", EGP: "E£",
+};
+function currencyPrefix(code?: string): string {
+  if (!code) return "$";
+  return CURRENCY_SYMBOL[code.toUpperCase()] ?? `${code.toUpperCase()} `;
+}
+
 // ─── Compact catalog digest the model grounds on ───────────────────────────
-function catalogDigest(activeCatalog: Product[]): string {
+function catalogDigest(activeCatalog: Product[], currencyCode?: string): string {
+  const pfx = currencyPrefix(currencyCode);
   return activeCatalog
     .map(
       (p) =>
-        `- ${p.handle} | ${p.name} | ${p.category}/${p.collection} | $${p.priceUsd} | ${p.colors.join("/")} | sizes ${p.sizes.join(",")}`,
+        `- ${p.handle} | ${p.name} | ${p.category}/${p.collection} | ${pfx}${p.priceUsd} | ${p.colors.join("/")} | sizes ${p.sizes.join(",")}`,
     )
     .join("\n");
 }
@@ -233,7 +256,7 @@ export type BrandIdentity = {
   shipping?: string;
 };
 
-function buildSystem(knowledgeBlock: string, activeCatalog: Product[], brand: BrandIdentity = {}): string {
+function buildSystem(knowledgeBlock: string, activeCatalog: Product[], brand: BrandIdentity = {}, currencyCode?: string): string {
   const intro    = brand.intro    ?? DEFAULT_BRAND.intro;
   const pov      = brand.pov      ?? DEFAULT_BRAND.pov;
   const returns  = brand.returns  ?? DEFAULT_BRAND.returns;
@@ -319,7 +342,7 @@ HOW TO TALK (this is the whole point, the old Mira failed here):
 - SIMPLE WORDS. Talk like a friendly person, not a fashion magazine. BANNED words: "substantial", "editorial", "elevated", "curated", "effortless", "timeless", "investment piece", "the silk has enough white". If a normal shopper wouldn't say it out loud, don't write it.
 - SHORT. One sentence is usually enough. Never write a paragraph. Never explain three things at once.
 - PUNCTUATION (HARD RULE): NEVER use a long dash of any kind (em-dash or en-dash) in your voice or quick replies. They read cold and robotic. Use a comma, a period, or split into two short sentences instead. Example: write "Yes, it's a true deep red, almost black in low light." Only commas, periods, and question marks. Not a single long dash, ever.
-- LEAD, don't ask permission. Say "Let me show you the one I'd pick", not "Would you like me to recommend something?". BANNED phrases: "Great choice!", "How can I help?", "I'd recommend", "Hope that helps", "Let me know if", "Love that", "Amazing", "Awesome", "Sounds perfect", "Wonderful", "Fantastic", "Sounds great", "I'd love to". Enthusiasm theatre kills conversion (Miner's #1 rule). Calm + curious + decisive wins.
+- LEAD, don't ask permission. Say "Let me show you the one I'd pick", not "Would you like me to recommend something?". BANNED phrases (case-insensitive, with or without punctuation): "great choice", "how can i help", "i'd recommend", "hope that helps", "let me know if", "love that", "amazing", "awesome", "sounds perfect", "wonderful", "fantastic", "sounds great", "i'd love to". Live panel caught "great choice" leaking in lowercase — these bans apply at any casing or with any trailing punctuation. Enthusiasm theatre kills conversion (Miner's #1 rule). Calm + curious + decisive wins.
 - ZERO EXCLAMATION MARKS. Not in voice, not in quick replies, not anywhere. Statements end in periods. Questions end in question marks. A "." with a soft tone outsells a "!" every time.
 - ONE thing at a time. Recommend ONE product, not a wall of cards. The store shows the product card under your line.
 - Quick replies must MATCH the moment. If you just showed a dress, good chips are "What's my size?", "Show the shoes", "Add to bag", NOT random categories like "blazers".
@@ -512,7 +535,7 @@ GAP, Shopper: "I need a leather mini skirt for a concert" → {"voice":"Love tha
 NEAR-MISS, Shopper: "do you have this linen shirt but cropped?" → {"voice":"Not cropped, but this is the closest linen I'd put you in, want to see it on?","route":"reco_handle","productHandle":"linen-relaxed-shirt","intent":"specific","nearMiss":true,"nearMissCategory":"linen shirts","nearMissAttribute":"cropped","nearMissReason":"Has linen shirts but none cropped.","quickReplies":["See it on","Size this one"]}
 
 GROUND productHandle ONLY to a handle that appears in this catalog:
-${catalogDigest(activeCatalog)}${knowledgeBlock}
+${catalogDigest(activeCatalog, currencyCode)}${knowledgeBlock}
 
 NEVER invent a product, price, size, discount, or sale that isn't in the catalog or the merchant notes above. NEVER claim a size you weren't given, if you don't know their size for a piece, offer to size it (size_form), don't guess one.
 
@@ -1198,9 +1221,10 @@ export async function POST(req: Request) {
     // Brand identity: storefront callers inject the merchant's brand POV; demo
     // direct hit gets Stylique Maison defaults.
     const activeBrand: BrandIdentity = parsed.data.injectedBrand ?? {};
+    const activeCurrency = parsed.data.injectedCurrency?.toUpperCase();
     const { decision: rawDecision, model: modelUsed } = await callGemini(
       buildPrompt(parsed.data, activeCatalog),
-      buildSystem(activeKnowledge, activeCatalog, activeBrand),
+      buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
       activeCatalog,
     );
     // Deterministic navigation execution, force the route+handle when the shopper

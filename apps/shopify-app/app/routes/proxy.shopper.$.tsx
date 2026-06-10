@@ -227,9 +227,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // add but the proxy was missing the case → 404 → conversion rate broken
       // on every shop. Fire-and-forget on the proxy side; never fail the
       // storefront on a learning-loop write blip.
-      const upstreamBase = (process.env.MIRA_DEMO_BRAIN_URL ?? "https://stylique-web.up.railway.app").replace(/\/$/, "");
+      // Audit P0: read from the SAME shared resolver as mira-adapter so we
+      // can never split-default into two hosts again.
+      const { MIRA_BRAIN_ORIGIN } = await import("../lib/mira-adapter.server");
       try {
-        const upstream = await fetch(`${upstreamBase}/api/mira/conversion`, {
+        const upstream = await fetch(`${MIRA_BRAIN_ORIGIN}/api/mira/conversion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body ?? {}),

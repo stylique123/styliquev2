@@ -345,7 +345,24 @@ function chipsFor(route: MiraRoute): string[] {
 // No more 568 lines of brain logic duplication. No more drift. ONE truth.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const UNIFIED_BRAIN_URL = process.env.MIRA_DEMO_BRAIN_URL ?? "https://stylique-web-production.up.railway.app/api/mira";
+// Audit P0 (this session): there used to be TWO default brain origins drifting
+// between the proxy route and this adapter (`stylique-web.up.railway.app` vs
+// `stylique-web-production.up.railway.app/api/mira`) — depending on whether
+// MIRA_DEMO_BRAIN_URL was set, conversions and chat could hit different
+// hosts. Now: one canonical env (`MIRA_BRAIN_ORIGIN`, origin only) with
+// MIRA_DEMO_BRAIN_URL retained as a backward-compatible alias that gets
+// normalized to origin. Both this adapter and proxy.shopper.$.tsx read from
+// the same shared resolver.
+function resolveBrainOrigin(): string {
+  const raw =
+    process.env.MIRA_BRAIN_ORIGIN ??
+    process.env.MIRA_DEMO_BRAIN_URL ??
+    "https://stylique-web.up.railway.app";
+  // Strip any trailing /api/mira or trailing slash so callers can safely append.
+  return raw.replace(/\/api\/mira\/?$/, "").replace(/\/+$/, "");
+}
+export const MIRA_BRAIN_ORIGIN = resolveBrainOrigin();
+const UNIFIED_BRAIN_URL = `${MIRA_BRAIN_ORIGIN}/api/mira`;
 
 /**
  * Load the merchant's full catalog from Prisma + EVERY signal the platform's
@@ -693,6 +710,9 @@ export async function runMiraAdapter(args: {
     shownHandles: b.shownHandles ?? [],
     injectedCatalog,
     injectedBrand,
+    // Audit P1: pass the ISO currency through so the brain prefixes prices with
+    // the correct symbol (PKR/INR/JPY no longer get a fictitious `$`).
+    injectedCurrency: currency,
     // injectedKnowledge: per-merchant teach-Mira facts (future feature; empty
     // for now — when a merchant has a knowledge feature, plumb here).
   };
