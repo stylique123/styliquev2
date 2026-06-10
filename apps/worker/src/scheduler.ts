@@ -61,6 +61,18 @@ const SCHEDULED_JOBS: ScheduledJob[] = [
     data:      { scope: "global" },
     repeat:    { pattern: "0 3 * * 1" },  // Monday 03:00 UTC
   },
+  // Monthly merchant optimization report — Session 1 of the founder's
+  // 4-session plan. Fires on the 1st of each month at 08:00 UTC, runs as
+  // a global sweep; the monthly-report worker (apps/worker/src/index.ts)
+  // detects scope:"global" and fans out one job per active shop, just like
+  // catalog-refresh does.
+  {
+    queueName: "monthly-report",
+    jobName:   "monthly-report",
+    jobId:     "global:monthly-report",
+    data:      { scope: "global", trigger: "scheduled" },
+    repeat:    { pattern: "0 8 1 * *" },  // 1st of month, 08:00 UTC
+  },
 ];
 
 // ─── Scheduler ────────────────────────────────────────────────────────────────

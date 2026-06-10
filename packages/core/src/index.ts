@@ -18,6 +18,9 @@ export * from "./tryon/combo.js";
 export * from "./recommendations/service.js";
 // Intelligence loop — measure→learn (Outcome tracking).
 export * from "./outcomes/index.js";
+// Session 1 — monthly merchant optimization report (synthesizer + markdown renderer).
+export * from "./reports/monthly.js";
+export * from "./reports/render-markdown.js";
 export * from "./embeddings/service.js";
 export * from "./embeddings/image-match.js";
 export * from "./tryon/service.js";

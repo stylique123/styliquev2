@@ -29,6 +29,7 @@ import { processSizeChartExtract, type SizeChartExtractJobData } from "./jobs/si
 import { processBrandInstagram, type BrandInstagramJobData } from "./jobs/brand-instagram.js";
 import { processBrandDnaCatalog, type BrandDnaCatalogJobData } from "./jobs/brand-dna-catalog.js";
 import { processReplenishmentNotify, type ReplenishmentNotifyJobData } from "./jobs/replenishment-notify.js";
+import { processMonthlyReport, type MonthlyReportJob } from "./jobs/monthly-report.js";
 import { processFitTuner, type FitTunerJobData } from "./jobs/fit-tuner.js";
 import { createOutcomeResolverWorker, scheduleOutcomeResolver } from "./jobs/outcome-resolver.js";
 import { createBillingReconcileWorker, scheduleBillingReconcile } from "./workers/billing-reconcile.worker.js";
@@ -267,6 +268,20 @@ const retentionCleanupWorker = new Worker(
       `[retention-cleanup] done — anonymous=${result.anonymousDeleted} claimed=${result.claimedDeleted}`,
     );
     return result;
+  },
+  { connection, concurrency: 1 },
+);
+
+// Monthly merchant report — Session 1 of the founder's 4-session plan.
+// Cron `0 8 1 * *` (1st of month, 08:00 UTC) registered in scheduler.ts.
+// Global sweep fans out per-shop; processor is idempotent via the
+// MonthlyReport.@@unique([shopId, periodStart]) constraint. Concurrency
+// 1 — generating a report is a fan-in over the event mesh (heavy reads),
+// so we don't parallelize per shop.
+const monthlyReportWorker = new Worker<MonthlyReportJob>(
+  "monthly-report",
+  async (job) => {
+    return processMonthlyReport(job.data);
   },
   { connection, concurrency: 1 },
 );
@@ -553,6 +568,7 @@ async function shutdown() {
   await outcomeResolverWorker.close();
   await billingReconcileWorker.close();
   await retentionCleanupWorker.close();
+  await monthlyReportWorker.close();
   await recommendationsQueue.close();
   await sentimentQueue.close();
   await sizeChartQueue.close();
