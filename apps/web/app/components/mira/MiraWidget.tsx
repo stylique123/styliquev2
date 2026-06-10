@@ -1303,8 +1303,46 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
   const closeLine = bagFirst
     ? (sizeRec ? `Your ${sizeRec.size} is the move, want it in the bag?` : "This is the one, want it in the bag?")
     : (sizeRec ? "Let's make sure of the fit, see it on you first." : "See it on you first, then we lock it in.");
+  // Max-interactive layered card behavior (founder ask): pointer-tilt +
+  // cursor-following glow + image parallax counter-shift on hover. CSS-vars
+  // driven so the math stays in CSS; the JS just samples coordinates. Touch
+  // devices and prefers-reduced-motion completely bypass via the media
+  // queries in the <style> block — never sets the vars there.
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) / rect.width;   // 0 → 1
+    const my = (e.clientY - rect.top) / rect.height;   // 0 → 1
+    el.style.setProperty("--sq-mx", `${(mx - 0.5) * 2}`); // -1 → 1
+    el.style.setProperty("--sq-my", `${(my - 0.5) * 2}`); // -1 → 1
+    el.style.setProperty("--sq-gx", `${mx * 100}%`);
+    el.style.setProperty("--sq-gy", `${my * 100}%`);
+  };
+  const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    el.style.setProperty("--sq-mx", "0");
+    el.style.setProperty("--sq-my", "0");
+    el.style.setProperty("--sq-gx", "50%");
+    el.style.setProperty("--sq-gy", "50%");
+  };
   return (
-    <div className="sq-reco-card" style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, overflow: "hidden" }}>
+    <div
+      className="sq-reco-card"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      style={{
+        background: "linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02))",
+        border: "1px solid rgba(255,255,255,0.09)",
+        borderRadius: 16,
+        overflow: "hidden",
+        position: "relative",
+        // CSS-var defaults — let CSS apply the transforms.
+        ["--sq-mx" as string]: "0",
+        ["--sq-my" as string]: "0",
+        ["--sq-gx" as string]: "50%",
+        ["--sq-gy" as string]: "50%",
+      }}
+    >
       <div onClick={goToProduct} role="link" tabIndex={0} aria-label={`View ${p.name}`} className="sq-mira-field sq-reco-card__img" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToProduct(); } }} style={{ position: "relative", width: "100%", height: 232, background: "var(--surface)", cursor: "pointer", overflow: "hidden" }}>
         <Image src={p.images[0]} alt={p.name} fill sizes="380px" style={{ objectFit: "cover", objectPosition: "center 28%" }} />
         {p.lowStock && (
@@ -2267,12 +2305,91 @@ export default function MiraWidget() {
            clickable product card, scoped to .sq-mira-field so it never leaks
            onto the merchant theme. Only shows for keyboard nav (:focus-visible). */
         .sq-mira-field:focus-visible { outline: 2px solid rgba(139,92,246,0.95) !important; outline-offset: 2px; border-radius: 10px; }
-        /* Premium reco card, hover lift + slow image zoom (panel rank 6) */
-        .sq-reco-card { transition: transform 260ms var(--ease-spring), box-shadow 260ms ease, border-color 260ms ease; }
-        .sq-reco-card:hover { transform: translateY(-3px); box-shadow: 0 20px 44px rgba(0,0,0,0.5); border-color: rgba(139,92,246,0.4); }
-        .sq-reco-card__img img { transition: transform 700ms cubic-bezier(0.16,1,0.3,1); }
-        .sq-reco-card:hover .sq-reco-card__img img { transform: scale(1.045); }
-        @media (hover: none) { .sq-reco-card:hover { transform: none; box-shadow: none; } .sq-reco-card:hover .sq-reco-card__img img { transform: none; } }
+        /* ── Max-interactive reco card ─────────────────────────────────────
+           Layered: 3D pointer-tilt + cursor-following glow + image parallax
+           counter-shift + spring entrance + magnetic press feedback. Driven
+           by CSS vars (--sq-mx, --sq-my, --sq-gx, --sq-gy) set inline by the
+           card's onPointerMove handler. All effects bypassed cleanly on
+           touch + reduced-motion via the media queries below. */
+        @keyframes sqRecoEntrance {
+          from { opacity: 0; transform: translateY(14px) scale(0.985); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .sq-reco-card {
+          position: relative;
+          transform-style: preserve-3d;
+          transition: transform 380ms cubic-bezier(0.18, 0.9, 0.28, 1.06),
+                      box-shadow 380ms ease,
+                      border-color 380ms ease;
+          will-change: transform;
+          animation: sqRecoEntrance 520ms cubic-bezier(0.18, 0.9, 0.28, 1.06) both;
+        }
+        .sq-reco-card:hover {
+          transform:
+            perspective(900px)
+            translateY(-5px)
+            rotateY(calc(var(--sq-mx, 0) * 5deg))
+            rotateX(calc(var(--sq-my, 0) * -5deg));
+          box-shadow: 0 28px 64px rgba(0, 0, 0, 0.62),
+                      0 0 0 1px rgba(139, 92, 246, 0.18) inset;
+          border-color: rgba(139, 92, 246, 0.5);
+        }
+        .sq-reco-card:active {
+          transform:
+            perspective(900px)
+            translateY(-2px)
+            scale(0.992)
+            rotateY(calc(var(--sq-mx, 0) * 3deg))
+            rotateX(calc(var(--sq-my, 0) * -3deg));
+          transition-duration: 90ms;
+        }
+        /* Cursor-following glow as a pseudo-element on top, blend-mode soft */
+        .sq-reco-card::after {
+          content: "";
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 380ms ease;
+          background: radial-gradient(
+            340px circle at var(--sq-gx, 50%) var(--sq-gy, 50%),
+            rgba(139, 92, 246, 0.22),
+            rgba(139, 92, 246, 0.06) 28%,
+            transparent 60%
+          );
+          mix-blend-mode: screen;
+          z-index: 2;
+        }
+        .sq-reco-card:hover::after { opacity: 1; }
+        /* Image zoom + counter-shift parallax (depth illusion) */
+        .sq-reco-card__img img {
+          transition: transform 760ms cubic-bezier(0.16, 1, 0.3, 1);
+          will-change: transform;
+        }
+        .sq-reco-card:hover .sq-reco-card__img img {
+          transform:
+            scale(1.07)
+            translate3d(
+              calc(var(--sq-mx, 0) * -8px),
+              calc(var(--sq-my, 0) * -6px),
+              0
+            );
+        }
+        /* Top-left low-stock and top-right match badge get a tiny float for depth */
+        .sq-reco-card:hover .sq-reco-card__img > div { transform: translateZ(20px); }
+        .sq-reco-card .sq-reco-card__img > div { transition: transform 380ms ease; }
+        /* Touch: drop all hover-driven effects (Safari quirks + tap-on-hover) */
+        @media (hover: none) {
+          .sq-reco-card:hover,
+          .sq-reco-card:active {
+            transform: none;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+          }
+          .sq-reco-card::after { display: none; }
+          .sq-reco-card:hover .sq-reco-card__img img { transform: none; }
+          .sq-reco-card:hover .sq-reco-card__img > div { transform: none; }
+        }
         .sq-mira-launch { transition: transform 220ms var(--ease-spring), box-shadow 220ms ease; }
         .sq-mira-launch:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 24px 60px rgba(139,92,246,0.4); }
         .sq-mira-launch:active { transform: translateY(-1px) scale(0.99); }
