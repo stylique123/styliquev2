@@ -29,6 +29,9 @@
   surfaces are retired; there is now ONE implementation, shared with the demo.
 {%- endcomment -%}
 {% if block.settings.enable_stylist or block.settings.enable_widget %}
+  <script>
+    window.__sqCurrency = {{ cart.currency.iso_code | default: shop.currency | json }};
+  </script>
   <script src="{{ 'tryon.js' | asset_url }}" defer></script>
 {% endif %}
 

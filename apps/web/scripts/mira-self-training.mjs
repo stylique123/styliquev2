@@ -614,13 +614,21 @@ function evaluateResponse(scenario, decision) {
   const sales = archetype.state === "decision_ready"
     ? route === "add_to_cart" ? 10 : failures.some(f => f.type === FAILURE_TYPES.LATE_CLOSE) ? 3 : 6
     : Math.max(0, 7 - failureCount);
-  const intelligence = decision.intent ? 7 : 3
-    + (decision.unmet ? 2 : 0)
-    + (decision.nearMiss ? 2 : 0);
+  // Precedence-corrected: was `intent ? 7 : 3 + bonuses` which parsed as
+  // `intent ? 7 : (3 + bonuses)` — the unmet/nearMiss bonuses applied ONLY
+  // when intent was missing, exact opposite of intent. Now: base 3 always,
+  // +4 for valid intent, +2 each for honest gap/near-miss signals (max 11
+  // raw, normalized below so missing 3 behaviors can never read as 10).
+  const intelligenceRaw =
+    3 +
+    (decision.intent ? 4 : 0) +
+    (decision.unmet ? 2 : 0) +
+    (decision.nearMiss ? 2 : 0);
+  const intelligence = Math.round((intelligenceRaw / 11) * 10 * 10) / 10;
 
   const overall = Math.round((stylist * 0.3 + emotional * 0.2 + sales * 0.3 + intelligence * 0.2) * 10) / 10;
 
-  return { failures, warnings, successes, scores: { stylist, emotional, sales, intelligence: Math.min(10, intelligence), overall } };
+  return { failures, warnings, successes, scores: { stylist, emotional, sales, intelligence, overall } };
 }
 
 // ── Self-critique engine ───────────────────────────────────────────────────────

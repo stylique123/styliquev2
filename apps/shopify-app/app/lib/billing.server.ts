@@ -142,6 +142,7 @@ export async function getBillingStatus(shopId: string): Promise<BillingStatus> {
       case "STYLE_RECOMMENDATION":   return features.widget.monthlyStyleRecs;
       case "FIT_RECOMMENDATION":     return features.widget.monthlyFitRecs;
       case "VISION_TURN":            return features.stylist.monthlyVisionTurns;
+      case "STYLIST_TURN":           return features.stylist.monthlyTurns;
     }
   }
 
@@ -153,6 +154,7 @@ export async function getBillingStatus(shopId: string): Promise<BillingStatus> {
     "STYLE_RECOMMENDATION",
     "FIT_RECOMMENDATION",
     "VISION_TURN",
+    "STYLIST_TURN",
   ];
 
   const usage: UsageReport = {};

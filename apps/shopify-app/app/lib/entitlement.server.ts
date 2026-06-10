@@ -132,6 +132,7 @@ function capForMetric(f: PlanFeatures, metric: UsageMetric): number | null {
     case "STYLE_RECOMMENDATION":   return f.widget.monthlyStyleRecs;
     case "FIT_RECOMMENDATION":     return f.widget.monthlyFitRecs;
     case "VISION_TURN":            return f.stylist.monthlyVisionTurns;
+    case "STYLIST_TURN":           return f.stylist.monthlyTurns;
   }
 }
 

@@ -95,18 +95,21 @@ function scoreConvo(c) {
   const resilientFallbackPct = Math.round((t.filter((x) => x.mira_source === "fallback" && !x.fell_to_fallback).length / t.length) * 100);
 
   // OVERALL CHATBOT-VS-SALESPERSON SCORE (0-10)
-  let score = 0;
-  if (proactive) score += 2;
-  if (offeredTryOn) score += 1;
-  if (offeredSize) score += 1;
-  if (closed) score += 2;
-  if (builtLook) score += 1;
-  if (occasionAcked || !occasionMentioned) score += 1;
-  if (acknowledged || !objection) score += 1;
-  if (everyTurnHasNext) score += 1;
-  if (!fabricated) score += 1;
-  if (fallbackPct === 0) score += 1;
-  score = Math.min(10, score);
+  let rawScore = 0;
+  if (proactive) rawScore += 2;
+  if (offeredTryOn) rawScore += 1;
+  if (offeredSize) rawScore += 1;
+  if (closed) rawScore += 2;
+  if (builtLook) rawScore += 1;
+  if (occasionAcked || !occasionMentioned) rawScore += 1;
+  if (acknowledged || !objection) rawScore += 1;
+  if (everyTurnHasNext) rawScore += 1;
+  if (!fabricated) rawScore += 1;
+  if (fallbackPct === 0) rawScore += 1;
+  // The rubric has 12 available points. The old evaluator capped raw totals at
+  // 10, allowing a conversation to miss two full behaviors and still score
+  // 10/10. Normalize the actual total to a ten-point scale instead.
+  const score = Math.round((rawScore / 12) * 100) / 10;
 
   return {
     id: c.persona_id,

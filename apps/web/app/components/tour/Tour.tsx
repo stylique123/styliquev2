@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import MiraDock from "../surfaces/MiraDock";
 import TryOnPanel from "../surfaces/TryOnPanel";
 
 // ----------------------------------------------------------------------------

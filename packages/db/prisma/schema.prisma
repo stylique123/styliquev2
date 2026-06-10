@@ -594,6 +594,7 @@ enum UsageMetric {
   STYLE_RECOMMENDATION
   FIT_RECOMMENDATION
   VISION_TURN
+  STYLIST_TURN
 }
 
 enum NotificationKind {

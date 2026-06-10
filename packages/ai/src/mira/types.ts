@@ -152,7 +152,7 @@ export interface MiraResult {
   decision: MiraDecision | null;
 }
 
-// ─── Decision schema (15 routes, all the recent fixes baked in) ────────────
+// ─── Decision schema ───────────────────────────────────────────────────────
 
 export const MIRA_ROUTES = [
   "reco_category",
@@ -167,7 +167,6 @@ export const MIRA_ROUTES = [
   "try_on",
   "returns",
   "add_to_cart",
-  "studio",
   "search",
   "talk_only",
 ] as const;

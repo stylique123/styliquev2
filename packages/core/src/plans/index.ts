@@ -18,6 +18,7 @@ export interface PlanQuotas {
   monthlyStyleRecs: number | null;
   monthlyFitRecs: number | null;
   monthlyVisionTurns: number | null;
+  monthlyTurns: number | null; // STYLIST_TURN cap (P1)
   creativeSets: number | null;
 }
 
@@ -37,6 +38,7 @@ function quotasFromFeatures(tier: PlanTier): PlanQuotas {
     monthlyStyleRecs:     f.widget.monthlyStyleRecs,
     monthlyFitRecs:       f.widget.monthlyFitRecs,
     monthlyVisionTurns:   f.stylist.monthlyVisionTurns,
+    monthlyTurns:         f.stylist.monthlyTurns,
     creativeSets:         f.studio.monthlyCreativeSets,
   };
 }
@@ -57,6 +59,7 @@ export function quotaForMetric(quotas: PlanQuotas, metric: UsageMetric): number 
     case "STYLE_RECOMMENDATION":   return quotas.monthlyStyleRecs;
     case "FIT_RECOMMENDATION":     return quotas.monthlyFitRecs;
     case "VISION_TURN":            return quotas.monthlyVisionTurns;
+    case "STYLIST_TURN":           return quotas.monthlyTurns;
   }
 }
 

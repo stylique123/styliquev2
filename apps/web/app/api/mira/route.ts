@@ -587,7 +587,8 @@ function enforceExecution(decision: MiraDecision, message: string, curHandle: st
   }
   // Measurements typed in THIS message also count as "body known" — never make a
   // shopper fill a form for height/weight they just stated (council fix #2).
-  const inlineMeasure = /(\b\d{3}\s*cm\b|\b1\.[5-9]\d?\s*m\b|\d\s*['’]\s*\d{1,2}|\b\d{2,3}\s*(kg|lb|lbs|pounds)\b)/i.test(m);
+  const inlineMeasure =
+    /(\b\d{3}\s*cm\b|\b1\.[5-9]\d?\s*m\b|\d\s*['’]\s*\d{1,2}|\b\d{2,3}\s*(kg|lb|lbs|pounds)\b|\b(?:bust|chest|waist|hip|hips)\s*(?:is|are|:)?\s*\d{2,3}\b)/i.test(m);
   if (
     /what size|size me\b|am i a|my size|size (this|it)|fit me|what.*fit|between (?:sizes|[xsml]{1,3}\s+and\s+[xsml]{1,3})|which (?:size|one).*(?:fit|knit|shirt|coat|dress|gown|blazer|trouser|jean)/i.test(m)
   ) {
@@ -630,7 +631,7 @@ function applySalesPolicy(
   const product = handle ? activeCatalog.find((p) => p.handle === handle) : undefined;
   let next = { ...decision, productHandle: product?.handle ?? decision.productHandle };
   const inlineMeasurements =
-    /(\b\d{3}\s*cm\b|\b1\.[5-9]\d?\s*m\b|\d\s*['’]\s*\d{1,2}|\b\d{2,3}\s*(kg|lb|lbs|pounds)\b)/i.test(body.message);
+    /(\b\d{3}\s*cm\b|\b1\.[5-9]\d?\s*m\b|\d\s*['’]\s*\d{1,2}|\b\d{2,3}\s*(kg|lb|lbs|pounds)\b|\b(?:bust|chest|waist|hip|hips)\s*(?:is|are|:)?\s*\d{2,3}\b)/i.test(body.message);
 
   // Never let the model guess a size from "between M and L" or body adjectives.
   // The fit route is only valid when the measurement engine has usable inputs.
@@ -649,7 +650,45 @@ function applySalesPolicy(
     };
   }
 
-  if (product && /\b(add|bag|buy|take it|i'?ll take|checkout|lock it in|do it)\b/i.test(message)) {
+  // Try-on intent ALWAYS wins over purchase intent. A shopper asking "can I see
+  // this on someone with my shape before I buy?" mentions "buy" but is asking
+  // to see — never route them to the cart on a SEE-ME question. Council bug A.
+  const tryOnIntent =
+    /\b(can|could|may|will|would|let'?s|show me|i want to|i'?d like to|how about|how would|what would)\b.{0,40}\b(see|try|view|look|put|wear|fit)\b.{0,40}\b(on (?:me|her|him|a|the|someone|model|body|shape)|fitting room|on my (?:body|shape|frame))/i.test(
+      message,
+    ) ||
+    /\b(see it on|try (?:it|this|that|them) on|on a model|on me|on my (?:body|shape|frame)|fitting room|virtual try.?on|see how (?:it|this) (?:looks|fits)|with my shape|on someone (?:like|with) (?:me|my)|show me on (?:a |the )?(?:body|model|muse|shape|frame|someone)|on (?:a|the) body)\b/i.test(
+      message,
+    );
+  if (product && tryOnIntent) {
+    next = {
+      ...next,
+      route: "try_on",
+      productHandle: product.handle,
+      voice: `Let's see the ${product.name} on you before you decide.`,
+      quickReplies: ["See it on me", "Size this one", "Add to bag"],
+    };
+  }
+
+  // Body data ALREADY GIVEN — never re-ask for the form. If the shopper just
+  // stated their bust/waist/hip OR height/weight inline, OR a body is on file,
+  // answer the size in voice ("fit") instead of opening size_form. Council bug B.
+  if (product && next.route === "size_form" && (body.bodyOnFile || body.knownSize || inlineMeasurements)) {
+    next = {
+      ...next,
+      route: "fit",
+      productHandle: product.handle,
+      voice: `With those measurements you're a clear pick in the ${product.name}, naming it now.`,
+      quickReplies: ["See it on me", "Add to bag", "Build the look"],
+    };
+  }
+
+  // Only execute an explicit purchase command. Broadly matching the word
+  // "buy" misrouted hesitation such as "before I buy" and "should I buy this"
+  // straight to the cart instead of answering or opening try-on.
+  const explicitPurchase =
+    /\b(add (?:it|this|that|them|all|the look)(?: to (?:my |the )?(?:bag|cart))?|bag (?:it|this|that|them)|i'?ll take (?:it|this|that|them)|i (?:want|will|'?m going) to buy (?:it|this|that|them)|checkout|lock it in|let'?s do it|go ahead and add|yes,? add)\b/i.test(message);
+  if (product && explicitPurchase && !tryOnIntent) {
     next = {
       ...next,
       route: "add_to_cart",
@@ -657,6 +696,32 @@ function applySalesPolicy(
       voice: `I'll put the ${product.name} in your bag. Want the full look with it, or straight to checkout?`,
       quickReplies: ["Build the look", "Checkout"],
     };
+  }
+
+  const budget = parseBudget(body.message);
+  if (product && budget != null && product.priceUsd > budget) {
+    const affordable = activeCatalog
+      .filter((candidate) => candidate.priceUsd <= budget)
+      .sort((a, b) => a.priceUsd - b.priceUsd)[0];
+    if (affordable) {
+      next = {
+        ...next,
+        route: "reco_handle",
+        productHandle: affordable.handle,
+        voice: `That first pick is over your stated ceiling. The ${affordable.name} is ${affordable.priceUsd} in the store's currency, the strongest option that genuinely stays inside it.`,
+      };
+    } else {
+      const floor = [...activeCatalog].sort((a, b) => a.priceUsd - b.priceUsd)[0];
+      next = {
+        ...next,
+        route: "talk_only",
+        productHandle: undefined,
+        voice: floor
+          ? `I want to be straight with you: nothing here is inside that ceiling. The closest piece is the ${floor.name} at ${floor.priceUsd} in the store's currency.`
+          : "I don't have a grounded option inside that budget right now.",
+        quickReplies: ["Show the closest", "Change the budget", "Keep browsing"],
+      };
+    }
   }
 
   if (!product || !PRODUCT_ACTION_ROUTES.has(next.route)) return next;

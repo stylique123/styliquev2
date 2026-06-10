@@ -93,6 +93,7 @@ export const UsageMetricSchema = z.enum([
   "STYLE_RECOMMENDATION",
   "FIT_RECOMMENDATION",
   "VISION_TURN",        // Gemini Vision call from Mira (Sprint 5 audit fix)
+  "STYLIST_TURN",       // One Mira chat turn against a Plan.monthlyTurns cap (P1)
 ]);
 export type UsageMetric = z.infer<typeof UsageMetricSchema>;
 

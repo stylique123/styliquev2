@@ -34,7 +34,8 @@ export function createPlansService(prisma: PrismaClient, usage: UsageService = c
       monthlyCreativeSets:  plan.monthlyCreativeSets  ?? defaults.monthlyCreativeSets,
       monthlyStyleRecs:     plan.monthlyStyleRecs     ?? defaults.monthlyStyleRecs,
       monthlyFitRecs:       plan.monthlyFitRecs       ?? defaults.monthlyFitRecs,
-      monthlyVisionTurns:   plan.monthlyStylistTurns  ?? defaults.monthlyVisionTurns,
+      monthlyVisionTurns:   defaults.monthlyVisionTurns,
+      monthlyTurns:         plan.monthlyStylistTurns  ?? defaults.monthlyTurns,
       creativeSets:         plan.creativeSets         ?? defaults.creativeSets,
     };
   }

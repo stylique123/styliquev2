@@ -13,6 +13,7 @@
 import { postChat } from "./chat.server";
 import { prisma } from "../db.server";
 import type { BrainClientAction, BrainCombo, BrainProduct } from "@stylique/ai";
+import { canConsume, recordConsume } from "./entitlement.server";
 
 // SYSTEMIC FALLBACK — the brain's LLM sometimes replies without calling its
 // search/combo tools (then brain.ts emits the "One sec…" placeholder with no
@@ -674,6 +675,37 @@ export async function runMiraAdapter(args: {
     // for now — when a merchant has a knowledge feature, plumb here).
   };
 
+  // ─── P1: STYLIST_TURN metering ──────────────────────────────────────────
+  // Per-shop monthly cap on Mira chat turns. STARTER 1000 / GROWTH 15000 /
+  // ULTIMATE unlimited (PLAN_FEATURES.stylist.monthlyTurns). When a shop
+  // exceeds its cap we DON'T 500 the storefront — we serve a graceful
+  // "quota reached" voice line and skip the LLM call. Founder gate:
+  // BILLING_ENFORCED env (default off pre-launch); when off, we count usage
+  // but never deny, so dashboards still track real volume without breaking
+  // pilot brands. Shop resolution is one tiny indexed query — caches NOT
+  // applied here because the count is already cheap and per-shop billing
+  // accuracy must be exact.
+  const shopRow = await prisma.shop
+    .findFirst({ where: { shopifyDomain: args.shopDomain }, select: { id: true } })
+    .catch(() => null);
+  const shopId = shopRow?.id ?? null;
+  let quotaExhausted = false;
+  if (shopId) {
+    const gate = await canConsume({ shopId, metric: "STYLIST_TURN" }).catch(() => null);
+    if (gate && !gate.allowed && process.env.BILLING_ENFORCED === "1") {
+      quotaExhausted = true;
+    }
+  }
+  if (quotaExhausted) {
+    return {
+      result: decisionToAdapter(
+        null,
+        "We've hit this month's Mira conversation cap on this store — the merchant can lift it from the dashboard. I'll be back next cycle.",
+      ),
+      setCookie: null,
+    };
+  }
+
   try {
     const res = await fetch(UNIFIED_BRAIN_URL, {
       method: "POST",
@@ -682,9 +714,16 @@ export async function runMiraAdapter(args: {
       signal: AbortSignal.timeout(35_000),
     });
     const payload = (await res.json()) as { source?: string; decision?: Parameters<typeof decisionToAdapter>[0] };
+    // Record the turn on the way back. Fire-and-forget; recordConsume is
+    // idempotent + already swallows errors, so a Prisma blip never blocks the
+    // shopper. We count attempted calls (after the LLM RT), not 200s, because
+    // a timeout is still cost; downgrade to a precise "succeeded" counter
+    // later if billing requires it.
+    if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
     return { result: decisionToAdapter(payload.decision ?? null, "Tell me what you're after and I'll pull one piece, not a wall."), setCookie: null };
   } catch (err) {
     console.error("[mira-adapter] unified brain forward failed", err);
+    if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
     return {
       result: decisionToAdapter(null, "I'm here when you're ready — what are you looking for?"),
       setCookie: null,

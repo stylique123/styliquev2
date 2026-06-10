@@ -106,13 +106,13 @@ function nextLine(persona, lastTurn, allTurns) {
   return "ok, next";
 }
 
-async function postOne(message, currentProductHandle, history) {
+async function postOne(message, currentProductHandle, history, shownHandles) {
   const t0 = Date.now();
   try {
     const res = await fetch(URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, currentProductHandle, history }),
+      body: JSON.stringify({ message, currentProductHandle, history, shownHandles }),
       signal: AbortSignal.timeout(35_000),
     });
     const body = await res.json().catch(() => null);
@@ -130,10 +130,11 @@ async function runPersona(p) {
     behaviors: { asked_proactive_question: false, offered_try_on: false, offered_size: false, proposed_close: false, built_full_look: false, handled_objection: false, acknowledged_region_or_climate: false, fell_to_fallback_any: false, voice_repeated: false, invented_promo_or_price: false },
   };
   const history = [];
+  const shownHandles = [];
   let lastTurn = null;
   for (let i = 0; i < TURNS; i++) {
     const message = i === 0 ? p.opener : nextLine(p, lastTurn, log.turns);
-    const r = await postOne(message, p.pdp ?? null, history);
+    const r = await postOne(message, p.pdp ?? null, history, shownHandles);
     const decision = r.body?.decision ?? null;
     const voice = decision?.voice ?? "";
     const route = decision?.route ?? (r.body ? "fallback" : "transport_error");
@@ -153,6 +154,9 @@ async function runPersona(p) {
     if (i > 0 && voice === log.turns[i - 1]?.mira_voice && voice.length > 0) log.behaviors.voice_repeated = true;
     history.push({ from: "user", text: message });
     if (voice) history.push({ from: "mira", text: voice });
+    if (decision?.productHandle && !shownHandles.includes(decision.productHandle)) {
+      shownHandles.push(decision.productHandle);
+    }
     lastTurn = turn;
   }
   log.ended_at = new Date().toISOString();

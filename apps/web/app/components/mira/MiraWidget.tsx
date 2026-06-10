@@ -47,6 +47,21 @@ function sqApi(): string {
   const api = (window as unknown as Record<string, unknown>).__sqApi;
   return typeof api === "string" ? api : ASSET_BASE;
 }
+function money(amount: number): string {
+  const currency = typeof window !== "undefined"
+    ? (window as unknown as Record<string, unknown>).__sqCurrency
+    : "USD";
+  const code = typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  } catch {
+    return `${code} ${amount.toLocaleString()}`;
+  }
+}
 const PRODUCT_SEG = ASSET_BASE ? "products" : "product"; // Shopify plural vs demo singular
 function productUrl(handle: string): string { return `/${PRODUCT_SEG}/${handle}`; }
 import TryOnPanel from "../surfaces/TryOnPanel";
@@ -619,7 +634,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     const pick = hero(evening, ctx);
     return withNav([
       { from: "mira", kind: "say", text: "A wedding. I have one answer." },
-      recoMsg(pick, { lead: `${pick.name}, $${pick.priceUsd}.${pick.lowStock ? " Only a few left in most sizes." : ""}`, relativeTo: currentProduct }),
+      recoMsg(pick, { lead: `${pick.name}, ${money(pick.priceUsd)}.${pick.lowStock ? " Only a few left in most sizes." : ""}`, relativeTo: currentProduct }),
       { from: "mira", kind: "say", text: "Want me to build the full look around it, or size you first?", quickReplies: ["Build the full look", "Size me", "Show more options"] },
     ], pick);
   }
@@ -989,7 +1004,18 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
       const anchor = byHandle(d.productHandle) ?? currentProduct;
       if (anchor) {
         out.push({ from: "mira", kind: "insight", label: "Fit", text: anchor.fitNotes });
-        out.push({ from: "mira", kind: "say", text: "Give me your height and weight, I'll give you a single size, not a range.", quickReplies: ["Size me", "Add to bag", "Show the look"] });
+        const sizeAlreadyAnswered =
+          /\b(?:you(?:'re| are)|your size(?: is)?|i(?:'d| would) put you in)\s+(?:an?\s+)?(?:XXS|XS|S|M|L|XL|XXL|XXXL|small|medium|large|\d{1,2})\b/i.test(d.voice);
+        out.push({
+          from: "mira",
+          kind: "say",
+          text: sizeAlreadyAnswered
+            ? "Want to see that size on you, add it to the bag, or build the look?"
+            : "Give me your height and weight, I'll give you a single size, not a range.",
+          quickReplies: sizeAlreadyAnswered
+            ? ["See it on me", "Add to bag", "Show the look"]
+            : ["Size me", "Add to bag", "Show the look"],
+        });
       }
       return out;
     }
@@ -1034,7 +1060,7 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
           out.push({ from: "mira", kind: "cart", productName: `${all.length} pieces, ${anchor.name} look` });
           out.push({
             from: "mira", kind: "say",
-            text: `Done, the full look is in your bag. ${all.map((p) => p.name).join(", ")}. Total $${total.toLocaleString()}.`,
+            text: `Done, the full look is in your bag. ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`,
             quickReplies: ["Go to checkout", "Keep shopping"],
           });
           all.slice(1).forEach((p) => out.push({ from: "mira", kind: "cart", productName: p.name }));
@@ -1285,7 +1311,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
         {/* Name + price */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div onClick={goToProduct} style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17, lineHeight: 1.2, cursor: "pointer" }}>{p.name}</div>
-          <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.06em", color: "rgba(244,242,238,0.9)", flexShrink: 0 }}>${p.priceUsd}</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 12, letterSpacing: "0.06em", color: "rgba(244,242,238,0.9)", flexShrink: 0 }}>{money(p.priceUsd)}</div>
         </div>
         {/* WHY IT'S FOR YOU — the hero line, readable, personalised. */}
         {why && (
@@ -1306,13 +1332,13 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
         <div style={{ display: "flex", gap: 8 }}>
           {bagFirst ? (
             <>
-              <button onClick={() => onAddToBag(p)} style={primaryBtn()}>Add to bag · ${p.priceUsd}</button>
+              <button onClick={() => onAddToBag(p)} style={primaryBtn()}>Add to bag · {money(p.priceUsd)}</button>
               <button onClick={() => onTryOn(p)} style={secondaryBtn()}>See it on you</button>
             </>
           ) : (
             <>
               <button onClick={() => onTryOn(p)} style={primaryBtn()}>See it on you</button>
-              <button onClick={() => onAddToBag(p)} style={secondaryBtn()}>Add · ${p.priceUsd}</button>
+              <button onClick={() => onAddToBag(p)} style={secondaryBtn()}>Add · {money(p.priceUsd)}</button>
             </>
           )}
         </div>
@@ -1360,7 +1386,7 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
       <div style={{ padding: "11px 15px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ fontFamily: "var(--sans)", fontSize: 12.5, lineHeight: 1.55, color: "rgba(244,242,238,0.78)" }}>{look.why}</div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => onAddLook(look.anchor, look.pieces)} style={primaryBtn()}>Add entire look · ${look.total}</button>
+          <button onClick={() => onAddLook(look.anchor, look.pieces)} style={primaryBtn()}>Add entire look · {money(look.total)}</button>
           <button onClick={() => onTryOn(look.anchor)} style={secondaryBtn()}>Try the look ↗</button>
         </div>
       </div>
@@ -2008,7 +2034,7 @@ export default function MiraWidget() {
         <div style={{ position: "fixed", top: 24, right: 24, zIndex: 91, background: "var(--grad)", borderRadius: 999, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", color: "#0E0A14", boxShadow: "0 4px 16px rgba(139,92,246,0.4)", animation: "miraFadeUp 300ms ease both" }}>
           <span>Bag</span>
           <span style={{ background: "rgba(0,0,0,0.2)", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{cartCount}</span>
-          <span>${cartValue.toLocaleString()}</span>
+          <span>{money(cartValue)}</span>
         </div>
       )}
 
