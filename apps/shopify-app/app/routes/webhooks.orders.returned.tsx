@@ -22,6 +22,14 @@ interface RefundLineItem {
     variant_id?: number | string | null;
   };
   quantity?: number;
+  // Shopify's per-line restock type — `return` / `cancel` / `legacy_restock` /
+  // `no_restock`. A `no_restock` is the strongest "shopper hated it" signal
+  // (item not coming back to inventory). CX panel finding: we were throwing
+  // away return-reason signal because we only logged that A return happened,
+  // never WHY.
+  restock_type?: string | null;
+  // Optional per-line reason (some apps populate this via the Returns API).
+  reason?: string | null;
 }
 
 interface ReturnedOrderPayload {
@@ -30,10 +38,32 @@ interface ReturnedOrderPayload {
   refund_line_items?: RefundLineItem[];
   // Some topics expose line_items directly on the order.
   line_items?: Array<{ product_id?: number | string | null; variant_id?: number | string | null; quantity?: number }>;
+  // Refund-level note from the Admin (often the actual reason — "size too
+  // small", "color not as expected", "didn't fit"). CX panel finding: this
+  // was being ignored entirely; capturing it lets brands tell size-driven vs
+  // colour-driven vs change-of-mind returns apart.
+  note?: string | null;
   customer?: {
     id?: number | string;
     email?: string;
   };
+}
+
+/**
+ * Normalise a Shopify reason string to a stable bucket the dashboard can
+ * pivot on without hundreds of free-text variants. Pattern-matches the
+ * common phrasings; falls through to `other` so nothing is invented.
+ */
+function bucketReason(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = String(raw).toLowerCase();
+  if (/\b(too small|sizing.{0,8}small|runs?.{0,3}small|too tight|small)\b/.test(s)) return "size_too_small";
+  if (/\b(too (?:big|large)|runs?.{0,3}(?:big|large)|loose|baggy)\b/.test(s)) return "size_too_large";
+  if (/\b(colou?r|shade|tone|not as (?:pictured|expected)|different colou?r)\b/.test(s)) return "color_mismatch";
+  if (/\b(quality|defect|fabric|stitch|hole|tear|broken|damaged)\b/.test(s)) return "quality";
+  if (/\b(style|don'?t (?:like|love)|not for me|not my style|changed my mind|change of mind)\b/.test(s)) return "style_or_mind_change";
+  if (/\b(late|arrived too late|too late)\b/.test(s)) return "delivery_late";
+  return "other";
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -69,14 +99,29 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!shopper) return new Response(null, { status: 200 });
 
     // 3. Collect returned line items — normalise both payload shapes.
-    const returnedItems: Array<{ productId: string | number | null | undefined; variantId?: string | number | null | undefined; quantity: number }> = [];
+    // CX panel finding: capture reason + restock_type per line so the
+    // dashboard can split returns by cause (size_too_small vs colour vs
+    // style vs quality) instead of treating all returns as identical.
+    const refundLevelReason = bucketReason(p.note);
+    const returnedItems: Array<{
+      productId: string | number | null | undefined;
+      variantId?: string | number | null | undefined;
+      quantity: number;
+      reasonBucket: string | null;
+      restockType: string | null;
+      rawReason: string | null;
+    }> = [];
 
     if (p.refund_line_items?.length) {
       for (const rli of p.refund_line_items) {
+        const lineReason = bucketReason(rli.reason) ?? refundLevelReason;
         returnedItems.push({
           productId: rli.line_item?.product_id,
           variantId: rli.line_item?.variant_id,
           quantity: rli.quantity ?? 1,
+          reasonBucket: lineReason,
+          restockType: rli.restock_type ?? null,
+          rawReason: (rli.reason ?? p.note ?? null)?.toString().slice(0, 200) ?? null,
         });
       }
     } else if (p.line_items?.length) {
@@ -85,6 +130,9 @@ export async function action({ request }: ActionFunctionArgs) {
           productId: li.product_id,
           variantId: li.variant_id,
           quantity: li.quantity ?? 1,
+          reasonBucket: refundLevelReason,
+          restockType: null,
+          rawReason: p.note?.toString().slice(0, 200) ?? null,
         });
       }
     }
@@ -119,12 +167,25 @@ export async function action({ request }: ActionFunctionArgs) {
           payload: {
             source: "webhook_return",
             orderId,
+            // CX panel finding (cycle 4): capture WHY, not just THAT.
+            reasonBucket: item.reasonBucket,
+            restockType: item.restockType,
+            rawReason: item.rawReason,
+            quantity: item.quantity,
           },
         },
       });
 
-      // Apply fit-bias correction if a size variant is available.
-      if (item.variantId != null) {
+      // Apply fit-bias correction ONLY when the return reason actually
+      // points at sizing — otherwise a `color_mismatch` or `style` return
+      // was mis-training the size model. Unknown reason still nudges (
+      // conservative: most returns are size-driven in fashion DTC).
+      const shouldNudgeSize =
+        item.reasonBucket === null ||
+        item.reasonBucket === "size_too_small" ||
+        item.reasonBucket === "size_too_large" ||
+        item.reasonBucket === "other";
+      if (item.variantId != null && shouldNudgeSize) {
         await applyReturnBias({
           shopId: shopRecord.id,
           productId: resolvedProduct.id,
