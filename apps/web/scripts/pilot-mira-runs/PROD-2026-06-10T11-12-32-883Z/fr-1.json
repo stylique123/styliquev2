@@ -1,0 +1,132 @@
+{
+  "persona_id": "fr-1",
+  "region": "France · Paris",
+  "archetype": "parisienne critical",
+  "style": "fashion_critical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T11:19:34.065Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "bof, the cut on this is approximate. anything more structured?",
+      "mira_voice": "The Tan Leather Crossbody Bag (PKR 12,500) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "tan-leather-crossbody-bag",
+      "mira_full_decision": {
+        "voice": "The Tan Leather Crossbody Bag (PKR 12,500) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "tan-leather-crossbody-bag",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 4601,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 10849,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Silk Slip Dress, the Emerald Wrap Dress, and the Floral Maxi Dress together would be around $570. It’s a versatile and elegant outfit with a mix of silhouettes and textures.\n\nI'd usually recommend sticking to one or two anchor pieces for a cohesive look. Are you looking to build a full wardrobe, or for a specific occasion?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Just browsing"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Silk Slip Dress, the Emerald Wrap Dress, and the Floral Maxi Dress together would be around $570. It’s a versatile and elegant outfit with a mix of silhouettes and textures.\n\nI'd usually recommend sticking to one or two anchor pieces for a cohesive look. Are you looking to build a full wardrobe, or for a specific occasion?",
+        "route": "talk_only",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Just browsing"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 10574,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "yes, more structured shoulder",
+      "mira_voice": "The Crimson Bridal Lehenga Set anchors the look — a considered pairing with the Kundan Maang Tikka.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "crimson-bridal-lehenga-set",
+      "mira_full_decision": {
+        "voice": "The Crimson Bridal Lehenga Set anchors the look — a considered pairing with the Kundan Maang Tikka.",
+        "route": "look",
+        "productHandle": "crimson-bridal-lehenga-set",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 10881,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:20:30.481Z",
+  "total_latency_ms": 36905
+}

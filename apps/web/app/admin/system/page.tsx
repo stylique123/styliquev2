@@ -33,19 +33,11 @@ export default async function SystemPage() {
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   const [
-    pendingCreatives,
-    failedCreatives,
-    completedCreatives24h,
     tryOnPending,
     tryOnSucceeded,
     tryOnFailed,
     dbExperiments,
   ] = await Promise.all([
-    prisma.creativeSet.count({ where: { status: "PENDING" } }),
-    prisma.creativeSet.count({ where: { status: "FAILED" } }),
-    prisma.creativeSet.count({
-      where: { status: "READY", updatedAt: { gte: oneDayAgo } },
-    }),
     prisma.tryOnSession.count({
       where: { status: "PENDING", createdAt: { gte: oneDayAgo } },
     }),
@@ -76,8 +68,6 @@ export default async function SystemPage() {
   ];
 
   // Health calculation
-  const creativeHealth: "green" | "yellow" | "red" =
-    failedCreatives > 20 ? "red" : failedCreatives > 5 ? "yellow" : "green";
   const tryOnHealth: "green" | "yellow" | "red" =
     tryOnFailed > 10 ? "red" : tryOnFailed > 3 ? "yellow" : "green";
 
@@ -147,11 +137,6 @@ export default async function SystemPage() {
       >
         {[
           {
-            label: "Creative jobs",
-            status: creativeHealth,
-            sub: `${failedCreatives} failed`,
-          },
-          {
             label: "Try-on renders",
             status: tryOnHealth,
             sub: `${tryOnFailed} failed (24h)`,
@@ -182,31 +167,6 @@ export default async function SystemPage() {
             </div>
           </div>
         ))}
-      </div>
-
-      {/* Creative jobs */}
-      <div style={{ ...card, marginBottom: 20 }}>
-        <div style={sectionHeader}>Creative jobs</div>
-        <div>
-          {[
-            { label: "Pending", value: pendingCreatives, color: "#fbbf24" },
-            { label: "Failed (all-time)", value: failedCreatives, color: "#f87171" },
-            { label: "Completed (last 24h)", value: completedCreatives24h, color: "#4ade80" },
-          ].map((row, i, arr) => (
-            <div
-              key={row.label}
-              style={{
-                ...statRow,
-                borderBottom: i < arr.length - 1 ? "1px solid var(--line)" : "none",
-              }}
-            >
-              <span style={{ color: "var(--mute)" }}>{row.label}</span>
-              <span style={{ color: row.color, fontWeight: 500 }}>
-                {row.value.toLocaleString()}
-              </span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Try-on sessions */}

@@ -6,7 +6,15 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "isolatedModules": true,
-    "declaration": false
+    "declaration": false,
+    "skipLibCheck": true,
+    // The widget single-sources apps/web's MiraWidget/TryOnPanel (DEDUP-2). Those
+    // files are AUTHORED for React (and already typecheck clean under apps/web's
+    // config), so we typecheck against React's JSX types here too. esbuild is what
+    // aliases react→preact for the BUILD (apps/widget/esbuild.config.mjs) — that is
+    // a build-time concern, not a typecheck concern. Without `jsx` set, root
+    // typecheck failed on the .tsx import with "--jsx not set" (consolidation P1.7).
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"]
 }

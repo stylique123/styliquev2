@@ -130,6 +130,32 @@ export function deltaEScore(hex1: string, hex2: string): number {
 // When shadeHex or skinHex is absent, the 25% hex weight is redistributed
 // proportionally: undertone → 53.3%, depth → 46.7%.
 
+/**
+ * Per-shop shade-matching weights. Stored on `Plan.planFeaturesJson.beauty.shadeWeights`
+ * and tuned over time from real `BEAUTY_SHADE_MATCHED` + cart-outcome events so a brand
+ * whose shoppers consistently keep undertone-matched shades but return depth-matched
+ * shades will see undertone weighted higher on the next match.
+ *
+ * The three factors must sum to 1.0 for a clean weighted average. When `skinHex` is
+ * absent on either side, `hex` redistributes proportionally to undertone + depth.
+ *
+ * Closing the learning loop the reality panel called out: signals are captured
+ * (BEAUTY_SHADE_MATCHED + cart events) AND now read back by the matcher.
+ */
+export type ShadeWeights = { undertone: number; depth: number; hex: number };
+export const DEFAULT_SHADE_WEIGHTS: ShadeWeights = { undertone: 0.40, depth: 0.35, hex: 0.25 };
+
+function normalizeWeights(w: Partial<ShadeWeights> | undefined): ShadeWeights {
+  const u = w?.undertone ?? DEFAULT_SHADE_WEIGHTS.undertone;
+  const d = w?.depth     ?? DEFAULT_SHADE_WEIGHTS.depth;
+  const h = w?.hex       ?? DEFAULT_SHADE_WEIGHTS.hex;
+  const sum = u + d + h;
+  // Guard: an admin who set {1, 1, 1} or similar gets normalized rather than
+  // ignored — closes the loop visibly rather than silently falling back.
+  if (sum <= 0 || !Number.isFinite(sum)) return DEFAULT_SHADE_WEIGHTS;
+  return { undertone: u / sum, depth: d / sum, hex: h / sum };
+}
+
 export function matchShades(
   products: ProductShadeInfo[],
   shopper: {
@@ -138,9 +164,10 @@ export function matchShades(
     depth?: SkinDepth;
     itaRange?: ITARange;
   },
-  opts: { limit?: number; inStockOnly?: boolean } = {},
+  opts: { limit?: number; inStockOnly?: boolean; weights?: Partial<ShadeWeights> } = {},
 ): ShadeMatch[] {
   const limit = opts.limit ?? 5;
+  const w = normalizeWeights(opts.weights);
   const candidates: Array<ShadeMatch & { rawScore: number }> = [];
 
   const hasHex = !!shopper.skinHex;
@@ -171,15 +198,18 @@ export function matchShades(
         hScore = deltaEScore(shopper.skinHex!, shade.shadeHex!);
       }
 
-      // ── weighted sum ──────────────────────────────────────────────────
+      // ── weighted sum (per-shop weights from planFeaturesJson.beauty.shadeWeights) ──
       let score: number;
       if (hasShadeHex) {
-        score = uScore * 0.40 + dScore * 0.35 + hScore * 0.25;
+        score = uScore * w.undertone + dScore * w.depth + hScore * w.hex;
       } else {
-        // Redistribute hex weight proportionally to undertone + depth
-        score = uScore * (0.40 / 0.75) * 0.75 + dScore * (0.35 / 0.75) * 0.75;
-        // Simplifies to:
-        score = uScore * 0.5333 + dScore * 0.4667;
+        // Redistribute hex weight proportionally so the remaining two still sum to 1.
+        const remaining = w.undertone + w.depth;
+        if (remaining <= 0) {
+          score = (uScore + dScore) / 2;
+        } else {
+          score = uScore * (w.undertone / remaining) + dScore * (w.depth / remaining);
+        }
       }
 
       const matchReason = whyThisShade(

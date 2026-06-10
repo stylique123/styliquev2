@@ -1,0 +1,131 @@
+{
+  "persona_id": "prc-4",
+  "region": "proactive",
+  "age": 44,
+  "archetype": "non-question",
+  "style": "minimal_signal",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:51:00.755Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "nice coat",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 16455,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "nice coat — try again",
+      "mira_voice": "It's a beautiful piece. What do you mean by 'try again,' was there something specific you wanted to see?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "It's a beautiful piece. What do you mean by 'try again,' was there something specific you wanted to see?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 3699,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, here's the one I'd send you home with. It’s a serious piece, structured enough for evening, relaxed enough for daily wear.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with. It’s a serious piece, structured enough for evening, relaxed enough for daily wear.",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3886,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "Okay, here's the one I'd send you home with. It’s a serious piece, structured enough for evening, relaxed enough for daily wear.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with. It’s a serious piece, structured enough for evening, relaxed enough for daily wear.",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3841,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 5852,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:51:34.488Z",
+  "total_latency_ms": 33733
+}

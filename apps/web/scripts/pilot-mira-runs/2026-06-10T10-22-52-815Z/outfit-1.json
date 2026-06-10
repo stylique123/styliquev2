@@ -1,0 +1,73 @@
+{
+  "persona_id": "outfit-1",
+  "archetype": "outfit builder — winter capsule",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "build me a 3-piece winter outfit",
+      "http_status": 0,
+      "latency_ms": 20001,
+      "transport_error": "The operation was aborted due to timeout",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 8063,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, let's build it. I'll start with the Camel Wrap Coat, add a classic knit, and finish with a sharp trouser. Here's the core piece.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, let's build it. I'll start with the Camel Wrap Coat, add a classic knit, and finish with a sharp trouser. Here's the core piece.",
+        "route": "reco_handle",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Show me the full look",
+          "What's my size?",
+          "Not my style"
+        ],
+        "intent": "discover"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "what's the third piece?",
+      "http_status": 200,
+      "latency_ms": 16609,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 3308,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    }
+  ],
+  "fall_to_fallback_count": 3,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 47981,
+  "started_at": "2026-06-10T10:24:39.731Z",
+  "ended_at": "2026-06-10T10:25:27.712Z"
+}

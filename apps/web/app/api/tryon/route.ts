@@ -52,6 +52,11 @@ const Body = z.object({
     )
     .max(4)
     .optional(),
+  // Per-brand cache partition. Optional — clients on the demo origin send no
+  // value (cache key gets a sentinel "_" so the demo behaves identically to
+  // before); the storefront widget passes its merchant shop domain so renders
+  // are partitioned + reused across that brand's shoppers.
+  shopSlug: z.string().max(128).optional(),
 });
 
 export async function POST(req: Request) {
@@ -132,6 +137,7 @@ export async function POST(req: Request) {
       tightness: b.tightness,
       bindLabel: b.bindLabel,
       garmentFits: b.garmentFits,
+      shopSlug: b.shopSlug,
     });
     // Success — record for cache-hit-rate + latency tracking (fire-and-forget).
     void recordRender({

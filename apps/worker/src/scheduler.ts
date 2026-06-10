@@ -9,8 +9,9 @@
 // jobs on Redis flush; re-registering restores them automatically).
 //
 // Queues registered:
-//   recommendations   — nightly-recommendations global sweep (01:00 UTC)
-//   catalog-sync      — catalog-refresh every 6 hours
+//   recommendations    — nightly-recommendations global sweep (01:00 UTC)
+//   catalog-sync       — catalog-refresh every 6 hours
+//   retention-cleanup  — GDPR Art. 5(1)(e) weekly purge (Mon 03:00 UTC)
 //
 // NOTE: Per-shop nightly recommendations are scheduled separately in index.ts
 // (scheduleNightlyRecommendations) and keyed by shopId. These global entries
@@ -19,6 +20,8 @@
 
 import { Queue, type RepeatOptions } from "bullmq";
 import type { Redis as IORedis } from "ioredis";
+import { prisma } from "@stylique/db";
+import { runRetentionCleanup } from "./jobs/retention-cleanup.js";
 
 // ─── Schedule definitions ─────────────────────────────────────────────────────
 
@@ -31,13 +34,15 @@ type ScheduledJob = {
 };
 
 const SCHEDULED_JOBS: ScheduledJob[] = [
-  {
-    queueName: "recommendations",
-    jobName:   "nightly-recommendations",
-    jobId:     "global:nightly-recommendations",
-    data:      { scope: "global" },
-    repeat:    { pattern: "0 1 * * *" },   // 01:00 UTC daily
-  },
+  // Catalog-refresh — the ONLY scheduled catalog sweep. Enqueued as scope:"global";
+  // the catalog-sync worker (apps/worker/src/index.ts) detects scope:"global" and
+  // FANS OUT one per-shop {kind:"full", shopId} job per active shop. Without that
+  // fan-out this ran with shopId:undefined and silently no-op'd (consolidation P1.1).
+  //
+  // NOTE: nightly recommendations and daily billing-reconcile are scheduled
+  // PER-SHOP in index.ts (scheduleNightlyRecommendations / scheduleBillingReconcile)
+  // — the previous global {scope:"global"} entries here were redundant duplicates
+  // that hit per-shop processors with shopId:undefined, so they are removed.
   {
     queueName: "catalog-sync",
     jobName:   "catalog-refresh",
@@ -45,15 +50,16 @@ const SCHEDULED_JOBS: ScheduledJob[] = [
     data:      { scope: "global", trigger: "scheduled" },
     repeat:    { pattern: "0 */6 * * *" }, // every 6 hours
   },
-  // Billing reconciliation — verify Shopify subscriptions are still active.
-  // Runs after recommendations (02:30) and outcome resolver (03:00) so all
-  // nightly Gemini/DB-heavy jobs clear before this Shopify-API sweep.
+  // GDPR Art. 5(1)(e) retention cleanup — weekly purge of stale ShopperSession
+  // rows.  Monday 03:00 UTC: after the nightly Gemini sweeps (02:30/02:45) and
+  // before billing reconcile (04:00).  The job runs at the worker level against
+  // the prisma singleton — no per-shop fan-out needed (one DELETE per category).
   {
-    queueName: "billing-reconcile",
-    jobName:   "billing-reconcile",
-    jobId:     "global:billing-reconcile",
+    queueName: "retention-cleanup",
+    jobName:   "retention-cleanup",
+    jobId:     "retention-cleanup",
     data:      { scope: "global" },
-    repeat:    { pattern: "0 4 * * *" },  // 04:00 UTC daily
+    repeat:    { pattern: "0 3 * * 1" },  // Monday 03:00 UTC
   },
 ];
 

@@ -87,6 +87,10 @@ export type ShopperChatResult = {
   actions: BrainClientAction[];
   shopperId: string;            // cookie value — widget echoes it back next turn
   latencyMs: number;
+  // Routing metadata from the brain's classifier/router — carries the intent
+  // label (occasion/discover/outfit/etc) used to activate the learning loop's
+  // discovery hit-rate and intent histogram. Undefined when not routed.
+  routingMeta?: { intent?: string; complexity?: string; provider?: string; reason?: string };
 };
 
 function toChatProduct(p: ShopperProduct): ChatProduct {
@@ -116,6 +120,7 @@ type ChatTurnSuccess = {
   actions: BrainClientAction[];
   shopperId: string;
   latencyMs: number;
+  routingMeta?: { intent?: string; complexity?: string; provider?: string; reason?: string };
   setCookie: string | null;
 };
 type ChatTurnError = { ok: false; error: string };
@@ -126,6 +131,7 @@ export async function runChatTurn(args: {
   body: unknown;
   shopperCookieId: string | null;
   acceptLanguage?: string | null;
+  signal?: AbortSignal;
 }): Promise<ChatTurnResult> {
   if (!await rateOk(args.shopDomain, args.shopperCookieId)) return { ok: false, error: "rate_limited" };
   const shopId = await shopIdFromDomain(args.shopDomain);
@@ -237,6 +243,7 @@ export async function runChatTurn(args: {
         providerKey: variantConfig.providerKey,
         temperature: variantConfig.temperature,
       },
+      signal: args.signal,
     });
 
     // Persist this exchange (new user turns + model reply) for next time.
@@ -274,6 +281,9 @@ export async function runChatTurn(args: {
       actions: result.actions,
       shopperId: session.row.sessionId,
       latencyMs: result.latencyMs,
+      // Pass routing metadata so the adapter can surface the real intent label
+      // for the learning-loop (intent histogram, discovery hit-rate).
+      routingMeta: result.routingMeta,
       setCookie: session.setCookie ?? null,
     };
   } catch (err) {
@@ -306,6 +316,7 @@ export async function postChat(args: {
   body: unknown;
   shopperCookieId: string | null;
   acceptLanguage?: string | null;
+  signal?: AbortSignal;
 }): Promise<ApiResponse<ShopperChatResult> & { setCookie?: string | null }> {
   const turn = await runChatTurn(args);
   if (!turn.ok) return turn;

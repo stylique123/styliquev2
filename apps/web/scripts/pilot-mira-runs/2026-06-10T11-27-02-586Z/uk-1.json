@@ -1,0 +1,110 @@
+{
+  "persona_id": "uk-1",
+  "region": "UK · London",
+  "age": 34,
+  "archetype": "fashion-aware, asks brutal questions",
+  "style": "terse_skeptical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T11:27:02.592Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "right, is the camel really pure wool? bit dubious at that price.",
+      "mira_voice": "The Camel Wrap Coat is a wool blend, designed to give you that drape and warmth without the weight of pure wool. It's truly one of those pieces you keep for years. What are you thinking of wearing it for?",
+      "mira_route": "suitability",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "The Camel Wrap Coat is a wool blend, designed to give you that drape and warmth without the weight of pure wool. It's truly one of those pieces you keep for years. What are you thinking of wearing it for?",
+        "route": "suitability",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "fabric",
+        "productHandle": "wrap-coat-camel"
+      },
+      "http_status": 200,
+      "latency_ms": 1789,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok — given that, what's your pick",
+      "mira_voice": "Given that, I'd still put you in this one. It's truly a standout piece. What's the occasion you're dressing for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Everyday",
+        "Something dressy",
+        "Just looking"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Given that, I'd still put you in this one. It's truly a standout piece. What's the occasion you're dressing for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Everyday",
+          "Something dressy",
+          "Just looking"
+        ],
+        "intent": "discover",
+        "productHandle": "wrap-coat-camel"
+      },
+      "http_status": 200,
+      "latency_ms": 1410,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Right, this is the one. It's truly a standout, and the cut is just beautiful. What's the occasion you're dressing for?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Right, this is the one. It's truly a standout, and the cut is just beautiful. What's the occasion you're dressing for?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1698,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:07.490Z",
+  "total_latency_ms": 4897
+}

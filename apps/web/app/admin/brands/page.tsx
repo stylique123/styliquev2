@@ -65,7 +65,6 @@ export default async function BrandsPage({ searchParams }: PageProps) {
           events: true,
           products: true,
           tryOnSessions: true,
-          creatives: true,
         },
       },
     },

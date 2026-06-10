@@ -1,0 +1,131 @@
+{
+  "persona_id": "uk-1-clone96",
+  "region": "UK · London",
+  "age": 34,
+  "archetype": "fashion-aware, asks brutal questions",
+  "style": "terse_skeptical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:56:22.858Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "right, is the camel really pure wool? bit dubious at that price.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2506,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "right, is the camel really pure — try again",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2006,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "My apologies, the connection must have dropped. The Camel Wrap Coat is made from a beautiful wool blend that feels luxurious. What else can I tell you about it?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Tell me about the fit",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "My apologies, the connection must have dropped. The Camel Wrap Coat is made from a beautiful wool blend that feels luxurious. What else can I tell you about it?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Tell me about the fit",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 2440,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "This is the best one. It's a statement piece, but it's also incredibly versatile. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "This is the best one. It's a statement piece, but it's also incredibly versatile. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 4190,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "If the Wrap Coat isn't quite the one, this Leather Trench is another strong contender. It's a different vibe, more structured. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's the price?",
+        "Show me something softer",
+        "Back to the wrap coat"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "If the Wrap Coat isn't quite the one, this Leather Trench is another strong contender. It's a different vibe, more structured. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "What's the price?",
+          "Show me something softer",
+          "Back to the wrap coat"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 5551,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:56:39.551Z",
+  "total_latency_ms": 16693
+}

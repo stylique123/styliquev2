@@ -1,0 +1,109 @@
+{
+  "persona_id": "in-1",
+  "region": "India · Mumbai",
+  "age": 28,
+  "archetype": "wedding season, multi-piece",
+  "style": "mixed_english",
+  "pdp": null,
+  "started_at": "2026-06-10T11:27:17.419Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "need outfits for 3 wedding events back-to-back. budget approx 1.5 lakh inr total. what do you suggest",
+      "mira_voice": "Right, three wedding events back-to-back, and for a total of about 1.5 lakh INR, we can definitely build a few versatile looks. Are these all formal, or a mix of dressy and relaxed?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "All formal",
+        "Mix of dressy & relaxed",
+        "Show me options"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Right, three wedding events back-to-back, and for a total of about 1.5 lakh INR, we can definitely build a few versatile looks. Are these all formal, or a mix of dressy and relaxed?",
+        "route": "talk_only",
+        "quickReplies": [
+          "All formal",
+          "Mix of dressy & relaxed",
+          "Show me options"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 6870,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, for your best, I'd start you with the Midnight Silk Gown. It's a showstopper and we can build two more looks around it for your budget. The gown itself is $1450.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, for your best, I'd start you with the Midnight Silk Gown. It's a showstopper and we can build two more looks around it for your budget. The gown itself is $1450.",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 1807,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3171,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:29.267Z",
+  "total_latency_ms": 11848
+}

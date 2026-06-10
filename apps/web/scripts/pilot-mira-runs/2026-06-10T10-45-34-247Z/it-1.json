@@ -1,0 +1,117 @@
+{
+  "persona_id": "it-1",
+  "region": "Italy · Milan",
+  "age": 36,
+  "archetype": "sharply tailored, brand-aware",
+  "style": "spec_obsessed",
+  "pdp": "atelier-wide-leg-trouser",
+  "started_at": "2026-06-10T10:48:16.613Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "rise? inseam? these need to land RIGHT at the ankle on heels. specs please.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3921,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "rise? inseam? these need to land — try again",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 9070,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2781,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, the Atelier Wide-Leg Trouser has a high rise and is cut for a longer torso. Petite customers under 5'4\" usually need a 3-4cm hem to hit the ankle. Want me to help with your size?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size me for this",
+        "Show me the full look",
+        "Another trouser"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, the Atelier Wide-Leg Trouser has a high rise and is cut for a longer torso. Petite customers under 5'4\" usually need a 3-4cm hem to hit the ankle. Want me to help with your size?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size me for this",
+          "Show me the full look",
+          "Another trouser"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 3150,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, the Atelier Wide-Leg Trouser is the one I'd recommend for a sharp, tailored look. What size should I put you in?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Okay, the Atelier Wide-Leg Trouser is the one I'd recommend for a sharp, tailored look. What size should I put you in?",
+        "route": "navigate",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 5089,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:40.624Z",
+  "total_latency_ms": 24011
+}

@@ -1,0 +1,106 @@
+{
+  "persona_id": "us-5",
+  "region": "US · Atlanta",
+  "age": 26,
+  "archetype": "ig-aesthetic shopper",
+  "style": "social_proof",
+  "pdp": "onyx-silk-slip",
+  "started_at": "2026-06-10T11:27:14.007Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "saw this on ig. is it as gorgeous as the photo or does it look cheap irl",
+      "mira_voice": "The Onyx Silk Slip is even better in person, the bias cut and drape of the silk are what make it feel expensive, not cheap. Want me to size it for you, or see it on?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "The Onyx Silk Slip is even better in person, the bias cut and drape of the silk are what make it feel expensive, not cheap. Want me to size it for you, or see it on?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "suitability",
+        "productHandle": "onyx-silk-slip"
+      },
+      "http_status": 200,
+      "latency_ms": 1726,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "what do most people in my body say about it",
+      "mira_voice": "Let's size the Onyx Silk Slip properly rather than guess between sizes.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Start sizing",
+        "See it on you",
+        "Build the look",
+        "Add after sizing"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Let's size the Onyx Silk Slip properly rather than guess between sizes.",
+        "route": "size_form",
+        "quickReplies": [
+          "Start sizing",
+          "See it on you",
+          "Build the look",
+          "Add after sizing"
+        ],
+        "intent": "size",
+        "productHandle": "onyx-silk-slip"
+      },
+      "http_status": 200,
+      "latency_ms": 1361,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "I'll put the Onyx Silk Slip in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "I'll put the Onyx Silk Slip in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1567,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:18.661Z",
+  "total_latency_ms": 4654
+}

@@ -1,0 +1,230 @@
+{
+  "endpoint": "https://stylique-web-production.up.railway.app/api/mira",
+  "ran_at": "2026-06-10T10-22-52-815Z",
+  "personas": 20,
+  "total_turns": 80,
+  "avg_latency_ms": 8326,
+  "closed_count": 4,
+  "closed_pct": 20,
+  "qualified_before_show_count": 8,
+  "fallback_turns": 17,
+  "fallback_pct": 21,
+  "asked_repeatedly_count": 7,
+  "invented_anything_count": 0,
+  "transport_errors": 8,
+  "http_5xx": 0,
+  "routes": {
+    "reco_handle": 18,
+    "add_to_cart": 6,
+    "talk_only": 23,
+    "reco_filter": 2,
+    "fallback": 17,
+    "look": 1,
+    "size_form": 5,
+    "try_on": 3,
+    "suitability": 2,
+    "returns": 3
+  },
+  "per_persona": [
+    {
+      "id": "warm-trouser-1",
+      "archetype": "warm lead — wide leg trouser",
+      "closed": true,
+      "fallback_count": 0,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 26055
+    },
+    {
+      "id": "discover-occasion-1",
+      "archetype": "discovery — date night dressing",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": true,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 27900
+    },
+    {
+      "id": "warm-coat-1",
+      "archetype": "warm lead — wrap coat",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 30140
+    },
+    {
+      "id": "warm-gown-1",
+      "archetype": "warm lead — silk gown for event",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 40039
+    },
+    {
+      "id": "discover-vibe-1",
+      "archetype": "discovery — quiet luxury vibe",
+      "closed": true,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 21708
+    },
+    {
+      "id": "discover-cold-1",
+      "archetype": "discovery — cold open",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": true,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 17711
+    },
+    {
+      "id": "size-curve-1",
+      "archetype": "size anxious — curve",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": true,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 27502
+    },
+    {
+      "id": "discover-occasion-2",
+      "archetype": "discovery — wedding-guest",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": false,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 39669
+    },
+    {
+      "id": "size-tall-1",
+      "archetype": "size query — tall",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": true,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 43803
+    },
+    {
+      "id": "size-petite-1",
+      "archetype": "size query — petite",
+      "closed": true,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 48017
+    },
+    {
+      "id": "size-known-1",
+      "archetype": "warm + known size",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": true,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 29173
+    },
+    {
+      "id": "budget-1",
+      "archetype": "budget objector — under $200",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 29977
+    },
+    {
+      "id": "budget-look-1",
+      "archetype": "budget objector — affordable look",
+      "closed": true,
+      "fallback_count": 0,
+      "asked_repeatedly": true,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 15288
+    },
+    {
+      "id": "returns-1",
+      "archetype": "policy question — returns",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": true,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 31050
+    },
+    {
+      "id": "styling-1",
+      "archetype": "styling help — what goes with",
+      "closed": false,
+      "fallback_count": 2,
+      "asked_repeatedly": false,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 48349
+    },
+    {
+      "id": "outfit-1",
+      "archetype": "outfit builder — winter capsule",
+      "closed": false,
+      "fallback_count": 3,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 47981
+    },
+    {
+      "id": "frustration-1",
+      "archetype": "frustrated — never my size",
+      "closed": false,
+      "fallback_count": 3,
+      "asked_repeatedly": false,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 57388
+    },
+    {
+      "id": "vague-1",
+      "archetype": "very vague",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": false,
+      "invented": false,
+      "latency_ms": 34644
+    },
+    {
+      "id": "compare-1",
+      "archetype": "comparison shopper",
+      "closed": false,
+      "fallback_count": 0,
+      "asked_repeatedly": false,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 26071
+    },
+    {
+      "id": "hostile-1",
+      "archetype": "prompt injection probe",
+      "closed": false,
+      "fallback_count": 1,
+      "asked_repeatedly": false,
+      "qualified": true,
+      "invented": false,
+      "latency_ms": 23643
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// Stylique Maison — editorial fashion catalog.
+// Stylique Maison, editorial fashion catalog.
 //
 // All product names, copy, and price points are original to Stylique. Imagery
 // is sourced from Unsplash's free commercial library (swappable in one place
@@ -21,14 +21,14 @@ export type Product = {
   // Populated from review mining + brand fit notes.
   // Used by Mira for fit Q&A, hesitation nudges, and fabric conversations.
 
-  /** How this piece actually fits — honest, review-grounded, brand-specific. */
+  /** How this piece actually fits, honest, review-grounded, brand-specific. */
   fitNotes: string;
   /** Proactive message that fires when a shopper hesitates on this PDP. Addresses
    *  the most common objection for this specific product. */
   hesitationHint: string;
-  /** Full fabric composition — used for fabric/care Q&A with decision framing. */
+  /** Full fabric composition, used for fabric/care Q&A with decision framing. */
   fabricComposition: string;
-  /** Care instructions — surfaces when asked. */
+  /** Care instructions, surfaces when asked. */
   careInstructions: string;
   /** Percentage of shoppers (by measurement) who kept their recommended size.
    *  Used for social proof in size conversations. */
@@ -36,8 +36,8 @@ export type Product = {
   /** Whether this is currently low stock (triggers honest urgency). */
   lowStock?: boolean;
 
-  /** Brand-specific size chart. Sizes here ALWAYS match `sizes` above — some
-   *  pieces offer XS–L, some XS–XL, denim runs 24–32. The recommender only ever
+  /** Brand-specific size chart. Sizes here ALWAYS match `sizes` above, some
+   *  pieces offer XS, L, some XS, XL, denim runs 24, 32. The recommender only ever
    *  returns a size that exists in this chart. Measurements are the body
    *  measurements each size is cut for (cm), so fit math is brand-exact. */
   sizeChart?: SizeChart;
@@ -62,7 +62,13 @@ export type CollectionSlug =
   | "evening"
   | "tailoring"
   | "knitwear"
-  | "outerwear";
+  | "outerwear"
+  | "south-asian"
+  | "bridal"
+  | "accessories"
+  | "streetwear"
+  | "active"
+  | "modest";
 
 export type Collection = {
   slug: CollectionSlug;
@@ -79,31 +85,31 @@ export const collections: Collection[] = [
     slug: "the-atelier",
     name: "The Atelier",
     tagline: "Hand-finished pieces from the studio floor",
-    cover: u("1490481651871-ab68de25d43d", 1200), // elegant wardrobe — 200 ✓
+    cover: u("1490481651871-ab68de25d43d", 1200), // elegant wardrobe, 200 ✓
   },
   {
     slug: "evening",
     name: "Evening",
     tagline: "Silks, slips, and the quiet drama of night",
-    cover: u("1595777457583-95e059d581b8", 1200), // woman in red flowing gown — 200 ✓
+    cover: u("1595777457583-95e059d581b8", 1200), // woman in red flowing gown, 200 ✓
   },
   {
     slug: "tailoring",
     name: "Tailoring",
-    tagline: "Cut close, worn loose — the new structure",
-    cover: u("1594938298603-c8148c4dae35", 1200), // blue windowpane suit — 200 ✓
+    tagline: "Cut close, worn loose, the new structure",
+    cover: u("1594938298603-c8148c4dae35", 1200), // blue windowpane suit, 200 ✓
   },
   {
     slug: "knitwear",
     name: "Knitwear",
     tagline: "Cashmere, merino, and the long winter",
-    cover: u("1504703395950-b89145a5425b", 1200), // woman in grey knit — 200 ✓
+    cover: u("1504703395950-b89145a5425b", 1200), // woman in grey knit, 200 ✓
   },
   {
     slug: "outerwear",
     name: "Outerwear",
     tagline: "Coats that carry a room",
-    cover: u("1539109136881-3be0616acf4b", 1200), // dark editorial — 200 ✓
+    cover: u("1539109136881-3be0616acf4b", 1200), // dark editorial, 200 ✓
   },
 ];
 
@@ -115,7 +121,7 @@ export const collections: Collection[] = [
 declare const __SQ_ASSET_BASE__: string;
 // The backend origin (assets AND the /api/* endpoints live here). Set at BUILD
 // time by the widget's esbuild define; empty on the same-origin demo. Exported so
-// MiraWidget/TryOnPanel use it for fetch + nav too — a build-time constant has no
+// MiraWidget/TryOnPanel use it for fetch + nav too, a build-time constant has no
 // module-load-ordering hazard (a runtime window global read at module-init would
 // evaluate BEFORE the entry sets it → "" → storefront fetches hit the shop domain
 // → 404 → silent regex fallback; that was the bug).
@@ -136,10 +142,10 @@ export const products: Product[] = [
     images: ["/products/onyx-silk-slip-1.png", "/products/onyx-silk-slip-2.png"],
     colors: ["Onyx", "Ivory"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "Bias cut is unforgiving in the wrong size. Most customers size up one from their usual — the S is genuinely small. If you're between sizes, the M is the safer call.",
-    hesitationHint: "The bias cut is the hardest thing to judge in photos. It skims without clinging — people are always surprised by how it actually feels on.",
+    fitNotes: "Bias cut is unforgiving in the wrong size. Most customers size up one from their usual, the S is genuinely small. If you're between sizes, the M is the safer call.",
+    hesitationHint: "The bias cut is the hardest thing to judge in photos. It skims without clinging, people are always surprised by how it actually feels on.",
     fabricComposition: "100% mulberry silk, 19 momme weight. Hand-rolled hem.",
-    careInstructions: "Dry clean recommended. Can be hand-washed cold on a delicate cycle — lay flat to dry.",
+    careInstructions: "Dry clean recommended. Can be hand-washed cold on a delicate cycle, lay flat to dry.",
     keepRate: 0.79,
     lowStock: true,
   },
@@ -154,8 +160,8 @@ export const products: Product[] = [
     images: ["/products/ivory-silk-camisole-1.png", "/products/ivory-silk-camisole-2.png"],
     colors: ["Ivory", "Onyx"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "True to size. The fully adjustable straps give about 5cm of range so it works across a range of heights. Deep V is exactly as shown — it's not subtle.",
-    hesitationHint: "A lot of people ask whether the straps stay in place. They do — they're not decorative, they're load-bearing.",
+    fitNotes: "True to size. The fully adjustable straps give about 5cm of range so it works across a range of heights. Deep V is exactly as shown, it's not subtle.",
+    hesitationHint: "A lot of people ask whether the straps stay in place. They do, they're not decorative, they're load-bearing.",
     fabricComposition: "100% charmeuse silk. Featherweight, approx 12 momme.",
     careInstructions: "Hand wash cold or dry clean. Iron on lowest setting with a press cloth.",
     keepRate: 0.88,
@@ -171,8 +177,8 @@ export const products: Product[] = [
     images: ["/products/atelier-wide-leg-trouser-1.png", "/products/atelier-wide-leg-trouser-2.png"],
     colors: ["Charcoal", "Camel", "Ink"],
     sizes: ["XS", "S", "M", "L", "XL"],
-    fitNotes: "High-rise runs true in the waist but is cut for a longer torso. Petite customers (under 5'4\") typically need a 3–4cm hem taken up. True to size in the waist.",
-    hesitationHint: "The high waist is the detail people ask about most — it reads more flattering than it looks on the hanger. It's designed to sit at your natural waist, not your hips.",
+    fitNotes: "High-rise runs true in the waist but is cut for a longer torso. Petite customers (under 5'4\") typically need a 3, 4cm hem taken up. True to size in the waist.",
+    hesitationHint: "The high waist is the detail people ask about most, it reads more flattering than it looks on the hanger. It's designed to sit at your natural waist, not your hips.",
     fabricComposition: "72% wool, 24% viscose, 4% elastane. Fluid-drape construction.",
     careInstructions: "Dry clean only. Steam to refresh between wears.",
     keepRate: 0.85,
@@ -188,10 +194,10 @@ export const products: Product[] = [
     images: ["/products/linen-relaxed-shirt-1.png", "/products/linen-relaxed-shirt-2.png"],
     colors: ["Bone", "Stone", "Black"],
     sizes: ["XS", "S", "M", "L", "XL"],
-    fitNotes: "Intentionally oversized through the shoulder — even the XS is roomy. If you want a more fitted look, size down one. If you want the relaxed/tucked-out look, go true to size.",
-    hesitationHint: "The oversized shoulder is a deliberate cut — same drop-shoulder detail you're seeing in every atelier collection this season. It's not a sizing issue, it's the silhouette.",
+    fitNotes: "Intentionally oversized through the shoulder, even the XS is roomy. If you want a more fitted look, size down one. If you want the relaxed/tucked-out look, go true to size.",
+    hesitationHint: "The oversized shoulder is a deliberate cut, same drop-shoulder detail you're seeing in every atelier collection this season. It's not a sizing issue, it's the silhouette.",
     fabricComposition: "100% Belgian linen, sand-washed for softness. Gets better with every wash.",
-    careInstructions: "Machine wash cold, hang to dry. Do not tumble dry — it will shrink. Linen wrinkles naturally; embrace it or iron damp.",
+    careInstructions: "Machine wash cold, hang to dry. Do not tumble dry, it will shrink. Linen wrinkles naturally; embrace it or iron damp.",
     keepRate: 0.91,
   },
   {
@@ -205,10 +211,10 @@ export const products: Product[] = [
     images: ["/products/wrap-coat-camel-1.png", "/products/wrap-coat-camel-2.png"],
     colors: ["Camel", "Charcoal"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "Generous through the shoulder and body — designed to wear over a blazer. Belts at a natural waist. Runs slightly long in the sleeve on petite frames (under 5'4\"). True to size for most.",
-    hesitationHint: "The double-faced cashmere-wool face is genuinely different from anything synthetic at a lower price point — it has a body and warmth that photographs can't capture.",
+    fitNotes: "Generous through the shoulder and body, designed to wear over a blazer. Belts at a natural waist. Runs slightly long in the sleeve on petite frames (under 5'4\"). True to size for most.",
+    hesitationHint: "The double-faced cashmere-wool face is genuinely different from anything synthetic at a lower price point, it has a body and warmth that photographs can't capture.",
     fabricComposition: "80% cashmere, 20% wool. Double-faced construction. Half-canvas chest piece. Fully unlined.",
-    careInstructions: "Dry clean only. Store folded, not hung, to preserve the shoulder shape. Cashmere pilling is normal in high-friction areas — remove with a fabric comb.",
+    careInstructions: "Dry clean only. Store folded, not hung, to preserve the shoulder shape. Cashmere pilling is normal in high-friction areas, remove with a fabric comb.",
     keepRate: 0.87,
     lowStock: true,
   },
@@ -223,10 +229,10 @@ export const products: Product[] = [
     images: ["/products/cashmere-v-neck-1.png", "/products/cashmere-v-neck-2.png"],
     colors: ["Oat", "Black", "Cardinal"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "Knits relax 3–4cm in length and slightly in width after a few wears. We recommend your true size. If you wear your knitwear oversized, go up one.",
-    hesitationHint: "12-gauge is the detail that separates this from thinner knits — it's substantial enough to wear alone in cold weather, fine enough to layer under a coat without bulk.",
+    fitNotes: "Knits relax 3, 4cm in length and slightly in width after a few wears. We recommend your true size. If you wear your knitwear oversized, go up one.",
+    hesitationHint: "12-gauge is the detail that separates this from thinner knits, it's substantial enough to wear alone in cold weather, fine enough to layer under a coat without bulk.",
     fabricComposition: "100% Grade-A Mongolian cashmere, 12-gauge. Knit in Scotland.",
-    careInstructions: "Hand wash cold or dry clean. Lay flat to dry — never hang a cashmere knit. Fold, don't hang, for storage.",
+    careInstructions: "Hand wash cold or dry clean. Lay flat to dry, never hang a cashmere knit. Fold, don't hang, for storage.",
     keepRate: 0.93,
   },
   {
@@ -243,7 +249,7 @@ export const products: Product[] = [
     fitNotes: "The cowl neck adds visual length to the torso. Go true to size for a fitted silhouette, or size up for more drape through the body. Works well on heights from 5'4\" upward without alterations.",
     hesitationHint: "The cowl neck is the hardest detail to visualise before you try it. It frames the collarbone in a way that most necklines don't.",
     fabricComposition: "100% crepe-back satin silk, 21 momme. The heavier weight prevents it from clinging in the wrong places.",
-    careInstructions: "Dry clean only. Do not machine wash — the weight and drape will be permanently affected.",
+    careInstructions: "Dry clean only. Do not machine wash, the weight and drape will be permanently affected.",
     keepRate: 0.82,
     lowStock: true,
   },
@@ -258,10 +264,10 @@ export const products: Product[] = [
     images: ["/products/tailored-blazer-double-1.png", "/products/tailored-blazer-double-2.png"],
     colors: ["Charcoal", "Ink"],
     sizes: ["XS", "S", "M", "L", "XL"],
-    fitNotes: "Peak lapels require shoulder room — if you're between sizes and broader through the shoulder, go up one. The body runs slim by design. Sleeve length is generous.",
-    hesitationHint: "The half-lining is the construction detail that separates this from fast-fashion suiting — it lets the Italian wool breathe and move with you instead of being stiff.",
+    fitNotes: "Peak lapels require shoulder room, if you're between sizes and broader through the shoulder, go up one. The body runs slim by design. Sleeve length is generous.",
+    hesitationHint: "The half-lining is the construction detail that separates this from fast-fashion suiting, it lets the Italian wool breathe and move with you instead of being stiff.",
     fabricComposition: "100% Italian virgin wool, 280g/m². Half-lined in Bemberg cupro. Peak lapels with functioning button cuffs.",
-    careInstructions: "Dry clean only. Hang on a wide shoulder hanger to preserve shape. Steam between wears — do not press with direct iron.",
+    careInstructions: "Dry clean only. Hang on a wide shoulder hanger to preserve shape. Steam between wears, do not press with direct iron.",
     keepRate: 0.86,
   },
   {
@@ -275,8 +281,8 @@ export const products: Product[] = [
     images: ["/products/pleated-midi-skirt-1.png", "/products/pleated-midi-skirt-2.png"],
     colors: ["Champagne", "Black"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "The knife pleats add some volume at the hip — customers who prefer a more streamlined silhouette often size down one. True to size gives the full pleated effect as designed.",
-    hesitationHint: "The pleats in photos look static — in person they catch and release light when you move. It's the detail that makes this worth the price.",
+    fitNotes: "The knife pleats add some volume at the hip, customers who prefer a more streamlined silhouette often size down one. True to size gives the full pleated effect as designed.",
+    hesitationHint: "The pleats in photos look static, in person they catch and release light when you move. It's the detail that makes this worth the price.",
     fabricComposition: "100% duchess satin, 100% silk. Knife pleats. Hidden side zip. Fully lined in silk charmeuse.",
     careInstructions: "Dry clean only. The knife pleats should be pressed flat from the waistband. Never machine wash.",
     keepRate: 0.84,
@@ -292,8 +298,8 @@ export const products: Product[] = [
     images: ["/products/merino-ribbed-turtleneck-1.png", "/products/merino-ribbed-turtleneck-2.png"],
     colors: ["Bone", "Black", "Espresso"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "Fitted cut — this is a bodycon silhouette. True to size. The extended neck can be worn folded or full-height. 18.5 micron means no itch even directly on skin.",
-    hesitationHint: "18.5 micron is the threshold where merino stops being scratchy. This sits directly on skin without irritation — most people are surprised by that.",
+    fitNotes: "Fitted cut, this is a bodycon silhouette. True to size. The extended neck can be worn folded or full-height. 18.5 micron means no itch even directly on skin.",
+    hesitationHint: "18.5 micron is the threshold where merino stops being scratchy. This sits directly on skin without irritation, most people are surprised by that.",
     fabricComposition: "100% extra-fine merino wool, 18.5 micron. Fine-gauge rib knit. Does not pill.",
     careInstructions: "Machine wash cold on wool cycle. Lay flat to dry. No tumble drying.",
     keepRate: 0.90,
@@ -309,8 +315,8 @@ export const products: Product[] = [
     images: ["/products/leather-trench-1.png", "/products/leather-trench-2.png"],
     colors: ["Cognac", "Black"],
     sizes: ["XS", "S", "M", "L"],
-    fitNotes: "Runs slightly narrow through the shoulder — if you're broader in the shoulder, go up one. The raglan sleeve construction means the armhole is generous. Italian nappa softens and moulds with wear.",
-    hesitationHint: "The break-in on Italian nappa is real — it's slightly stiff the first 2–3 wears, then it becomes exactly what you want. Every crease it develops is specific to how you wear it.",
+    fitNotes: "Runs slightly narrow through the shoulder, if you're broader in the shoulder, go up one. The raglan sleeve construction means the armhole is generous. Italian nappa softens and moulds with wear.",
+    hesitationHint: "The break-in on Italian nappa is real, it's slightly stiff the first 2, 3 wears, then it becomes exactly what you want. Every crease it develops is specific to how you wear it.",
     fabricComposition: "100% Italian nappa leather. Hand-finished seams. Raglan sleeve construction. Fully lined in viscose.",
     careInstructions: "Professional leather cleaning only. Condition with leather conditioner twice yearly. Store on a padded hanger, away from direct light.",
     keepRate: 0.88,
@@ -327,10 +333,10 @@ export const products: Product[] = [
     images: ["/products/wide-leg-denim-1.png", "/products/wide-leg-denim-2.png"],
     colors: ["Indigo", "Black"],
     sizes: ["24", "26", "28", "30", "32"],
-    fitNotes: "Selvedge denim has minimal stretch. Size up one from your usual stretch denim size — if you normally wear a 28 in stretch denim, go to a 29 or 30 here. They will loosen slightly with wear but not significantly.",
+    fitNotes: "Selvedge denim has minimal stretch. Size up one from your usual stretch denim size, if you normally wear a 28 in stretch denim, go to a 29 or 30 here. They will loosen slightly with wear but not significantly.",
     hesitationHint: "Selvedge denim develops a fade pattern unique to how you specifically wear and wash it. The longer you go between washes, the better the fade. These are meant to last 10+ years.",
     fabricComposition: "100% cotton, selvedge woven in Okayama Japan. 13.5oz weight. Sand-washed for softness. No stretch.",
-    careInstructions: "Machine wash cold inside-out. Or better: hand wash every 5–6 wears and wash infrequently to preserve the fade. Do not tumble dry — hang or lay flat.",
+    careInstructions: "Machine wash cold inside-out. Or better: hand wash every 5, 6 wears and wash infrequently to preserve the fade. Do not tumble dry, hang or lay flat.",
     keepRate: 0.83,
   },
 ];
@@ -341,9 +347,9 @@ for (const p of products) p.images = p.images.map(resolveAsset);
 
 // ── Brand-exact size charts ──────────────────────────────────────────────────
 // Each piece carries its OWN chart. The size set differs by product on purpose:
-// alpha XS–L, alpha XS–XL, and numeric denim 24–32. The recommender below never
-// returns a size that isn't in the product's chart — so "brand sizing" is real,
-// not a generic XS–XL guess.
+// alpha XS, L, alpha XS, XL, and numeric denim 24, 32. The recommender below never
+// returns a size that isn't in the product's chart, so "brand sizing" is real,
+// not a generic XS, XL guess.
 
 // Body measurements (cm) each ALPHA size is cut for. measures = [bust, waist, hip].
 const ALPHA_BASE: Record<string, number[]> = {
@@ -391,25 +397,25 @@ function chartFrom(
 const ALPHA_M = ["Bust", "Waist", "Hip"];
 const BOTTOM_M = ["Waist", "Hip", "Inseam"];
 
-// Per-product charts — brand-specific deviations baked in to match each fitNote.
+// Per-product charts, brand-specific deviations baked in to match each fitNote.
 const SIZE_CHARTS: Record<string, SizeChart> = {
   // Bias silk runs small → chart shifted DOWN 3cm so the recommender sizes up.
-  "onyx-silk-slip":           chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  2,  "brand fit notes", [-3,-3,-3]),
-  "ivory-silk-camisole":      chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  3,  "brand size guide"),
-  // High-rise tailored trouser — true in waist, full size run.
-  "atelier-wide-leg-trouser": chartFrom(BOTTOM_BASE, ["XS","S","M","L","XL"],     BOTTOM_M, "waist", 4,  "brand size guide"),
-  // Oversized linen — chart shifted UP 6cm bust so even XS reads roomy.
-  "linen-relaxed-shirt":      chartFrom(ALPHA_BASE,  ["XS","S","M","L","XL"],     ALPHA_M,  "bust",  14, "brand fit notes", [6,4,4]),
-  "wrap-coat-camel":          chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  12, "size chart image (OCR)"),
-  "cashmere-v-neck":          chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  6,  "brand size guide"),
-  "midnight-silk-gown":       chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  3,  "brand fit notes"),
-  "tailored-blazer-double":   chartFrom(ALPHA_BASE,  ["XS","S","M","L","XL"],     ALPHA_M,  "bust",  5,  "size chart image (OCR)"),
-  "pleated-midi-skirt":       chartFrom(BOTTOM_BASE, ["XS","S","M","L"],          BOTTOM_M, "waist", 5,  "brand size guide"),
-  // Bodycon merino — negative ease, true to size.
-  "merino-ribbed-turtleneck": chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  -4, "brand fit notes"),
-  "leather-trench":           chartFrom(ALPHA_BASE,  ["XS","S","M","L"],          ALPHA_M,  "bust",  8,  "size chart image (OCR)"),
-  // Selvedge denim — numeric waist sizing, runs small → recommender sizes up.
-  "wide-leg-denim":           chartFrom(DENIM_BASE,  ["24","26","28","30","32"],  BOTTOM_M, "waist", 1,  "brand fit notes"),
+  "onyx-silk-slip":           chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 2, "brand fit notes", [-3,-3,-3]),
+  "ivory-silk-camisole":      chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 3, "brand size guide"),
+  // High-rise tailored trouser, true in waist, full size run.
+  "atelier-wide-leg-trouser": chartFrom(BOTTOM_BASE, ["XS","S","M","L","XL"],    BOTTOM_M, "waist", 4, "brand size guide"),
+  // Oversized linen, chart shifted UP 6cm bust so even XS reads roomy.
+  "linen-relaxed-shirt":      chartFrom(ALPHA_BASE, ["XS","S","M","L","XL"],    ALPHA_M, "bust", 14, "brand fit notes", [6,4,4]),
+  "wrap-coat-camel":          chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 12, "size chart image (OCR)"),
+  "cashmere-v-neck":          chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 6, "brand size guide"),
+  "midnight-silk-gown":       chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 3, "brand fit notes"),
+  "tailored-blazer-double":   chartFrom(ALPHA_BASE, ["XS","S","M","L","XL"],    ALPHA_M, "bust", 5, "size chart image (OCR)"),
+  "pleated-midi-skirt":       chartFrom(BOTTOM_BASE, ["XS","S","M","L"],         BOTTOM_M, "waist", 5, "brand size guide"),
+  // Bodycon merino, negative ease, true to size.
+  "merino-ribbed-turtleneck": chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", -4, "brand fit notes"),
+  "leather-trench":           chartFrom(ALPHA_BASE, ["XS","S","M","L"],         ALPHA_M, "bust", 8, "size chart image (OCR)"),
+  // Selvedge denim, numeric waist sizing, runs small → recommender sizes up.
+  "wide-leg-denim":           chartFrom(DENIM_BASE, ["24","26","28","30","32"], BOTTOM_M, "waist", 1, "brand fit notes"),
 };
 
 for (const p of products) {
@@ -419,14 +425,14 @@ for (const p of products) {
 // ── Shared brand-exact size recommender ──────────────────────────────────────
 // Single source of truth used by BOTH the chat widget and the Try-On panel.
 // Estimates the shopper's body measurements, then picks the size from THIS
-// product's chart whose cut best fits — respecting the shopper's fit preference.
+// product's chart whose cut best fits, respecting the shopper's fit preference.
 // Only ever returns a size that exists in the product's `sizes` array.
 
 export type FitPref = "snug" | "true" | "relaxed";
 
 export type SizeRec = {
   size: string;
-  confidence: number;          // 0–100
+  confidence: number;          // 0, 100
   reasoning: string;           // one human sentence
   primaryLabel: string;        // e.g. "Bust"
   bodyValue: number;           // shopper's estimated measurement (cm)
@@ -435,7 +441,7 @@ export type SizeRec = {
 };
 
 /** Rough anthropometric estimate of bust/waist/hip (cm) from height+weight.
- *  Demo-grade but monotonic, clamped and sane — drives chart matching. Both
+ *  Demo-grade but monotonic, clamped and sane, drives chart matching. Both
  *  inputs move the result: weight (via BMI) sets girth, height adds frame.
  *  Inputs are clamped so absurd values (35kg @ 200cm) still map to the
  *  smallest sane body rather than negative circumferences. */
@@ -459,6 +465,88 @@ function estimateBody(heightCm: number, weightKg: number) {
   };
 }
 
+export type StretchLevel = "none" | "low" | "mid" | "high";
+
+/**
+ * Infer how much a garment gives, from its fabric composition + fit notes.
+ * This is the deciding factor for BOTTOMS: a rigid 26 will NOT close on a 28
+ * waist (you must size true or up), but a stretch 28 waist can drop to a 26
+ * because the fabric gives. Founder rule: for pants, stretch governs the size.
+ */
+export function fabricStretchLevel(product: Product): StretchLevel {
+  const t = `${product.fabricComposition ?? ""} ${product.fitNotes ?? ""} ${product.description ?? ""}`.toLowerCase();
+  // Explicit "no give" language always wins.
+  if (/\b(no stretch|non-?stretch|rigid|minimal stretch|selvedge)\b/.test(t)) return "none";
+  // Four-way stretch / spandex / lycra = high give.
+  if (/four-?way stretch|spandex|lycra/.test(t)) return "high";
+  // Quantified elastane: ≥8% reads as high, 2, 7% as mid.
+  const ela = t.match(/(\d{1,2})\s*%\s*(elastane|spandex|lycra)/);
+  if (ela) {
+    const pct = parseInt(ela[1]!, 10);
+    if (pct >= 8) return "high";
+    if (pct >= 2) return "mid";
+  }
+  if (/elastane|four-?way|\bstretch\b/.test(t)) return "mid";
+  return "low"; // rigid naturals (100% cotton/wool/linen/silk) with no stretch mention
+}
+
+/** Age-related body composition shift.
+ *  After 30, fat redistributes toward the waist (~0.7cm per decade, capped at +2.8cm at 70).
+ *  All other measurements stay stable. Age outside 18-80 is clamped; 0 = not provided. */
+function applyAgeCorrection(
+  body: { bust: number; waist: number; hip: number },
+  age: number,
+): { bust: number; waist: number; hip: number } {
+  if (!age || age <= 30) return body;
+  const decades = Math.min(4, (Math.min(70, age) - 30) / 10);
+  const waistAdj = Math.round(decades * 0.7 * 10) / 10; // 0 at 30, +0.7 at 40, +1.4 at 50, +2.1 at 60, +2.8 at 70
+  return { ...body, waist: Math.round((body.waist + waistAdj) * 10) / 10 };
+}
+
+/** BoldMatrix-style confidence breakdown — surfaces exactly which signals are driving
+ *  the score and what would improve it. Mirrors the progressive-disclosure UI. */
+export type ConfidenceBreakdown = {
+  score: number;          // 0–100 (capped at 93 — "perfect" needs real return data)
+  signals: string[];      // e.g. "Height & weight · 60%", "Age calibration · +8%"
+  upgradeMessage: string; // one sentence on how to reach higher confidence
+};
+
+export function confidenceBreakdown(input: {
+  heightCm: number;
+  weightKg: number;
+  age?: number;
+  usualBrandSize?: string;
+  bust?: number;
+  waist?: number;
+  hip?: number;
+}): ConfidenceBreakdown {
+  const signals: string[] = [];
+  let score = 60;
+  signals.push(`Height & weight · ${score}%`);
+
+  if (input.age && input.age > 0) {
+    score += 8;
+    signals.push("Age calibration · +8%");
+  }
+  if (input.usualBrandSize && input.usualBrandSize !== "none") {
+    score += 10;
+    signals.push("Usual brand size · +10%");
+  }
+  if (input.bust || input.waist || input.hip) {
+    score += 15;
+    signals.push("Your measurements · +15%");
+  }
+  score = Math.min(93, score);
+
+  const upgradeMessage =
+    score >= 93 ? "All signals provided — sizing is as accurate as it can be." :
+    score >= 78 ? "Add your measurements (bust/waist/hip) to reach ~93% confidence." :
+    score >= 68 ? "Add a usual brand size (+10%) or measurements (+15%) to sharpen this further." :
+    "Add your age (+8%), a usual brand size (+10%), and measurements (+15%) to reach ~93%.";
+
+  return { score, signals, upgradeMessage };
+}
+
 export function recommendSizeForProduct(
   product: Product,
   input: {
@@ -468,6 +556,12 @@ export function recommendSizeForProduct(
     waist?: number;
     hip?: number;
     fitPref?: FitPref;
+    /** Age in years (optional). Improves body-composition accuracy after 30. */
+    age?: number;
+    /** The size the shopper usually wears in a similar brand (e.g. "M").
+     *  Strongest pre-measurement predictor — biases the recommendation when
+     *  it agrees with or is within one step of the chart-math result. */
+    usualBrandSize?: string;
   },
 ): SizeRec {
   const chart = product.sizeChart;
@@ -476,7 +570,8 @@ export function recommendSizeForProduct(
   // Available sizes = intersection of declared sizes and chart rows.
   const sizes = product.sizes.filter((s) => !chart || chart.rows[s]);
 
-  const est = estimateBody(input.heightCm, input.weightKg);
+  const rawEst = estimateBody(input.heightCm, input.weightKg);
+  const est = input.age ? applyAgeCorrection(rawEst, input.age) : rawEst;
   const body = {
     bust: input.bust ?? est.bust,
     waist: input.waist ?? est.waist,
@@ -498,9 +593,21 @@ export function recommendSizeForProduct(
   const idx = measureIdx >= 0 ? measureIdx : 0;
   const bodyValue = (body as Record<string, number>)[primary] ?? body.bust;
 
-  // Target garment measurement = body + the cut's ease, adjusted by preference.
+  // Stretch governs bottoms. When the size is decided by the WAIST (trousers,
+  // jeans, skirts), a rigid fabric must be sized true-or-up (it won't give), and
+  // a high-stretch fabric can sit snugger (it will). We nudge the target larger
+  // for rigid waists and smaller for stretchy ones.
+  const stretch = fabricStretchLevel(product);
+  const isWaistSized = primary === "waist";
+  const stretchAdj = !isWaistSized ? 0
+    : stretch === "none" ? 2.5   // rigid → never under-size; lean to true/up
+    : stretch === "low"  ? 1.2
+    : stretch === "high" ? -2.0  // real give → can size down
+    : 0;                          // mid → neutral
+
+  // Target garment measurement = body + the cut's ease, adjusted by preference + stretch.
   const prefEase = fitPref === "snug" ? -3 : fitPref === "relaxed" ? +5 : 0;
-  const target = bodyValue + chart.ease + prefEase;
+  const target = bodyValue + chart.ease + prefEase + stretchAdj;
 
   // Pick the size whose cut measurement is closest to the target.
   let best = sizes[0];
@@ -511,10 +618,27 @@ export function recommendSizeForProduct(
     if (dist < bestDist) { bestDist = dist; best = s; }
   }
 
+  // Brand-anchor pull: the shopper's usual brand size is the strongest pre-measurement
+  // predictor (Bold Metrics research). When it is within 1 step of the chart-math pick,
+  // the anchor wins — different brands cut differently by 1 step routinely. When it is
+  // 2+ steps away, the chart math takes precedence (the cut is genuinely different).
+  const anchor = input.usualBrandSize && input.usualBrandSize !== "none" ? input.usualBrandSize : null;
+  if (anchor && sizes.includes(anchor)) {
+    const anchorIdx = sizes.indexOf(anchor);
+    const bestIdx  = sizes.indexOf(best);
+    if (Math.abs(anchorIdx - bestIdx) <= 1) {
+      best = anchor; // anchor is within tolerance — use it as the recommendation
+    }
+  }
+
   const garmentValue = chart.rows[best][idx];
   // Confidence: closer match + more inputs = higher. ~6cm off ≈ tipping point.
   const inputBonus = (input.bust || input.waist || input.hip) ? 14 : 0;
-  const confidence = Math.max(48, Math.min(94, Math.round(92 - bestDist * 3.2 + inputBonus)));
+  const ageBonus = input.age && input.age > 0 ? 8 : 0;
+  const brandSizeBonus = anchor && sizes.includes(anchor)
+    ? (anchor === best ? 10 : 5) // full bonus when it matches, partial when it's close
+    : 0;
+  const confidence = Math.max(48, Math.min(97, Math.round(92 - bestDist * 3.2 + inputBonus + ageBonus + brandSizeBonus)));
 
   // Alt nudge: if the shopper sits between two sizes (within 3cm of the next).
   const order = sizes;
@@ -522,17 +646,32 @@ export function recommendSizeForProduct(
   let alt: SizeRec["alt"];
   const up = order[bi + 1];
   const down = order[bi - 1];
+  // On rigid waist-sized bottoms, NEVER offer "size down", the fabric has no
+  // give, so a smaller waist physically won't close. Only "size up" is honest.
+  const allowDown = !(isWaistSized && (stretch === "none" || stretch === "low"));
   if (up && Math.abs(chart.rows[up][idx] - target) - bestDist < 2.5) {
     alt = { size: up, note: `size up to ${up} for more room` };
-  } else if (down && Math.abs(chart.rows[down][idx] - target) - bestDist < 2.5) {
+  } else if (allowDown && down && Math.abs(chart.rows[down][idx] - target) - bestDist < 2.5) {
     alt = { size: down, note: `size down to ${down} for a closer fit` };
   }
 
   const label = chart.measures[idx];
+  const stretchNote = !isWaistSized ? "" :
+    stretch === "none" ? " This fabric has no give, so it's sized to sit at your true waist, a smaller size won't close." :
+    stretch === "high" ? " It has real stretch, so this sits snug and gives as you move." :
+    "";
+  const ageNote = input.age && input.age > 30 && isWaistSized
+    ? ` Age calibration applied — waist estimate adjusted for your body composition.` : "";
+  const anchorNote = anchor && anchor === best
+    ? ` Matches your usual ${anchor} in similar brands.`
+    : anchor && anchor !== best && sizes.includes(anchor)
+    ? ` (Your usual ${anchor} is close; this cut runs slightly different.)`
+    : "";
   const reasoning =
     `Your ${label.toLowerCase()} runs around ${bodyValue}cm; the ${best} in this piece is cut for that` +
     (chart.ease < 0 ? " with a body-skimming finish." :
-     chart.ease >= 10 ? " with the relaxed ease this cut is designed for." : ".");
+     chart.ease >= 10 ? " with the relaxed ease this cut is designed for." : ".") +
+    stretchNote + ageNote + anchorNote;
 
   return {
     size: best, confidence, reasoning,
@@ -542,7 +681,7 @@ export function recommendSizeForProduct(
 
 // ── Per-region fit breakdown ──────────────────────────────────────────────────
 // Compares the shopper's estimated body against a SPECIFIC size's cut, region by
-// region, so the result screen can show WHY a size fits — and how a different
+// region, so the result screen can show WHY a size fits, and how a different
 // size would feel. Drives the elaborate size result + the size-reflective render.
 // `tightness` is a normalized −1..+1 (negative = tight, positive = loose) used to
 // visually scale the garment on the avatar.
@@ -560,7 +699,7 @@ export type SizeFit = {
   size: string;
   regions: FitRegion[];
   overallEaseCm: number;   // mean ease across regions (signed)
-  overallTightness: number;// −1..+1, mean — drives the avatar garment scale
+  overallTightness: number;// −1..+1, mean, drives the avatar garment scale
   headline: string;        // one human line summarising the feel
 };
 
@@ -596,7 +735,7 @@ export function fitBreakdown(
   };
 
   if (!chart || !chart.rows[size]) {
-    // GRACEFUL FALLBACK (no measured size chart yet). The bars must NEVER be dead —
+    // GRACEFUL FALLBACK (no measured size chart yet). The bars must NEVER be dead, 
     // a shopper still needs to SEE that a smaller size reads tighter and a larger
     // size reads roomier. We model an honest size-RELATIVE scale: the middle size
     // sits true (a touch of ease), and every step down/up shifts the ease by ~4cm.
@@ -632,7 +771,7 @@ export function fitBreakdown(
     const bodyCm = bodyByKey[key] ?? body.bust;
     const garmentCm = chart.rows[size][i];
     const easeCm = Math.round((garmentCm - bodyCm) * 10) / 10;
-    // Inseam is a length, not a circumference — never "tight/loose", just shown.
+    // Inseam is a length, not a circumference, never "tight/loose", just shown.
     const tag = key === "inseam" ? "true" : tagFor(easeCm, isPrimary);
     const tightness = key === "inseam"
       ? 0
@@ -649,20 +788,20 @@ export function fitBreakdown(
     : 0;
 
   const headline =
-    overallTightness <= -0.35 ? "Sits close to the body — a defined silhouette."
-    : overallTightness < 0.18 ? "True to your measurements — balanced drape."
+    overallTightness <= -0.35 ? "Sits close to the body, a defined silhouette."
+    : overallTightness < 0.18 ? "True to your measurements, balanced drape."
     : overallTightness < 0.55 ? "An easy, relaxed fit with room to move."
-    : "Generous and oversized — drapes well away from the body.";
+    : "Generous and oversized, drapes well away from the body.";
 
   return { size, regions, overallEaseCm, overallTightness, headline };
 }
 
 // ── Render-driving ease ───────────────────────────────────────────────────────
-// The signed ease (cm) that should DRIVE the visual try-on render — the BINDING
+// The signed ease (cm) that should DRIVE the visual try-on render, the BINDING
 // region, not the average. A garment tight at the waist but roomy at the hip
 // still reads TIGHT (the waist pulls and won't sit), so tightness wins; otherwise
 // the roomiest region drives the oversized drape. Averaging hides a tight fit and
-// makes size-down look "true" — this never does. (Founder: "when they reduce size
+// makes size-down look "true", this never does. (Founder: "when they reduce size
 // it turns into a tighter article and let them see that it is tighter … don't tuck
 // it in … otherwise the whole concept of size up and down finishes.")
 export function renderEaseOf(fit: SizeFit): { easeCm: number; tightness: number; bindLabel: string | null } {
@@ -713,9 +852,40 @@ export function colorHex(name: string): string {
   return "#888";
 }
 
+/** Warm/cool undertone of a named color.
+ *  Returns  1 = warm undertone (camel, champagne, cognac, espresso, cream, etc.)
+ *           -1 = cool undertone (stone, charcoal, ink, slate, ash)
+ *            0 = truly neutral / pure (onyx, black, bone, oat, white, grey/gray)
+ */
+function warmth(name: string): -1 | 0 | 1 {
+  const n = name.toLowerCase();
+  if (/camel|champagne|cognac|espresso|ivory|cream|sand|tan|nude|blush|rust|terracotta|copper/.test(n)) return 1;
+  if (/stone|charcoal|ink|slate|ash/.test(n)) return -1;
+  // onyx, black, bone, oat, white, grey, gray, pure neutral
+  return 0;
+}
+
+/** Warmth-adjustment for a pair of color names.
+ *  Only applies when BOTH colors are neutrals (low-saturation / extreme lightness).
+ *  A warm+cool clash between two neutrals should score LOWER than a tonal warm+warm pairing.
+ */
+function warmthScore(nameA: string, nameB: string): number {
+  const hslA = hexToHsl(colorHex(nameA));
+  const hslB = hexToHsl(colorHex(nameB));
+  if (!isNeutral(hslA) || !isNeutral(hslB)) return 0; // only affects neutral pairings
+  const wA = warmth(nameA);
+  const wB = warmth(nameB);
+  if (wA === 1 && wB === 1) return 0.04;  // warm + warm tonal bonus
+  if (wA === -1 && wB === -1) return 0.02; // cool + cool tonal bonus (slightly less cohesive)
+  if ((wA === 1 && wB === -1) || (wA === -1 && wB === 1)) return -0.06; // warm/cool clash penalty
+  // one pure + one warm/cool → slight bonus (clean pairing)
+  if (wA === 0 || wB === 0) return 0.02;
+  return 0;
+}
+
 // ── Per-colorway product imagery ─────────────────────────────────────────────
 // Each product is photographed in its first (index 0) color. Alternate colors
-// are real AI-recolored renders of the SAME shot — same model, pose, lighting,
+// are real AI-recolored renders of the SAME shot, same model, pose, lighting,
 // background; only the garment color changes (no blend-mode tint). Files live at
 // /products/<handle>-<colorslug>.png. This set is the source of truth so the
 // gallery never points at a render that doesn't exist.
@@ -761,14 +931,14 @@ export function colorwayImages(
 }
 
 // ── Intelligent outfit-styling engine ────────────────────────────────────────
-// One algorithm, four signals — shared by the Try-On "complete the look" grid
+// One algorithm, four signals, shared by the Try-On "complete the look" grid
 // AND by Mira's recommendations. NOT random: it scores every candidate piece on
 // (1) real color harmony (HSL), (2) what category actually completes the look,
 // (3) matching formality / dress-code, (4) matching season. The blend is tuned
 // so the top picks genuinely *go together* and *suit the occasion*, not just
 // share a color family.
 
-// — 1. Color harmony (HSL-based) ——————————————————————————————————————————————
+//, 1. Color harmony (HSL-based), , , , , , , , , , , , , , , , , , , , , , , 
 
 type Hsl = { h: number; s: number; l: number };
 
@@ -794,7 +964,7 @@ function hexToHsl(hex: string): Hsl {
 }
 
 /** A color reads as "neutral" (goes with everything) when it's barely saturated,
- *  or very dark/very light — i.e. the blacks, ivories, stones, charcoals. */
+ *  or very dark/very light, i.e. the blacks, ivories, stones, charcoals. */
 function isNeutral(c: Hsl): boolean {
   return c.s < 0.18 || c.l < 0.12 || c.l > 0.86;
 }
@@ -815,14 +985,14 @@ function hueGap(a: number, b: number): number {
 
 /** Score a single pair of resolved colors + name the harmony relationship.
  *
- * Real colour theory, tuned for CONVERSION — the combinations a stylist reaches
+ * Real colour theory, tuned for CONVERSION, the combinations a stylist reaches
  * for because they sell, not just because they're "fine". The old version scored
  * EVERY neutral pairing a flat 0.9, so in a neutral-heavy catalogue colour theory
  * never differentiated anything. Now the scale separates the boring-but-safe from
  * the genuinely impulse-triggering:
- *   • two neutrals        → safe, sophisticated, but the LEAST exciting (0.78–0.84)
+ *   • two neutrals        → safe, sophisticated, but the LEAST exciting (0.78, 0.84)
  *   • neutral + a colour  → the "pop of colour on a neutral base": the single most
- *                           stylist-approved, highest-converting combo (0.90–0.98),
+ *                           stylist-approved, highest-converting combo (0.90, 0.98),
  *                           scaled by how vividly the accent pops
  *   • complementary       → high-impact, eye-catching → drives impulse (0.93)
  *   • monochromatic       → tonal, refined (0.95)
@@ -832,14 +1002,14 @@ function hueGap(a: number, b: number): number {
 function pairColorHarmony(a: Hsl, b: Hsl): { score: number; type: HarmonyType } {
   const aN = isNeutral(a);
   const bN = isNeutral(b);
-  // BOTH neutral — the connective tissue of a wardrobe: safe and refined, but the
+  // BOTH neutral, the connective tissue of a wardrobe: safe and refined, but the
   // least impulse-driving. Tonal neutrals (close in lightness) read more intentional
   // than a hard light/dark split, so reward the tonal pairing slightly more.
   if (aN && bN) {
     const lGap = Math.abs(a.l - b.l);
     return { score: lGap < 0.45 ? 0.84 : 0.79, type: "neutral" };
   }
-  // ONE neutral + ONE saturated colour — the classic "pop of colour on a neutral
+  // ONE neutral + ONE saturated colour, the classic "pop of colour on a neutral
   // base". The highest-converting, most impulse-triggering pairing there is; the
   // more vivid the accent, the harder it pops, so scale 0.90 → 0.98 by saturation.
   if (aN || bN) {
@@ -847,7 +1017,7 @@ function pairColorHarmony(a: Hsl, b: Hsl): { score: number; type: HarmonyType } 
     const pop = Math.max(0, Math.min(1, (accent.s - 0.18) / 0.62));
     return { score: 0.9 + 0.08 * pop, type: "accent" };
   }
-  // TWO saturated colours — classic colour-wheel relationships, scored by IMPACT.
+  // TWO saturated colours, classic colour-wheel relationships, scored by IMPACT.
   const gap = hueGap(a.h, b.h);
   if (gap <= 18) return { score: 0.95, type: "monochromatic" };
   if (gap <= 50) return { score: 0.9, type: "analogous" };
@@ -856,7 +1026,7 @@ function pairColorHarmony(a: Hsl, b: Hsl): { score: number; type: HarmonyType } 
   return { score: 0.48, type: "contrast" };
 }
 
-/** Best color relationship between two products across their colorways — the
+/** Best color relationship between two products across their colorways, the
  *  shopper can always pick the matching colorway, so the best pairing wins. */
 export function analyzeColorHarmony(
   colorsA: string[],
@@ -866,13 +1036,14 @@ export function analyzeColorHarmony(
   for (const a of colorsA) {
     for (const b of colorsB) {
       const r = pairColorHarmony(hexToHsl(colorHex(a)), hexToHsl(colorHex(b)));
+      r.score = Math.min(1, Math.max(0, r.score + warmthScore(a, b)));
       if (r.score > best.score) best = r;
     }
   }
   return best;
 }
 
-// — 2/3/4. What-suits-what: category complement, formality, season ————————————
+//, 2/3/4. What-suits-what: category complement, formality, season, , , , , , 
 
 type BodyZone = "upper" | "lower" | "full" | "layer" | "accent";
 
@@ -887,7 +1058,7 @@ function bodyZone(cat: Product["category"]): BodyZone {
   }
 }
 
-/** How naturally two garments combine into one worn outfit (0–1). */
+/** How naturally two garments combine into one worn outfit (0, 1). */
 function categoryAffinity(a: Product, b: Product): number {
   const za = bodyZone(a.category);
   const zb = bodyZone(b.category);
@@ -903,9 +1074,9 @@ function categoryAffinity(a: Product, b: Product): number {
   if (has("upper", "accent")) return 0.7;
   if (has("full", "upper") || has("full", "lower")) return 0.25; // dress doesn't need either
   if (za === "layer" && zb === "layer") return 0.3;  // two coats compete
-  if (za === "upper" && zb === "upper") return 0.4;  // two tops — layerable but rarely
-  if (za === "lower" && zb === "lower") return 0.15; // two bottoms — never
-  if (za === "full" && zb === "full") return 0.12;   // two dresses — never
+  if (za === "upper" && zb === "upper") return 0.4;  // two tops, layerable but rarely
+  if (za === "lower" && zb === "lower") return 0.15; // two bottoms, never
+  if (za === "full" && zb === "full") return 0.12;   // two dresses, never
   return 0.5;
 }
 
@@ -934,7 +1105,7 @@ function seasonOf(p: Product): number {
   return 0.5;
 }
 
-// — 5. Silhouette / proportion ————————————————————————————————————————————————
+//, 5. Silhouette / proportion, , , , , , , , , , , , , , , , , , , , , , , , 
 // The oldest rule in styling: balance volume with closeness. A wide-leg trouser
 // wants a fitted top; an oversized coat wants a slim base. Infer each piece's
 // silhouette from its fit notes + name + description: −1 = close/fitted,
@@ -951,19 +1122,20 @@ function silhouetteOf(p: Product): number {
   return Math.max(-1, Math.min(1, v));
 }
 
-/** How well two pieces balance in proportion (0–1). Volume + fit = textbook;
+/** How well two pieces balance in proportion (0, 1). Volume + fit = textbook;
  *  two voluminous (or two very fitted) pieces fight each other. */
 function proportionScore(a: Product, b: Product): number {
   const sa = silhouetteOf(a);
   const sb = silhouetteOf(b);
   const prod = sa * sb;
-  if (prod < -0.15) return 1.0;                                   // opposite = balanced
-  if (Math.abs(sa) < 0.2 || Math.abs(sb) < 0.2) return 0.82;      // one regular = safe
-  if (prod > 0.25) return 0.45;                                   // both volume / both tight = clashy
+  if (prod < -0.15) return 1.0;                                   // fitted + relaxed = textbook balance (the ideal)
+  if (Math.abs(sa) < 0.2 && Math.abs(sb) < 0.2) return 0.74;      // both regular = safe but flat, no movement
+  if (Math.abs(sa) < 0.2 || Math.abs(sb) < 0.2) return 0.85;      // one regular anchoring a shaped piece = good
+  if (prod > 0.25) return 0.4;                                    // both voluminous / both tight = clash
   return 0.7;
 }
 
-// — 6. Desirability (real signal, never invented) —————————————————————————————
+//, 6. Desirability (real signal, never invented), , , , , , , , , , , , , , , 
 // keepRate = % of shoppers who kept their recommended size = a real proxy for
 // "this piece delivers / people want it". Used as a gentle tie-breaker so the
 // top pick is also something shoppers actually love, not just a color match.
@@ -971,23 +1143,23 @@ function desirabilityOf(p: Product): number {
   return typeof p.keepRate === "number" ? Math.max(0, Math.min(1, p.keepRate)) : 0.7;
 }
 
-// — 6b. Impulse-add likelihood (the conversion math) ——————————————————————————
+//, 6b. Impulse-add likelihood (the conversion math), , , , , , , , , , , , , 
 // A recommendation only converts on impulse if adding it feels frictionless. A
 // complementary piece priced at or below the anchor is an easy "yes, add it"; a
-// piece far pricier is a separate, deliberated purchase — not an impulse add. This
+// piece far pricier is a separate, deliberated purchase, not an impulse add. This
 // is the price-elasticity half of "most likely to be bought TOGETHER", paired with
 // keepRate (do people love it) and colour impact (does the combo catch the eye).
 function impulseAddScore(anchor: Product, cand: Product): number {
   const ratio = cand.priceUsd / Math.max(1, anchor.priceUsd);
-  if (ratio <= 1) return 1.0;     // same or cheaper — frictionless add-on
-  if (ratio <= 1.4) return 0.85;  // a little more — still an easy yes
-  if (ratio <= 2) return 0.6;     // noticeably pricier — some hesitation
-  return 0.42;                    // a major second purchase — rarely impulse
+  if (ratio <= 1) return 1.0;     // same or cheaper, frictionless add-on
+  if (ratio <= 1.4) return 0.85;  // a little more, still an easy yes
+  if (ratio <= 2) return 0.6;     // noticeably pricier, some hesitation
+  return 0.42;                    // a major second purchase, rarely impulse
 }
 
-// — 7. Palette coherence across a whole worn set ——————————————————————————————
+//, 7. Palette coherence across a whole worn set, , , , , , , , , , , , , , , 
 // A great outfit reads as a neutral base + AT MOST one hero colour. Count the
-// saturated (non-neutral) pieces the set would have with `cand` added: 0–1
+// saturated (non-neutral) pieces the set would have with `cand` added: 0, 1
 // accents is clean, 2 is okay only if they harmonise, 3+ is busy.
 function paletteCoherence(worn: Product[], cand: Product): number {
   const all = [...worn, cand];
@@ -1000,12 +1172,12 @@ function paletteCoherence(worn: Product[], cand: Product): number {
     const h = analyzeColorHarmony(accents[0].colors, accents[1].colors);
     return h.type === "monochromatic" || h.type === "analogous" || h.type === "complementary" ? 0.78 : 0.42;
   }
-  return 0.3; // three+ competing colours — busy
+  return 0.3; // three+ competing colours, busy
 }
 
 export type LookEntry = {
   product: Product;
-  score: number;        // 0–1 overall
+  score: number;        // 0, 1 overall
   harmonyType: HarmonyType;
   reason: string;       // one honest human sentence (no invented facts)
 };
@@ -1078,7 +1250,7 @@ export function buildLook(
 }
 
 /**
- * Back-compat wrapper — same signature/return as before (Product[]), now backed
+ * Back-compat wrapper, same signature/return as before (Product[]), now backed
  * by the intelligent `buildLook` engine. Existing callers (Try-On grid, Mira)
  * keep working; richer reasons are available via `buildLook`.
  */
@@ -1115,7 +1287,7 @@ function occupiedZones(worn: Product[]): Set<BodyZone> {
 export function canAddToLook(cand: Product, worn: Product[]): boolean {
   const filled = occupiedZones(worn);
   const z = bodyZone(cand.category);
-  if (cand.category === "accessory") return true; // accent — unlimited
+  if (cand.category === "accessory") return true; // accent, unlimited
   // A dress can't join anything that dresses the torso or legs, and vice-versa.
   if (z === "full") return !(filled.has("full") || filled.has("upper") || filled.has("lower"));
   // Already wearing a dress → only an outer layer may go over it (coat over a
@@ -1171,19 +1343,24 @@ export function completeLookFor(
       const palette = paletteCoherence(worn, p);
       const desire = desirabilityOf(p);
       // Conversion math: how likely is this piece bought TOGETHER with the anchor
-      // on impulse — priced as an easy add-on, averaged against the worn set.
+      // on impulse, priced as an easy add-on, averaged against the worn set.
       const impulse =
         worn.reduce((s, w) => s + impulseAddScore(w, p), 0) / worn.length;
       const z = bodyZone(p.category);
-      // Bonus for completing the outfit's missing core slot.
+      // Bonus for completing the outfit's missing core slot, GATED on the piece
+      // actually being a good match (panel rank 3). A reduced 0.12 (was 0.25) that
+      // only applies when colour + proportion are coherent, so "you need a bottom"
+      // can never promote a colour-clashing piece over a piece that actually works.
+      const slotFills = (needsLower && z === "lower") || (needsUpper && z === "upper");
+      const slotQualityOk = colorAvg > 0.72 && proportionAvg > 0.6;
       const slotBonus =
-        (needsLower && z === "lower") || (needsUpper && z === "upper") ? 0.25
-        : z === "layer" ? 0.08
-        : z === "accent" ? 0.05
+        slotFills && slotQualityOk ? 0.12
+        : z === "layer" ? 0.06
+        : z === "accent" ? 0.04
         : 0;
       // Weighted for CONVERSION, not just aesthetics: colour theory (0.26) +
       // palette discipline (0.10) lead, then how the piece is loved (desire 0.10)
-      // and how easily it's added on impulse (0.08) — so the top picks are the
+      // and how easily it's added on impulse (0.08), so the top picks are the
       // ones most likely to be bought together, not merely colour-matched.
       const score =
         0.26 * colorAvg +
@@ -1199,11 +1376,11 @@ export function completeLookFor(
     })
     .sort((a, b) => b.score - a.score);
 
-  // ── Slot DIVERSITY (founder: "when wearing a shirt, don't show more shirts —
+  // ── Slot DIVERSITY (founder: "when wearing a shirt, don't show more shirts, 
   // show what completes it; once they add a bottom, show a jacket/accessory").
   // The raw score can rank 3 bottoms first for a single top. Instead, round-robin
   // across body zones so the shopper sees VARIETY (a bottom, a layer, an
-  // accessory) — prioritizing the still-open core slot first. As pieces are added
+  // accessory), prioritizing the still-open core slot first. As pieces are added
   // a filled slot drops out (canAddToLook), so the options auto-shift to what's
   // still needed (top+bottom → layers/accessories surface).
   const byZone = new Map<BodyZone, LookEntry[]>();

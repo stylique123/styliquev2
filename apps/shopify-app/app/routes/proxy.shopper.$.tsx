@@ -39,10 +39,16 @@ function cors(res: Response): Response {
 }
 
 function respond<T>(payload: ApiResponse<T>, status?: number): Response {
+  // Map the fixed error vocabulary (§3.5 #6) to honest HTTP status codes so
+  // clients can branch (e.g. 429 → exponential backoff) instead of treating every
+  // failure as a generic 400 (panel P2).
   const code = status ?? (payload.ok ? 200 : payload.error === "shop_not_installed" ? 404
                                   : payload.error === "invalid_input" || payload.error === "invalid_payload" ? 400
-                                  : payload.error === "product_not_found" ? 404
-                                  : payload.error === "rate_limited" ? 429
+                                  : payload.error === "product_not_found" || payload.error === "not_found" ? 404
+                                  : payload.error === "rate_limited" || payload.error === "quota_reached" ? 429
+                                  : payload.error === "feature_disabled" || payload.error === "unauthorized" ? 403
+                                  : payload.error === "no_variants_found" ? 422
+                                  : payload.error === "render_unavailable" ? 503
                                   : 400);
   return cors(json(payload, { status: code }));
 }
@@ -116,77 +122,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
           headers: {
             "Content-Type": `image/${ext}`,
             "Cache-Control": "public, max-age=86400",
-            "X-Content-Type-Options": "nosniff",
-          },
-        });
-        return cors(res);
-      } catch { /* try next extension */ }
-    }
-    return cors(new Response("not_found", { status: 404 }));
-  }
-
-  // creative-set worker stores generated images and PDFs at:
-  //   ${STORAGE_PATH}/creative/<setId>/<idx>.<ext>
-  //   ${STORAGE_PATH}/creative/<setId>/lookbook.pdf
-  // and records the URL as /api/creative/image/<setId>/<idx> (or /lookbook.pdf).
-  // Mirror the VTO image-serve pattern above.
-  if (path.startsWith("api/creative/image/")) {
-    const storagePath = process.env.STORAGE_PATH;
-    if (!storagePath) return cors(new Response("not_found", { status: 404 }));
-
-    // Remaining path is "<setId>/<filename-or-idx>".
-    const remainder = path.slice("api/creative/image/".length);
-    if (!remainder) return cors(new Response("not_found", { status: 404 }));
-
-    // Validate to prevent path traversal: only alphanumeric, hyphens, and a
-    // single forward-slash separating setId from filename/index are allowed.
-    if (!/^[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+$/.test(remainder)) {
-      return cors(new Response("not_found", { status: 404 }));
-    }
-
-    const slashIdx = remainder.indexOf("/");
-    const setId = remainder.slice(0, slashIdx);
-    const filename = remainder.slice(slashIdx + 1);
-
-    // SECURITY: verify the CreativeSet row belongs to the requesting shop.
-    // Without this check a shopper on shop A could request a creative from
-    // shop B by guessing a setId.
-    const shop = await prisma.shop.findUnique({
-      where: { shopifyDomain: shopDomain },
-      select: { id: true, uninstalledAt: true },
-    });
-    if (!shop || shop.uninstalledAt) return cors(new Response("not_found", { status: 404 }));
-    const setRow = await prisma.creativeSet.findFirst({
-      where: { id: setId, shopId: shop.id },
-      select: { id: true },
-    });
-    if (!setRow) return cors(new Response("not_found", { status: 404 }));
-
-    const { readFile } = await import("node:fs/promises");
-
-    // PDF case (lookbook.pdf).
-    if (filename === "lookbook.pdf") {
-      try {
-        const buf = await readFile(`${storagePath}/creative/${setId}/lookbook.pdf`);
-        return cors(new Response(buf, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Cache-Control": "public, max-age=2592000",
-            "X-Content-Type-Options": "nosniff",
-          },
-        }));
-      } catch { /* fall through */ }
-      return cors(new Response("not_found", { status: 404 }));
-    }
-
-    // Image case: filename is the numeric index; try common extensions.
-    for (const ext of ["webp", "png", "jpg", "jpeg"]) {
-      try {
-        const buf = await readFile(`${storagePath}/creative/${setId}/${filename}.${ext}`);
-        const res = new Response(buf, {
-          headers: {
-            "Content-Type": `image/${ext === "jpg" ? "jpeg" : ext}`,
-            "Cache-Control": "public, max-age=2592000",
             "X-Content-Type-Options": "nosniff",
           },
         });

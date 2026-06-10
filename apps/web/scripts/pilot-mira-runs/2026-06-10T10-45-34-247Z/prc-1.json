@@ -1,0 +1,157 @@
+{
+  "persona_id": "prc-1",
+  "region": "proactive",
+  "age": 33,
+  "archetype": "browsing, no signal",
+  "style": "minimal_signal",
+  "pdp": null,
+  "started_at": "2026-06-10T10:50:33.363Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "just browsing",
+      "mira_voice": "All yours, say the word and I'll pull the one piece worth your time.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Surprise me",
+        "For an occasion"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "All yours, say the word and I'll pull the one piece worth your time.",
+        "route": "talk_only",
+        "quickReplies": [
+          "Surprise me",
+          "For an occasion"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 7778,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, here's the one I'd send you home with, it's a piece you'll keep for years.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "What's the fabric?",
+        "Size this one",
+        "Show me another"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, it's a piece you'll keep for years.",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "What's the fabric?",
+          "Size this one",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 24630,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "Okay, here's the one I'd send you home with, it's a piece you'll keep for years.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, it's a piece you'll keep for years.",
+        "route": "reco_handle",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 16984,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "This is the one I'd put you in, it's a piece you'll keep for years. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "This is the one I'd put you in, it's a piece you'll keep for years. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 10487,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "This is the one I'd put you in, it's a piece you'll keep for years. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "This is the one I'd put you in, it's a piece you'll keep for years. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 7505,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:51:40.747Z",
+  "total_latency_ms": 67384
+}

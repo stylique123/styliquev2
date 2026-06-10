@@ -1,5 +1,4 @@
 
-
 > @stylique/widget@0.0.0 typecheck /Users/apple/Desktop/stylique  re build/fashion/apps/widget
 > tsc --noEmit
 

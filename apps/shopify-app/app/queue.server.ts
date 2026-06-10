@@ -23,28 +23,7 @@ export async function enqueueCatalogSync(job: CatalogSyncJob) {
 }
 
 // ─── Creative Studio generation queue ──────────────────────────────────
-// Stylist (and brand dashboard) enqueues here when a creative set should be
-// produced. Worker (apps/worker) actually calls the image/video providers.
-export const creativeSetQueue = new Queue("creative-set", { connection });
-
-export type CreativeSetJob = {
-  shopId: string;
-  setId: string;                    // CreativeSet row already created (PENDING)
-  productId: string;
-  triggeredBy: string;              // "stylist_combo:<name>" / "recommendation:<id>" / "manual"
-  brief?: string;
-  /** Output kind — forwarded to the worker so it picks the right provider. */
-  kind?: string;
-};
-
-export async function enqueueCreativeSet(job: CreativeSetJob) {
-  return creativeSetQueue.add("generate", job, {
-    attempts: 3,
-    backoff: { type: "exponential", delay: 10_000 },
-    removeOnComplete: 50,
-    removeOnFail: 200,
-  });
-}
+// (Creative-set queue removed — Stylique no longer generates creative content.)
 
 // ─── Brand-install queue (D38a-r1) ─────────────────────────────────────
 // Enqueued once from afterAuth on first OAuth (and reinstall). Worker

@@ -136,7 +136,6 @@ export type BrainClientAction =
   // off /api/tryon/render automatically. PERSONAL_PHOTO can't auto-render
   // because we don't have the photo yet — the widget waits for upload.
   | { kind: "open_tryon"; mode: "model" | "photo"; productIds: string[]; modelHint?: string; autoRender?: boolean; comboName?: string }
-  | { kind: "open_studio"; sourceComboName: string; productIds: string[] }
   // Guided shopping actions — Rufus-pattern page-aware navigation and highlighting.
   // lead_browse: navigate to a PDP and speak about a specific detail on arrival.
   | { kind: "lead_browse"; handle: string; productId?: string; title: string; arrivalFocus?: string; imageUrl?: string }
@@ -180,7 +179,6 @@ export type ToolDef<TArgs = Record<string, unknown>, TResult = unknown> = {
   // Per-shopper usage cap (defaults: unlimited). Brain checks before dispatch.
   metric?:
     | "TRYON_PERSONAL" | "TRYON_BODY"
-    | "CREATIVE_GENERATED" | "CREATIVE_SET_GENERATED"
     | "STYLE_RECOMMENDATION" | "FIT_RECOMMENDATION";
 
   // Implementation. If `unimplemented: true`, brain returns a "coming soon"
@@ -196,9 +194,6 @@ export type ToolDef<TArgs = Record<string, unknown>, TResult = unknown> = {
 
 // Compact alias map used by `requiresFeature` so we don't repeat the union.
 export type FeatureFlagMap = {
-  "studio.enabled": boolean;
-  "studio.video": boolean;
-  "studio.upscaler": boolean;
   "widget.enabled": boolean;
   "widget.personalPhotoTryOn": boolean;
   "widget.multiAngleTryOn": boolean;
@@ -442,6 +437,15 @@ export type ProviderTurnInput = {
   priorToolCalls?: ProviderToolCall[];
   pendingToolResults?: ProviderToolResult[];
   temperature?: number;
+  // When set, the provider MUST call one of these functions this turn (no free
+  // text). The Brain sets it on the first hops of a product-intent turn so the
+  // model pulls real catalog (search_catalog/propose_combo) instead of dead-ending
+  // on a chatty reply. Providers without forced-tool support may ignore it.
+  forceToolNames?: string[];
+  // AbortSignal from the caller's AbortController — allows the adapter's
+  // 10s timeout to ACTUALLY cancel the in-flight Gemini HTTP request, preventing
+  // dangling fetch handles from accumulating under load (panel P0 #2).
+  signal?: AbortSignal;
 };
 
 export type ProviderTurnOutput = {

@@ -1,0 +1,112 @@
+{
+  "persona_id": "uk-2",
+  "region": "UK · Edinburgh",
+  "age": 52,
+  "archetype": "winter-warm needs",
+  "style": "practical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T11:27:02.629Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "I need something that'll actually keep me warm walking the dog in scotland. is this it?",
+      "mira_voice": "Right, Scotland and dog walks, that's a real test! This Camel Wrap Coat is a gorgeous wool blend, so it'll definitely keep you warm on most days, but for the absolute coldest winds, I'd reach for the Leather Trench instead.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "Right, Scotland and dog walks, that's a real test! This Camel Wrap Coat is a gorgeous wool blend, so it'll definitely keep you warm on most days, but for the absolute coldest winds, I'd reach for the Leather Trench instead.",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 2013,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "The Leather Trench is a serious piece, proper full-grain leather, so it's a step up in warmth and completely windproof. It's built to last. Want to see it on you?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "The Leather Trench is a serious piece, proper full-grain leather, so it's a step up in warmth and completely windproof. It's built to last. Want to see it on you?",
+        "route": "navigate",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1915,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Alright, for serious warmth and classic style, the Tailored Double-Breasted Blazer in charcoal is a fantastic option. It's a structured wool that layers beautifully.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Alright, for serious warmth and classic style, the Tailored Double-Breasted Blazer in charcoal is a fantastic option. It's a structured wool that layers beautifully.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2133,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:08.690Z",
+  "total_latency_ms": 6061
+}

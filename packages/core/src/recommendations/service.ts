@@ -102,7 +102,7 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
     return out;
   }
 
-  // ─── Generator 2: weak PDP creative ────────────────────────────────────
+  // ─── Generator 2: weak PDP imagery / try-on readiness ──────────────────
   async function genWeakPdp(shopId: string): Promise<Candidate[]> {
     const audits = await prisma.productAudit.findMany({
       where: { shopId, OR: [{ weakImageQuality: true }, { missingTryOnReady: true }] },
@@ -115,13 +115,13 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
       },
     });
     return audits.map((a) => ({
-      kind: "WEAK_PDP_CREATIVE" as const, surface: "STUDIO" as const,
+      kind: "WEAK_PDP_CREATIVE" as const, surface: "CATALOG" as const,
       severity: (a.priorityScore > 0.7 ? "URGENT" : a.priorityScore > 0.4 ? "ATTENTION" : "INFO") as RecSeverity,
       minTier: "STARTER" as PlanTier,
-      title: `Studio could lift "${a.product?.title ?? "this product"}"`,
+      title: `"${a.product?.title ?? "this product"}" needs stronger PDP imagery`,
       body: a.weakImageQuality
-        ? `Imagery is below brand bar — generate a 4-still + 1-video set to refresh the PDP.`
-        : `PDP is missing try-on-ready angles — Studio can generate them in one click.`,
+        ? "Imagery is below the brand bar. Review the product photography and primary try-on image."
+        : "The PDP is missing try-on-ready angles. Add or select a clean full-garment image.",
       evidence: {
         weakImageQuality: a.weakImageQuality, missingTryOnReady: a.missingTryOnReady,
         missingStyling: a.missingStyling, priorityScore: a.priorityScore,
@@ -129,8 +129,8 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
       productId: a.productId,
       dedupeKey: `pdp:${a.productId}`,
       source: "pdp_audit",
-      actionUrl: a.product?.handle ? `/admin/studio/new?handle=${a.product.handle}` : undefined,
-      ctaLabel: "Generate creative set",
+      actionUrl: "/app/catalog",
+      ctaLabel: "Review catalog",
     }));
   }
 
@@ -213,11 +213,11 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
       severity: "INFO" as const,
       minTier: "STARTER" as PlanTier,
       title: `"${r.name}" is your top-performing AI combo`,
-      body: `Proposed ${r.proposed}× with strong engagement. Pin it to a collection or generate Studio creatives from it.`,
+      body: `Proposed ${r.proposed}× with strong engagement. Use the product mix in merchandising, collections, and campaign planning.`,
       evidence: { comboName: r.name, proposed: r.proposed, clicked: r.clicked, productIds: r.productIds, ctr: r.ctr },
       dedupeKey: `combo:${r.name}`,
       source: "stylist_combo",
-      ctaLabel: "Generate creatives",
+      ctaLabel: "Mark for merchandising",
     }));
   }
 

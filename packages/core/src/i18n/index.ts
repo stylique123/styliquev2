@@ -2,7 +2,9 @@
 // This module provides the infrastructure; actual translation strings are
 // added per-language when a pilot brand requests non-English support.
 
-export type SupportedLocale = "en" | "fr" | "de" | "es" | "it" | "pt" | "ja" | "zh";
+// "ar" added for Arabic/ME storefronts (panel P0: absent entirely).
+// RTL CSS is a separate widget-layer concern; this covers locale detection.
+export type SupportedLocale = "en" | "fr" | "de" | "es" | "it" | "pt" | "ja" | "zh" | "ar";
 
 export const DEFAULT_LOCALE: SupportedLocale = "en";
 
@@ -72,6 +74,7 @@ const LOCALES: Record<SupportedLocale, Partial<Record<TranslationKey, string>>> 
   pt: {}, // TODO: Portuguese
   ja: {}, // TODO: Japanese
   zh: {}, // TODO: Chinese
+  ar: {}, // TODO: Arabic — RTL layout requires widget dir='rtl' separately
 };
 
 export function t(key: TranslationKey, locale: SupportedLocale = DEFAULT_LOCALE, vars?: Record<string, string>): string {

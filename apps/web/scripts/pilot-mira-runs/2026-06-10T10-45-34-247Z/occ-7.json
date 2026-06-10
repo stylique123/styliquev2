@@ -1,0 +1,132 @@
+{
+  "persona_id": "occ-7",
+  "region": "occasion",
+  "age": 44,
+  "archetype": "client dinner — power dressing",
+  "style": "occasion_power",
+  "pdp": "tailored-blazer",
+  "started_at": "2026-06-10T10:53:24.971Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "client dinner, i'm the only woman in the room. how do i not look like i'm trying.",
+      "mira_voice": "That's a strong brief. You want to look sharp and completely in control without fuss, I have just the thing.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me more",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "That's a strong brief. You want to look sharp and completely in control without fuss, I have just the thing.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Tell me more",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 2870,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3661,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 5388,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, the connection dropped. For a client dinner where you're the only woman, I'd put you in our Atelier Wide-Leg Trouser. They're sharp, but not trying too hard.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about them",
+        "What top goes with it?",
+        "Show me another option"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Apologies, the connection dropped. For a client dinner where you're the only woman, I'd put you in our Atelier Wide-Leg Trouser. They're sharp, but not trying too hard.",
+        "route": "reco_handle",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Tell me about them",
+          "What top goes with it?",
+          "Show me another option"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 4189,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "If the trousers aren't quite the vibe, I'd suggest our Onyx Silk Slip. It's elegant without being overtly formal, and you can layer it up or down.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "If the trousers aren't quite the vibe, I'd suggest our Onyx Silk Slip. It's elegant without being overtly formal, and you can layer it up or down.",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Size this one",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 2375,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:53:43.454Z",
+  "total_latency_ms": 18483
+}

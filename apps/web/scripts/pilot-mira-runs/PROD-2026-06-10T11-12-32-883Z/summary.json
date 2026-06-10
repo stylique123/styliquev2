@@ -1,0 +1,26 @@
+{
+  "endpoint": "https://stylique-app-production.up.railway.app/api/demo/mira",
+  "ran_at": "2026-06-10T11-12-32-883Z",
+  "personas": 30,
+  "total_turns": 120,
+  "avg_latency_ms": 8351,
+  "fallback_pct": 0,
+  "routes": {
+    "look": 101,
+    "talk_only": 11,
+    "size_form": 4,
+    "add_to_cart": 4
+  },
+  "behaviors_pct": {
+    "asked_proactive_question": "13/30 (43%)",
+    "offered_try_on": "2/30 (7%)",
+    "offered_size": "1/30 (3%)",
+    "proposed_close": "2/30 (7%)",
+    "built_full_look": "29/30 (97%)",
+    "handled_objection": "0/30 (0%)",
+    "acknowledged_region_or_climate": "2/30 (7%)",
+    "fell_to_fallback_any": "0/30 (0%)",
+    "voice_repeated": "14/30 (47%)",
+    "invented_promo_or_price": "0/30 (0%)"
+  }
+}

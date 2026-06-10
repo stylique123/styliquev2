@@ -1,0 +1,100 @@
+{
+  "persona_id": "outfit-1",
+  "archetype": "outfit builder — winter capsule",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "build me a 3-piece winter outfit",
+      "http_status": 200,
+      "latency_ms": 7538,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Love that, for a winter outfit, are we thinking more cozy and relaxed, or sharp and tailored?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "Love that, for a winter outfit, are we thinking more cozy and relaxed, or sharp and tailored?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Cozy and relaxed",
+          "Sharp and tailored",
+          "Something in between"
+        ],
+        "intent": "discover"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 3390,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, what's the vibe you're going for with this outfit, sharp and tailored, or something more relaxed and cozy?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "Okay, what's the vibe you're going for with this outfit, sharp and tailored, or something more relaxed and cozy?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Sharp & tailored",
+          "Relaxed & cozy",
+          "Surprise me"
+        ],
+        "intent": "discover"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 23257,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Got it, so for your winter outfit, what's the vibe you're going for: sharp and tailored, or something more relaxed and cozy?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "Got it, so for your winter outfit, what's the vibe you're going for: sharp and tailored, or something more relaxed and cozy?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Sharp & tailored",
+          "Relaxed & cozy",
+          "A bit of both"
+        ],
+        "intent": "discover"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 23509,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, I'll pick for you then. I'm going to start with a beautiful cashmere, then build from there. Is that a good place to start?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, I'll pick for you then. I'm going to start with a beautiful cashmere, then build from there. Is that a good place to start?",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Yes, show me",
+          "Something else",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 57694,
+  "started_at": "2026-06-10T10:32:07.960Z",
+  "ended_at": "2026-06-10T10:33:05.654Z"
+}

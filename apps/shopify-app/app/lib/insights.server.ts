@@ -374,12 +374,40 @@ async function getGrowthInsights(
   // with a matching query token in the same 7-day window.
   // We use a lightweight token-overlap heuristic (too expensive to join in SQL
   // without a full-text index that doesn't exist yet).
-  const avgOrderValue = 85; // USD — fallback when no real AOV data
+  // Real AOV from confirmed-cart line values (panel rec #14) — average of the
+  // captured per-line `lineValue` from CART_CONFIRMED events; falls back to a
+  // conservative default only when no priced purchase data exists yet.
+  // Real AOV — average of complete ORDER totals (group line values by
+  // orderId and sum, then average across orders). The previous version
+  // averaged per-line lineValue which is fundamentally wrong: an order with
+  // 3 lines × $80 reports as $80 AOV, not $240. webhooks.orders.fulfilled.tsx
+  // writes orderId + lineValue on every CART_CONFIRMED line, so the join is
+  // trivial.
+  const totalsByOrder = new Map<string, number>();
+  for (const e of purchaseEvents) {
+    const p = e.payload as { orderId?: string | null; lineValue?: number } | null;
+    const oid = p?.orderId;
+    const lv = typeof p?.lineValue === "number" && p.lineValue > 0 ? p.lineValue : 0;
+    if (!oid || lv <= 0) continue;
+    totalsByOrder.set(oid, (totalsByOrder.get(oid) ?? 0) + lv);
+  }
+  const orderTotals = Array.from(totalsByOrder.values());
+  const avgOrderValue = orderTotals.length
+    ? Math.round(orderTotals.reduce((a, b) => a + b, 0) / orderTotals.length)
+    : 85; // fallback when no priced purchase data yet
 
   const catalogGapsWithIntent = gapRows.map((g) => {
     const searchCount = g._count._all;
     const alternativePurchaseCount = purchasesByQuery.get(g.normalizedQuery) ?? 0;
-    const revenueLeakEstimate = alternativePurchaseCount * avgOrderValue * 0.3;
+    // Honest demand-based opportunity (panel P1). The alternativePurchaseCount
+    // join was never populated (gapRows are pre-aggregated, with no shopper link
+    // to join CART_CONFIRMED against), so the old estimate was ALWAYS $0 — a metric
+    // that lied to every Growth+/Ultimate merchant. Estimate the revenue left on
+    // the table from UNMET demand instead: searches × AOV × an assumed ~30% capture
+    // had the item existed. Non-zero, decision-informing ("12 cream-linen searches
+    // × $85 × 30% ≈ $306 you could capture by stocking it"), and honest about
+    // being an estimate.
+    const revenueLeakEstimate = Math.round(searchCount * avgOrderValue * 0.3);
     const urgencyLevel: "high" | "medium" | "low" =
       searchCount >= 10 ? "high" : searchCount >= 5 ? "medium" : "low";
     return {
@@ -617,19 +645,8 @@ async function getUltimateInsights(
       },
     }),
 
-    // Recent creative sets for performance correlation
-    prisma.creativeSet.findMany({
-      where: { shopId, createdAt: { gte: thirtyDaysAgo }, status: "READY" },
-      select: {
-        id: true,
-        createdAt: true,
-        brief: true,
-        providerMeta: true,
-        productId: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    }),
+    // Creative Studio removed — creative-performance correlation is gone.
+    Promise.resolve([] as Array<{ id: string; createdAt: Date; brief: unknown; providerMeta: unknown; productId: string | null }>),
   ]);
 
   // ─── Trend velocity ───────────────────────────────────────────────────
@@ -759,42 +776,9 @@ async function getUltimateInsights(
   };
 
   // ─── Creative performance ─────────────────────────────────────────────
-  // Correlate: clicks/carts within 24h of creative set creation.
-  const creativePerformance: UltimateInsights["creativePerformance"] = await Promise.all(
-    recentCreativeSets.slice(0, 10).map(async (cs) => {
-      const windowStart = cs.createdAt;
-      const windowEnd = new Date(cs.createdAt.getTime() + 24 * 60 * 60 * 1000);
-      const [clicks, carts] = await Promise.all([
-        prisma.analyticsEvent.count({
-          where: {
-            shopId,
-            name: "CHAT_PRODUCT_CLICKED",
-            productId: cs.productId ?? undefined,
-            createdAt: { gte: windowStart, lt: windowEnd },
-          },
-        }),
-        prisma.analyticsEvent.count({
-          where: {
-            shopId,
-            name: "CART_CONFIRMED",
-            productId: cs.productId ?? undefined,
-            createdAt: { gte: windowStart, lt: windowEnd },
-          },
-        }),
-      ]);
-      // Extract "kind" from brief, fallback to "still"
-      const brief = cs.brief as { kind?: string; style?: string } | null;
-      const meta = cs.providerMeta as { brandConditioned?: string } | null;
-      return {
-        creativeSetId: cs.id,
-        kind: brief?.kind ?? "still",
-        generatedAt: cs.createdAt,
-        pdpClickThrough: clicks,
-        conversionRate: clicks > 0 ? carts / clicks : 0,
-        topPerformingStyle: meta?.brandConditioned ?? brief?.style ?? null,
-      };
-    })
-  );
+  // Creative Studio removed — no creative performance to correlate.
+  void recentCreativeSets;
+  const creativePerformance: UltimateInsights["creativePerformance"] = [];
 
   return {
     ...growth,

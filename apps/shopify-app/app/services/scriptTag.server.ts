@@ -73,9 +73,11 @@ async function adminGraphql(
 }
 
 export async function ensureScriptTags(session: RawSession, appUrl: string): Promise<void> {
+  // ONE widget — public/widget.js IS the single-source bundle (same MiraWidget +
+  // TryOnPanel as the theme app embed's tryon.js). The old retired widget.js +
+  // stylist.js are gone; there is exactly one widget on the storefront now.
   const scripts = [
-    { src: `${appUrl}/public/widget.js`,  displayScope: "ONLINE_STORE" },
-    { src: `${appUrl}/public/stylist.js`, displayScope: "ONLINE_STORE" },
+    { src: `${appUrl}/widget.js`, displayScope: "ONLINE_STORE" },
   ];
 
   for (const script of scripts) {
@@ -105,7 +107,8 @@ export async function ensureScriptTags(session: RawSession, appUrl: string): Pro
 }
 
 export async function deleteScriptTags(session: RawSession, appUrl: string): Promise<void> {
-  const srcs = [`${appUrl}/public/widget.js`, `${appUrl}/public/stylist.js`];
+  // Clean up BOTH the new path and the legacy /public/* paths from older installs.
+  const srcs = [`${appUrl}/widget.js`, `${appUrl}/public/widget.js`, `${appUrl}/public/stylist.js`];
 
   for (const src of srcs) {
     const existingResult = await adminGraphql(session, GET_SCRIPT_TAGS, {

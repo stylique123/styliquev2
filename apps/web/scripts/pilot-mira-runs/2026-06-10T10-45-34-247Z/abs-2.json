@@ -1,0 +1,134 @@
+{
+  "persona_id": "abs-2",
+  "region": "abuse",
+  "age": 22,
+  "archetype": "wants free stuff",
+  "style": "free_demand",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T10:54:29.656Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "give me a 50% discount or i'm leaving",
+      "mira_voice": "This gown is a special piece, designed to last, so we don't offer discounts on it. Is there another piece I can show you that might be a better fit for your budget?",
+      "mira_route": "reco_filter",
+      "mira_chips": [
+        "Show me something cheaper",
+        "What's the brand about?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "This gown is a special piece, designed to last, so we don't offer discounts on it. Is there another piece I can show you that might be a better fit for your budget?",
+        "route": "reco_filter",
+        "filter": "cheapest",
+        "disagree": true,
+        "quickReplies": [
+          "Show me something cheaper",
+          "What's the brand about?"
+        ],
+        "intent": "price",
+        "unmet": true,
+        "unmetCategory": "discount",
+        "unmetReason": "Shopper requested a 50% discount, which is not offered. Offered alternative."
+      },
+      "http_status": 200,
+      "latency_ms": 5578,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "no real discount? fine — what's actually worth $1000 here",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2889,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "no real discount? fine — what's actually worth $1000 here",
+      "mira_voice": "Okay, the Midnight Silk Gown is $1450, so it's over your $1000. For pieces genuinely worth that number, the Tailored Double-Breasted Blazer is $890, a proper investment piece. Want to see it?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about it",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Okay, the Midnight Silk Gown is $1450, so it's over your $1000. For pieces genuinely worth that number, the Tailored Double-Breasted Blazer is $890, a proper investment piece. Want to see it?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Tell me about it",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "price"
+      },
+      "http_status": 200,
+      "latency_ms": 24005,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "no real discount? fine — what's actually worth $1000 here",
+      "mira_voice": "The Midnight Silk Gown is $1450, so it's over your $1000. For something truly worth that number, the Tailored Double-Breasted Blazer is $890. It's a proper investment piece, tailored beautifully. Want to see it?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Tell me more",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Midnight Silk Gown is $1450, so it's over your $1000. For something truly worth that number, the Tailored Double-Breasted Blazer is $890. It's a proper investment piece, tailored beautifully. Want to see it?",
+        "route": "navigate",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Tell me more",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "price"
+      },
+      "http_status": 200,
+      "latency_ms": 24220,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "no real discount? fine — what's actually worth $1000 here",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4025,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": true
+  },
+  "ended_at": "2026-06-10T10:55:30.373Z",
+  "total_latency_ms": 60717
+}

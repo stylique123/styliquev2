@@ -6,7 +6,7 @@ import { boundary } from "@shopify/shopify-app-remix/server";
 import shopify, { authenticate } from "../shopify.server";
 
 // Polaris CSS is NOT loaded here — only app._index and app.catalog use Polaris
-// components. All other /app/* routes (dashboard, settings, studio) are bespoke
+// components. All other /app/* routes (settings) are bespoke
 // editorial dark (D6). Moving the link to each leaf route saves ~52KB gzip on
 // the merchant dashboard and settings pages.
 // Polaris AppProvider still works without the stylesheet — it only needs the JS.
@@ -40,10 +40,7 @@ export default function AppLayout() {
     <AppProvider apiKey={apiKey} isEmbeddedApp>
       <ui-nav-menu>
         <Link to="/app" rel="home">Home</Link>
-        <Link to="/app/dashboard">Dashboard</Link>
         <Link to="/app/catalog">Catalog</Link>
-        <Link to="/app/products/new">Add Product</Link>
-        <Link to="/app/studio">Studio</Link>
         <Link to="/app/billing">Billing</Link>
         <Link to="/app/settings/stylist">Stylist</Link>
         <Link to="/app/settings/tryon">Try-on</Link>

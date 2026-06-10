@@ -1,0 +1,87 @@
+{
+  "ran_at": "2026-06-10T11-25-07-852Z",
+  "endpoint": "http://localhost:3001/api/mira",
+  "avg_score": 9.8,
+  "rates": {
+    "proactive": 1,
+    "tryon": 0.85,
+    "sizing": 0.95,
+    "closed": 0.6,
+    "look": 0.95,
+    "occasion_acked": 1,
+    "objection_acked": 1,
+    "every_turn_next": 1,
+    "fabricated": 0,
+    "zero_fallback": 1
+  },
+  "worst_10": [
+    {
+      "id": "in-1",
+      "score": 9,
+      "region": "India · Mumbai",
+      "archetype": "wedding season, multi-piece"
+    },
+    {
+      "id": "uk-1",
+      "score": 9,
+      "region": "UK · London",
+      "archetype": "fashion-aware, asks brutal questions"
+    },
+    {
+      "id": "us-2",
+      "score": 9,
+      "region": "US · LA",
+      "archetype": "casual aesthetic, brand-conscious"
+    },
+    {
+      "id": "us-6",
+      "score": 9,
+      "region": "US · Seattle",
+      "archetype": "rain-proof needs"
+    },
+    {
+      "id": "in-2",
+      "score": 10,
+      "region": "India · Delhi",
+      "archetype": "summer-only fabrics"
+    },
+    {
+      "id": "in-3",
+      "score": 10,
+      "region": "India · Bangalore",
+      "archetype": "tech worker, wfh casual"
+    },
+    {
+      "id": "in-4",
+      "score": 10,
+      "region": "India · Chennai",
+      "archetype": "petite, struggle with western sizing"
+    },
+    {
+      "id": "jp-1",
+      "score": 10,
+      "region": "Japan · Tokyo",
+      "archetype": "minimal, premium, detail-focused"
+    },
+    {
+      "id": "jp-2",
+      "score": 10,
+      "region": "Japan · Osaka",
+      "archetype": "very petite"
+    },
+    {
+      "id": "pk-1",
+      "score": 10,
+      "region": "Pakistan · Karachi",
+      "archetype": "warm climate, modest cuts"
+    }
+  ],
+  "crm": {
+    "orphan_routes": [],
+    "route_requires_handle_missing": 2,
+    "non_fallback_empty_voice": 0,
+    "talk_only_no_chips": 0,
+    "identical_consecutive_voices": 0
+  },
+  "verdict": "Mira reads as a floor associate."
+}

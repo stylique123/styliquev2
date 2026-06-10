@@ -98,9 +98,7 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
   const signupsClaimed  = n("SIGNUP_CLAIMED");
   const tryOnSessions   = n("WIDGET_OPENED");
   const fitSubmitted    = n("WIDGET_FIT_SUBMITTED");
-  const creativesCount  = await prisma.creative.count({
-    where: { shopId, createdAt: { gte: since } },
-  });
+  const creativesCount  = 0; // Creative Studio removed — dead benchmark dimension reads 0.
 
   const comboCtr      = combosProposed > 0 ? cartConfirmed / combosProposed : 0;
   const signupRate    = chatSessions   > 0 ? signupsClaimed / chatSessions   : 0;

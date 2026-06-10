@@ -36,7 +36,10 @@ app.disable("x-powered-by");
 // charts. So the body parsers MUST skip /webhooks/* (and the App-Proxy path,
 // which also HMAC-verifies the raw request). Remix reads the body itself on
 // those routes.
-const RAW_BODY_PREFIXES = ["/webhooks", "/proxy"];
+// /api/demo/* is the public real-brain demo endpoint — its Remix action reads the
+// JSON body itself (request.json()), so express.json() must NOT drain the stream
+// first (same reason as /webhooks + /proxy). Without this the body arrives empty.
+const RAW_BODY_PREFIXES = ["/webhooks", "/proxy", "/api/demo"];
 const skipRawBody = (req: express.Request) =>
   RAW_BODY_PREFIXES.some((p) => req.path.startsWith(p));
 const jsonParser = express.json({ limit: "10mb" });

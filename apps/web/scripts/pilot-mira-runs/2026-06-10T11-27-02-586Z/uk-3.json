@@ -1,0 +1,109 @@
+{
+  "persona_id": "uk-3",
+  "region": "UK · Manchester",
+  "age": 27,
+  "archetype": "wedding guest, panicking",
+  "style": "urgent",
+  "pdp": null,
+  "started_at": "2026-06-10T11:27:02.629Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "wedding sunday and i have nothing. budget £300 max. help.",
+      "mira_voice": "Right, a wedding this Sunday with a £300 budget. For that, the Linen Relaxed Shirt at £280 is your best bet; it's easy to dress up. Or are you thinking something else entirely?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "Right, a wedding this Sunday with a £300 budget. For that, the Linen Relaxed Shirt at £280 is your best bet; it's easy to dress up. Or are you thinking something else entirely?",
+        "route": "reco_handle",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 3113,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a beautiful, breathable linen, perfect for dressing up or down. The cut is relaxed but still sharp, so it won't feel too casual.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "It's a beautiful, breathable linen, perfect for dressing up or down. The cut is relaxed but still sharp, so it won't feel too casual.",
+        "route": "fabric",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1811,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "This one runs true to size, so your usual would likely fit. Shall I confirm your exact size?",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Confirm my size",
+        "Show it on me",
+        "Add to bag"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "This one runs true to size, so your usual would likely fit. Shall I confirm your exact size?",
+        "route": "size_form",
+        "quickReplies": [
+          "Confirm my size",
+          "Show it on me",
+          "Add to bag"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 1459,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:09.012Z",
+  "total_latency_ms": 6383
+}

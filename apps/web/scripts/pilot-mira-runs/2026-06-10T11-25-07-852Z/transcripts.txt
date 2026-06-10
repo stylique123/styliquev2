@@ -1,0 +1,361 @@
+
+══ uk-4 ════════════════════════════════════════════════════════════════
+UK · Bristol · age 41 · size-anxious returner · style:data_focused · PDP=linen-relaxed-shirt
+   shopper [1807ms fit]: this brand's UK 12 or US 8 — what's a real M for someone 5'7 70kg?
+   mira   : The Linen Relaxed Shirt is one of our best sellers, a beautiful piece. For your measurements, you'd be a Medium in this for that relaxed, tucked-out look. Want to see it on you?
+   chips  : [See it on me | Add to bag | What goes with it? | Build the look]
+   shopper [1415ms add_to_cart]: ok, then add it to bag
+   mira   : I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1291ms add_to_cart]: great. checkout
+   mira   : On that — I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [2499ms add_to_cart]: great. checkout
+   mira   : I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1321ms add_to_cart]: great. checkout
+   mira   : Right — I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look
+══ uk-1 ════════════════════════════════════════════════════════════════
+UK · London · age 34 · fashion-aware, asks brutal questions · style:terse_skeptical · PDP=wrap-coat-camel
+   shopper [1944ms talk_only]: right, is the camel really pure wool? bit dubious at that price.
+   mira   : The Camel Wrap Coat is a beautiful piece, genuinely 100% fine wool, which is why it holds its shape so well. It's designed to last for years. What are you thinking of wearing it for?
+   chips  : [What's my size? | See it on me | Show me the full look]
+   shopper [1468ms navigate]: ok. take me to your best one
+   mira   : Right, for a truly special piece, the Leather Trench is absolutely stunning, and it will last you forever. Want to see it closer?
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   shopper [1447ms navigate]: ok, show me one more option
+   mira   : This one is pure drama, the Midnight Silk Gown. It's cut on the bias so it drapes beautifully. Want to see it closer?
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   shopper [1589ms navigate]: ok, show me one more option
+   mira   : OK — This one is pure drama, the Midnight Silk Gown. It's cut on the bias so it drapes beautifully. Want to see it closer?
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   shopper [2282ms navigate]: ok, show me one more option
+   mira   : Alright, for something with a bit more everyday elegance that still feels special, I'd put you in the Camel Wrap Coat. It's truly gorgeous.
+   chips  : [See it on me | Size this one | What goes with it? | Build the look]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, built_full_look
+══ uk-3 ════════════════════════════════════════════════════════════════
+UK · Manchester · age 27 · wedding guest, panicking · style:urgent
+   shopper [2710ms reco_handle]: wedding sunday and i have nothing. budget £300 max. help.
+   mira   : Right, a wedding this Sunday, and your budget is £300, got it. For that price point, I'd suggest the Merino Ribbed Turtleneck at $290, it's elegant and pairs beautifully with a skirt or trousers you might already have. What do you think?
+   chips  : [Tell me about the fabric | Show me another | What skirt would work? | What's my size?]
+   shopper [1502ms fabric]: tell me more
+   mira   : It's a really soft merino wool, finely ribbed for a sleek fit, and it comes in versatile shades like Bone, Black, or Espresso. It's the kind of piece you can easily dress up or down.
+   chips  : [What about the skirt? | Show me the black one | How does it fit?]
+   shopper [1788ms size_form]: good. so does that make this my size or do i still need to size up
+   mira   : We'll want to size this one properly, as it's a sleek fit. Let me get your measurements for it.
+   chips  : [Size me for it | Show me the colours]
+   shopper [1365ms add_to_cart]: ok, then add it to bag
+   mira   : I'll put the Merino Ribbed Turtleneck in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1327ms add_to_cart]: great. checkout
+   mira   : Right, heading to checkout now!
+   chips  : [View Bag | Keep browsing]
+   behaviors: asked_proactive_question, offered_size, proposed_close, built_full_look
+══ uk-2 ════════════════════════════════════════════════════════════════
+UK · Edinburgh · age 52 · winter-warm needs · style:practical · PDP=wrap-coat-camel
+   shopper [1946ms reco_handle]: I need something that'll actually keep me warm walking the dog in scotland. is this it?
+   mira   : Right, Scotland in winter, that's serious. This Camel Wrap Coat is a beautiful wool blend, so it'll handle most of the season, but for really biting cold, I'd reach for the Leather Trench instead.
+   chips  : [Tell me about the trench | What about the wrap coat? | Show me something else | What's my size?]
+   shopper [1839ms navigate]: tell me more
+   mira   : The Leather Trench is a proper winter piece, heavy leather, fully lined, it'll cut the wind and keep you warm on those walks. It's a statement piece, but built for function.
+   chips  : [What's the price? | Show me the camel coat again | See it on me | What's my size?]
+   shopper [1498ms reco_handle]: ok, show me one more option
+   mira   : Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.
+   chips  : [Compare the three | Size this one | What goes with it? | See it on you]
+   shopper [1473ms reco_handle]: ok, show me one more option
+   mira   : OK — Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.
+   chips  : [Compare the three | Which is warmest? | Show me something else | What's my size?]
+   shopper [2085ms navigate]: ok, show me one more option
+   mira   : The Camel Wrap Coat is a beautiful piece, it's a wool blend that drapes beautifully and layers over anything for warmth, and you can belt it for shape.
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   behaviors: offered_try_on, offered_size, built_full_look, acknowledged_region_or_climate
+══ us-2 ════════════════════════════════════════════════════════════════
+US · LA · age 29 · casual aesthetic, brand-conscious · style:vibey
+   shopper [1531ms reco_handle]: looking for an effortless capsule for california. no stuffy stuff.
+   mira   : Right, California effortless, no stuffy stuff. I know just the vibe. Let's start with a beautiful linen shirt, it's the anchor for that whole look.
+   chips  : [What goes with it? | Show me another shirt | What's the fabric like? | What's my size?]
+   shopper [3248ms reco_handle]: tell me more
+   mira   : It's a relaxed cut, so it feels easy but still looks sharp. Pair it with the wide-leg denim or the Atelier trousers for that perfect balance.
+   chips  : [Show me the denim | Show me the trousers | What's my size? | See it on you]
+   shopper [2540ms reco_handle]: ok, show me one more option
+   mira   : Right, if you're thinking California effortless, a soft knit camisole is another great option to build around. It's so versatile.
+   chips  : [What goes with it? | Size this one | Show me another top | See it on you]
+   shopper [1916ms reco_handle]: ok, show me one more option
+   mira   : Okay, one more option for that relaxed California feel, how about the Pleated Satin Midi Skirt? It's easy to dress up or down.
+   chips  : [What goes with it? | Show me another | See it on me | What's my size?]
+   shopper [1915ms reco_handle]: ok, show me one more option
+   mira   : Alright, for that relaxed feel, a V-neck cashmere knit is always elegant and easy. It's a piece you'll live in.
+   chips  : [What goes with it? | Size this one | Show me another | See it on you]
+   behaviors: offered_try_on, offered_size, acknowledged_region_or_climate
+══ us-3 ════════════════════════════════════════════════════════════════
+US · Chicago · age 45 · winter dressing, plus-size · style:practical_plus
+   shopper [1998ms navigate]: im size 16, need a coat that actually fits curvy in -10°F. what do you have.
+   mira   : Right, a proper winter coat for a curvy size 16 in serious cold, that's a specific need. For -10°F, you need true warmth. Our Leather Trench is designed with a generous cut and the leather itself is incredibly insulating.
+   chips  : [See it on me | What's my size? | Show me another | Build the look]
+   shopper [2022ms suitability]: tell me more
+   mira   : It's a beautiful, supple leather, cut to drape rather than cling, so it'll sit comfortably over layers without feeling bulky. The Cognac is a rich, warm shade. It's built to last for decades, not just a season.
+   chips  : [See it on me | What's my size? | Show me another | Build the look]
+   shopper [2839ms reco_handle]: ok — given that, what's your pick
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1825ms reco_handle]: ok, show me one more option
+   mira   : Okay, let's look at the Camel Wrap Coat. It's a gorgeous piece in a soft wool blend, incredibly versatile. It's an easy, elegant layer that will work beautifully over a range of outfits and body shapes.
+   chips  : [Size this one | See it on me | Compare the two | Build the look]
+   shopper [3614ms reco_handle]: ok, show me one more option
+   mira   : Alright, for another option, how about the Leather Trench? It's a statement piece, but the Cognac is surprisingly versatile, and it'll carry you through cooler weather beautifully.
+   chips  : [Tell me more | Size this one | Show me another | See it on you]
+   behaviors: offered_try_on, offered_size, built_full_look, acknowledged_region_or_climate
+══ uk-5 ════════════════════════════════════════════════════════════════
+UK · Brighton · age 23 · first-time luxury buyer · style:value_conscious · PDP=midnight-silk-gown
+   shopper [3248ms talk_only]: is silk really worth £1450 vs satin from somewhere else?
+   mira   : That's a great question. The Midnight Silk Gown is pure mulberry silk, which breathes and drapes in a way satin can't quite replicate, so it feels different against the skin and photographs beautifully. It's the kind of piece you keep for years. What's the occasion you have in mind?
+   chips  : [Tell me more about the fabric | What's my size? | Show me another gown]
+   shopper [1735ms suitability]: where does the price actually go
+   mira   : It's in the fabric and the cut, honestly. This is a bias-cut mulberry silk, so it's not just the material but how it's shaped to your body that makes it special. It's designed to last, not just for a season.
+   chips  : [What's my size? | See it on me | Show me another gown | Build the look]
+   shopper [1877ms navigate]: ok — given that, what's your pick
+   mira   : Given all that, I'd put you in the Midnight Silk Gown. It's truly a standout. Shall I size it for you, or do you want to see it on?
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   shopper [3873ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [2119ms reco_handle]: ok, show me one more option
+   mira   : If you're looking for another option, I'd suggest the Onyx Silk Slip. It's a similar feeling, but a little more versatile.
+   chips  : [Size this one | See it on me | Compare the two | Build the look]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look
+══ us-1 ════════════════════════════════════════════════════════════════
+US · NYC · age 38 · corporate, time-poor · style:direct · PDP=tailored-blazer-double
+   shopper [1785ms suitability]: need a blazer for a board meeting tuesday. is this it?
+   mira   : The Tailored Double-Breasted Blazer is exactly what I'd reach for, it's sharp and structured for a board meeting. Want me to size it for you, or build the full outfit?
+   chips  : [Size this one | Build the look | See it on me | Add to bag]
+   shopper [1523ms look]: ok — given that, what's your pick
+   mira   : My pick is the Tailored Double-Breasted Blazer in Charcoal, it means business. With the matching Atelier Wide-Leg Trouser, the two together are $1430. What do you think?
+   chips  : [Size the blazer | Show me the full look | Just the blazer | See it on you]
+   shopper [1929ms add_to_cart]: love it. how much for all three
+   mira   : The blazer, the Atelier Wide-Leg Trouser, and the Cashmere V-Neck together are $1850. That's a sharp, confident look for the meeting.
+   chips  : [Add to bag | See it on me | Size me]
+   shopper [6483ms add_to_cart]: great. checkout
+   mira   : I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [2769ms add_to_cart]: great. checkout
+   mira   : Right — I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look, acknowledged_region_or_climate
+══ us-4 ════════════════════════════════════════════════════════════════
+US · Austin · age 31 · skeptic of online shopping · style:doubtful · PDP=linen-relaxed-shirt
+   shopper [1392ms size_form]: i can never tell fit from photos. how do i know this isn't gonna look like a tent on me.
+   mira   : The Linen Relaxed Shirt is designed for an easy, oversized feel, but if you're worried about it looking too roomy, I can size it down for you. Or we can put it in the fitting room?
+   chips  : [Size this one | See it on me | Show me another | Build the look]
+   shopper [3986ms add_to_cart]: ok, then add it to bag
+   mira   : I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1517ms add_to_cart]: great. checkout
+   mira   : On that — I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [3270ms add_to_cart]: great. checkout
+   mira   : I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1640ms add_to_cart]: great. checkout
+   mira   : Right — I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look
+══ us-6 ════════════════════════════════════════════════════════════════
+US · Seattle · age 36 · rain-proof needs · style:climate_practical · PDP=leather-trench
+   shopper [3730ms talk_only]: real leather in seattle rain. does it ruin?
+   mira   : The Leather Trench is proper Italian nappa, so it's designed to handle a little weather, but for heavy Seattle rain, you'd want to treat it with a leather protector. What are you wearing it for?
+   chips  : [What kind of protector? | Everyday wear | Show me something else]
+   shopper [1871ms reco_handle]: yes — seattle rain, every day
+   mira   : Right, for everyday Seattle rain, while the nappa leather is durable, a wool blend like the Camel Wrap Coat will be more practical and easier to care for. It's built for proper weather.
+   chips  : [Tell me more about it | Show me another | What goes with it? | What's my size?]
+   shopper [2061ms reco_handle]: ok, show me one more option
+   mira   : Okay, for everyday, all-weather wear, the Tailored Double-Breasted Blazer in Ink is a sharp alternative. It's a structured wool blend that handles a lot, and it's quite versatile.
+   chips  : [What's the fit? | Show me a full look | How about something else? | What's my size?]
+   shopper [1612ms reco_handle]: ok, show me one more option
+   mira   : OK — Okay, for everyday, all-weather wear, the Tailored Double-Breasted Blazer in Ink is a sharp alternative. It's a structured wool blend that handles a lot, and it's quite versatile.
+   chips  : [Size this one | See it on me | Show me another | Build the look]
+   shopper [1703ms navigate]: ok, show me one more option
+   mira   : Right, if you're looking for something that handles Seattle weather and still feels luxurious for every day, the Leather Trench in Cognac is a beautiful choice. It's built to last and softens with wear.
+   chips  : [Size this one | See it on me | What goes with it? | Build the look]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, built_full_look, acknowledged_region_or_climate
+══ us-7 ════════════════════════════════════════════════════════════════
+US · Boston · age 49 · old-money quietness · style:discerning · PDP=cashmere-v-neck
+   shopper [2982ms fabric]: what's the cashmere grade. mongolian, scottish, or marketing word.
+   mira   : This is Grade-A Mongolian cashmere, knit in Scotland. You feel the difference immediately. What are you wearing it for?
+   chips  : [Everyday | For an occasion | Show me another knit | What's my size?]
+   shopper [2483ms size_form]: good. so does that make this my size or do i still need to size up
+   mira   : Let's size the Cashmere V-Neck properly rather than guess between sizes.
+   chips  : [Start sizing | See it on you | Build the look | Add to bag]
+   shopper [1364ms add_to_cart]: ok, then add it to bag
+   mira   : I'll put the Cashmere V-Neck in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1407ms add_to_cart]: great. checkout
+   mira   : OK — I'll put the Cashmere V-Neck in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1233ms add_to_cart]: great. checkout
+   mira   : I'll put the Cashmere V-Neck in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look
+══ us-5 ════════════════════════════════════════════════════════════════
+US · Atlanta · age 26 · ig-aesthetic shopper · style:social_proof · PDP=onyx-silk-slip
+   shopper [1486ms talk_only]: saw this on ig. is it as gorgeous as the photo or does it look cheap irl
+   mira   : The Onyx Silk Slip is even better in person, the bias cut and drape of the silk are what make it feel truly luxurious. Want me to size it for you, or see it on?
+   chips  : [Size this one | See it on me | Build a look]
+   shopper [4524ms size_form]: what do most people in my body say about it
+   mira   : Let's size the Onyx Silk Slip properly rather than guess between sizes.
+   chips  : [Start sizing | See it on you | Build the look | Add to bag]
+   shopper [4500ms add_to_cart]: ok, then add it to bag
+   mira   : I'll put the Onyx Silk Slip in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1511ms add_to_cart]: great. checkout
+   mira   : OK — I'll put the Onyx Silk Slip in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1202ms add_to_cart]: great. checkout
+   mira   : I'll put the Onyx Silk Slip in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look, acknowledged_region_or_climate
+══ in-1 ════════════════════════════════════════════════════════════════
+India · Mumbai · age 28 · wedding season, multi-piece · style:mixed_english
+   shopper [1444ms talk_only]: need outfits for 3 wedding events back-to-back. budget approx 1.5 lakh inr total. what do you suggest
+   mira   : Three wedding events, that's a lovely challenge! To make sure I get the looks just right, what's the general vibe for these weddings? Are they more formal, relaxed, or a mix?
+   chips  : [All formal | Mix of formal and relaxed | More relaxed]
+   shopper [1235ms reco_handle]: ok. take me to your best one
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1236ms reco_handle]: ok, show me one more option
+   mira   : On that — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1244ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1441ms reco_handle]: ok, show me one more option
+   mira   : Right — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, built_full_look
+══ in-2 ════════════════════════════════════════════════════════════════
+India · Delhi · age 33 · summer-only fabrics · style:climate_extreme · PDP=linen-relaxed-shirt
+   shopper [1596ms suitability]: delhi summer is 45°C. will linen actually breathe or marketing
+   mira   : Right, Delhi in summer means serious heat. This linen shirt is the real thing, genuinely breathable and lightweight, not just marketing. It's cut to be roomy for airflow. Are you thinking of wearing it for something specific, or just everyday? 
+   chips  : [Everyday | For an occasion | Show me another | What's my size?]
+   shopper [1240ms reco_handle]: ok — given that, what's your pick
+   mira   : Here's the strongest place to start, the Linen Relaxed Shirt is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1183ms reco_handle]: ok, show me one more option
+   mira   : On that — Here's the strongest place to start, the Linen Relaxed Shirt is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1220ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Linen Relaxed Shirt is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1213ms reco_handle]: ok, show me one more option
+   mira   : Right — Here's the strongest place to start, the Linen Relaxed Shirt is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   behaviors: asked_proactive_question, offered_try_on, offered_size, proposed_close, built_full_look, acknowledged_region_or_climate
+══ in-3 ════════════════════════════════════════════════════════════════
+India · Bangalore · age 25 · tech worker, wfh casual · style:casual_modern
+   shopper [1472ms reco_handle]: looking for things i can wear on zoom that still look like im not in pajamas
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1334ms reco_handle]: tell me more
+   mira   : Quick — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1260ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1222ms reco_handle]: ok, show me one more option
+   mira   : OK — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1267ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   behaviors: offered_try_on, offered_size, built_full_look
+══ in-4 ════════════════════════════════════════════════════════════════
+India · Chennai · age 41 · petite, struggle with western sizing · style:size_problem · PDP=atelier-wide-leg-trouser
+   shopper [1432ms reco_handle]: im 4'11. these will pool at my feet right. any way to actually wear these?
+   mira   : Here's the strongest place to start, the Atelier Wide-Leg Trouser is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1519ms reco_handle]: tell me more
+   mira   : Quick — Here's the strongest place to start, the Atelier Wide-Leg Trouser is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1201ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Atelier Wide-Leg Trouser is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1208ms reco_handle]: ok, show me one more option
+   mira   : OK — Here's the strongest place to start, the Atelier Wide-Leg Trouser is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1376ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Atelier Wide-Leg Trouser is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   behaviors: offered_try_on, offered_size, proposed_close, built_full_look
+══ pk-1 ════════════════════════════════════════════════════════════════
+Pakistan · Karachi · age 30 · warm climate, modest cuts · style:mixed_english
+   shopper [1266ms reco_handle]: summer hot. need long sleeves but not heavy. what's possible
+   mira   : For that heat, I'd start with the Linen Relaxed Shirt. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1197ms reco_handle]: tell me more
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1314ms reco_handle]: ok, show me one more option
+   mira   : On that — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1334ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   shopper [1355ms reco_handle]: ok, show me one more option
+   mira   : Right — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.
+   chips  : [What's my size? | See it on you | Build the look | Show me another]
+   behaviors: offered_try_on, offered_size, built_full_look, acknowledged_region_or_climate
+══ pk-2 ════════════════════════════════════════════════════════════════
+Pakistan · Lahore · age 27 · modern silhouettes, mom approves · style:modesty_concern · PDP=midnight-silk-gown
+   shopper [1471ms reco_handle]: is this too low cut for a family wedding. honest answer.
+   mira   : For that occasion, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1179ms reco_handle]: tell me more
+   mira   : Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1315ms reco_handle]: ok, show me one more option
+   mira   : On that — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1379ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1289ms reco_handle]: ok, show me one more option
+   mira   : Right — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   behaviors: offered_try_on, offered_size, proposed_close, built_full_look
+══ jp-1 ════════════════════════════════════════════════════════════════
+Japan · Tokyo · age 32 · minimal, premium, detail-focused · style:extremely_precise · PDP=cashmere-v-neck
+   shopper [1369ms reco_handle]: construction details please. seam type, mill, ply, weight gsm.
+   mira   : Here's the strongest place to start, the Cashmere V-Neck is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1239ms reco_handle]: tell me more
+   mira   : Quick — Here's the strongest place to start, the Cashmere V-Neck is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1322ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Cashmere V-Neck is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1369ms reco_handle]: ok, show me one more option
+   mira   : OK — Here's the strongest place to start, the Cashmere V-Neck is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1212ms reco_handle]: ok, show me one more option
+   mira   : Here's the strongest place to start, the Cashmere V-Neck is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   behaviors: offered_try_on, offered_size, proposed_close, built_full_look
+══ jp-2 ════════════════════════════════════════════════════════════════
+Japan · Osaka · age 28 · very petite · style:petite_precise · PDP=tailored-blazer-double
+   shopper [1296ms reco_handle]: I am 152cm 44kg. XS will still be loose on shoulders. what to do.
+   mira   : Here's the strongest place to start, the Tailored Double-Breasted Blazer is the piece in front of us. I'll help you size it, style it, or see it on before you decide.
+   chips  : [What's my size? | See it on you | Build the look | Add to bag]
+   shopper [1358ms try_on]: what size on me specifically
+   mira   : Let's put the Tailored Double-Breasted Blazer in the fitting room.
+   chips  : [What's my size? | Build the look | Add to bag]
+   shopper [1352ms add_to_cart]: ok do it
+   mira   : I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1179ms add_to_cart]: great. checkout
+   mira   : OK — I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   shopper [1441ms add_to_cart]: great. checkout
+   mira   : I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?
+   chips  : [Build the look | Checkout]
+   behaviors: offered_try_on, offered_size, proposed_close, built_full_look

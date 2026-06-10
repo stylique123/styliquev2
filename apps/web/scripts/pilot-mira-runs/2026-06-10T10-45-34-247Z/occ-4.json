@@ -1,0 +1,118 @@
+{
+  "persona_id": "occ-4",
+  "region": "occasion",
+  "age": 51,
+  "archetype": "vow renewal",
+  "style": "occasion_emotional",
+  "pdp": null,
+  "started_at": "2026-06-10T10:52:46.257Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "renewing our vows on a beach. quiet, refined. one piece.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 23183,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "renewing our vows on a beach. — try again",
+      "mira_voice": "Understood, a quiet and refined piece for a beach vow renewal. Let's try the Onyx Silk Slip for that, it moves beautifully. Does that feel right?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's the fabric?",
+        "Show me another",
+        "Size this one"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Understood, a quiet and refined piece for a beach vow renewal. Let's try the Onyx Silk Slip for that, it moves beautifully. Does that feel right?",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "What's the fabric?",
+          "Show me another",
+          "Size this one"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 4855,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 8798,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "My apologies, the Onyx Silk Slip is a beautiful choice for a quiet beach vow renewal. It has a lovely flow. I can show you one more option if you'd like?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Yes, one more",
+        "Size this one",
+        "See it on me"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "My apologies, the Onyx Silk Slip is a beautiful choice for a quiet beach vow renewal. It has a lovely flow. I can show you one more option if you'd like?",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Yes, one more",
+          "Size this one",
+          "See it on me"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 3173,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4384,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:53:30.651Z",
+  "total_latency_ms": 44393
+}

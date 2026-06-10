@@ -1,0 +1,112 @@
+{
+  "persona_id": "pk-1",
+  "region": "Pakistan · Karachi",
+  "age": 30,
+  "archetype": "warm climate, modest cuts",
+  "style": "mixed_english",
+  "pdp": null,
+  "started_at": "2026-06-10T11:27:26.002Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "summer hot. need long sleeves but not heavy. what's possible",
+      "mira_voice": "For that heat, I'd start with the Linen Relaxed Shirt. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "For that heat, I'd start with the Linen Relaxed Shirt. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2485,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a beautiful, breathable linen, so it feels airy even with long sleeves, and the relaxed cut means it won't cling in the heat.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "It's a beautiful, breathable linen, so it feels airy even with long sleeves, and the relaxed cut means it won't cling in the heat.",
+        "route": "fabric",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 1689,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2757,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:32.933Z",
+  "total_latency_ms": 6931
+}

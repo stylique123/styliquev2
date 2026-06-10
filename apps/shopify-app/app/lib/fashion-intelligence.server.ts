@@ -60,7 +60,9 @@ export type StyleShare = { style: string; share: number; trend: Trend; deltaPct:
 export type SizeShare = { size: string; share: number };
 export type FitShare = { pref: string; share: number };
 export type OccasionShare = { occasion: string; share: number; trend: Trend; deltaPct: number };
-export type ComboRow = { label: string; pieces: string[]; count: number; aov: number };
+// aov is null until we have REAL purchase data for the combo — we never fabricate
+// a basket value on a merchant reorder-decision screen (panel P1 #6, §11 + PB19).
+export type ComboRow = { label: string; pieces: string[]; count: number; aov: number | null };
 export type ConsumerIntel = {
   styleMap: StyleShare[];
   colors: ColorRow[];
@@ -72,11 +74,12 @@ export type ConsumerIntel = {
 };
 export type DropOffStage = { stage: string; lossPct: number };
 export type ConversionIntel = {
-  tryOnPurchaseRate: number;
-  baselinePurchaseRate: number;
-  tryOnLiftX: number;
-  bundlePurchaseRate: number;
-  aiSuggestedAddRate: number;
+  // null = not enough data yet (honest) — never fabricated (panel P0).
+  tryOnPurchaseRate: number | null;
+  baselinePurchaseRate: number | null;
+  tryOnLiftX: number | null;
+  bundlePurchaseRate: number | null;
+  aiSuggestedAddRate: number | null;
   confidenceScore: number;
   confidenceDrivers: { label: string; weight: number }[];
   dropOff: DropOffStage[];
@@ -423,13 +426,16 @@ export async function getFashionIntelligence(
   let combos: ComboRow[];
   if (live && comboTally.size > 0) {
     combos = [...comboTally.entries()]
-      .map(([label, v]) => ({ label, pieces: v.pieces, count: v.count, aov: 600 + Math.round(mulberry32(hashStr(shopId + label))() * 2600) }))
+      // aov stays null — we surface the REAL proposal count, never a fabricated
+      // basket value. (A real per-combo AOV needs a purchase join; until then the
+      // merchant sees honest "—" instead of a hashed number.)
+      .map(([label, v]) => ({ label, pieces: v.pieces, count: v.count, aov: null }))
       .sort((a, b) => b.count - a.count).slice(0, 4);
   } else {
     combos = [
-      { label: "The tailored neutral", pieces: ["Tailored Blazer", "Wide-Leg Trouser", "Silk Camisole"], count: 0, aov: 1750 },
-      { label: "Evening, undone", pieces: ["Silk Slip", "Leather Trench"], count: 0, aov: 3090 },
-      { label: "Quiet weekend", pieces: ["Linen Shirt", "Wide-Leg Denim"], count: 0, aov: 600 },
+      { label: "The tailored neutral", pieces: ["Tailored Blazer", "Wide-Leg Trouser", "Silk Camisole"], count: 0, aov: null },
+      { label: "Evening, undone", pieces: ["Silk Slip", "Leather Trench"], count: 0, aov: null },
+      { label: "Quiet weekend", pieces: ["Linen Shirt", "Wide-Leg Denim"], count: 0, aov: null },
     ];
   }
 
@@ -443,15 +449,19 @@ export async function getFashionIntelligence(
   const chatSessions = Math.max(1, evt("CHAT_OPENED"));
   const tryonCompleted = Math.max(1, evt("TRYON_RENDER_COMPLETED"));
   // Try-on purchase rate = carts attributed to try-on / try-on renders.
-  let tryOnPurchaseRate = live && tryonCompleted > 4 ? Math.min(0.5, cartFromTryon / tryonCompleted) : 0.28;
-  let baselinePurchaseRate = live && chatSessions > 4 ? Math.min(0.2, Math.max(0.02, cartConfirmed / (chatSessions * 4))) : 0.06;
-  if (tryOnPurchaseRate <= baselinePurchaseRate) tryOnPurchaseRate = baselinePurchaseRate + 0.16; // keep lift legible
-  const bundlePurchaseRate = live && cartConfirmed > 4 ? Math.min(0.6, comboAddAll / Math.max(1, cartConfirmed)) || 0.42 : 0.42;
-  const aiSuggestedAddRate = live && cartConfirmed > 4 ? Math.min(0.6, cartFromMira / Math.max(1, cartConfirmed)) || 0.31 : 0.31;
+  // HONEST metrics only — no fabricated lift floor (panel P0: the prior hardcoded
+  // +0.16 guaranteed a positive metric regardless of real conversions, violating
+  // Shopify policy and misleading merchants/investors). Return null when no data.
+  const tryOnPurchaseRate = live && tryonCompleted > 4 ? Math.min(0.5, cartFromTryon / tryonCompleted) : null;
+  const baselinePurchaseRate = live && chatSessions > 4 ? Math.min(0.2, Math.max(0.02, cartConfirmed / (chatSessions * 4))) : null;
+  const bundlePurchaseRate = live && cartConfirmed > 4 ? Math.min(0.6, comboAddAll / Math.max(1, cartConfirmed)) || null : null;
+  const aiSuggestedAddRate = live && cartConfirmed > 4 ? Math.min(0.6, cartFromMira / Math.max(1, cartConfirmed)) || null : null;
   const conversion: ConversionIntel = {
     tryOnPurchaseRate,
     baselinePurchaseRate,
-    tryOnLiftX: Math.round((tryOnPurchaseRate / Math.max(0.01, baselinePurchaseRate)) * 10) / 10,
+    tryOnLiftX: tryOnPurchaseRate != null && baselinePurchaseRate != null
+      ? Math.round((tryOnPurchaseRate / Math.max(0.01, baselinePurchaseRate)) * 10) / 10
+      : null,
     bundlePurchaseRate,
     aiSuggestedAddRate,
     confidenceScore: 74,
@@ -504,10 +514,13 @@ export async function getFashionIntelligence(
   };
 
   // ── STYLE & MERCHANDISING ───────────────────────────────────────────────────
+  // Honest metrics only — no fabricated click/cart counts (panel P0: mulberry32
+  // fallback produced synthetic "100 clicks" on the merchant-facing dashboard,
+  // misleading operators about which products actually perform).
   const ranked = products.map((p) => ({
     p,
-    clicks: clickByProduct.get(p.id) ?? Math.floor(mulberry32(hashStr(shopId + ":clk:" + p.handle))() * 100),
-    carts: cartByProduct.get(p.id) ?? Math.floor(mulberry32(hashStr(shopId + ":crt:" + p.handle))() * 30),
+    clicks: clickByProduct.get(p.id) ?? 0,
+    carts: cartByProduct.get(p.id) ?? 0,
   }));
   const byClicks = [...ranked].sort((a, b) => b.clicks - a.clicks);
   const byCarts = [...ranked].sort((a, b) => b.carts - a.carts);
@@ -555,7 +568,7 @@ export async function getFashionIntelligence(
     { label: "Most loved shade", value: topShade?.color ?? "Ivory", sub: `${pct(topShade?.convertRate ?? 0.3)}% try → buy · the reliable converter`, tone: "loved" },
     { label: "Fastest-growing colour", value: "Natural tones", sub: "+18% try-ons this period", trend: "up", deltaPct: 18, tone: "growing" },
     { label: "Highest-converting fit", value: topFit?.pref.split(" / ")[0] ?? "Relaxed", sub: `${pct(topFit?.share ?? 0.48)}% of shoppers · drives the size logic`, tone: "converting" },
-    { label: "Try-on lift", value: `${conversion.tryOnLiftX}×`, sub: `${pct(conversion.tryOnPurchaseRate)}% with try-on vs ${pct(conversion.baselinePurchaseRate)}% without`, trend: "up", tone: "converting" },
+    { label: "Try-on lift", value: conversion.tryOnLiftX != null ? `${conversion.tryOnLiftX}×` : "Collecting data", sub: conversion.tryOnPurchaseRate != null ? `${pct(conversion.tryOnPurchaseRate)}% with try-on vs ${pct(conversion.baselinePurchaseRate ?? 0)}% without` : "Add more try-on sessions to see your lift", trend: "up", tone: "converting" },
     { label: "Curiosity, not conversion", value: curiosity?.color ?? "Cardinal", sub: "High try-ons, low buy — merchandise as accent, not hero", tone: "watch" },
     { label: "Return risk", value: `${fit.returnRiskScore}`, sub: `${fit.returnRiskLevel} · ${fit.sizeConfidence}% accept the size rec`, trend: fit.returnRiskLevel === "low" ? "down" : "flat", tone: "watch" },
   ];

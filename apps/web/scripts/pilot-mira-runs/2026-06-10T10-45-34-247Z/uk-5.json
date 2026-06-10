@@ -1,0 +1,114 @@
+{
+  "persona_id": "uk-5",
+  "region": "UK · Brighton",
+  "age": 23,
+  "archetype": "first-time luxury buyer",
+  "style": "value_conscious",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T10:45:34.288Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is silk really worth £1450 vs satin from somewhere else?",
+      "mira_voice": "That's a very fair question. The Midnight Silk Gown is pure silk, not a blend, and the way it drapes is what you're paying for. It's a statement piece that will last and wear beautifully for years, unlike a satin that can look cheap after a few washes. Want to see it on, or should I tell you more about the fabric?",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "See it on me",
+        "Tell me more about the fabric"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "That's a very fair question. The Midnight Silk Gown is pure silk, not a blend, and the way it drapes is what you're paying for. It's a statement piece that will last and wear beautifully for years, unlike a satin that can look cheap after a few washes. Want to see it on, or should I tell you more about the fabric?",
+        "route": "fabric",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "See it on me",
+          "Tell me more about the fabric"
+        ],
+        "intent": "price"
+      },
+      "http_status": 200,
+      "latency_ms": 24265,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "Let's get the size perfect for you on this one, the right fit depends on the look you want. I can size it for you now.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size this for me",
+        "What's the return policy?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Let's get the size perfect for you on this one, the right fit depends on the look you want. I can size it for you now.",
+        "route": "size_form",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this for me",
+          "What's the return policy?"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 20906,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 14200,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3038,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2755,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:46:39.453Z",
+  "total_latency_ms": 65164
+}

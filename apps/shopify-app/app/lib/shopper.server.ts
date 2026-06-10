@@ -219,6 +219,11 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
 
   const sizes = Array.from(new Set(product.variants.map((v) => v.size).filter((s): s is string => Boolean(s))));
 
+  // Product carries no sized variants — recommendFit would return a placeholder
+  // "—" / confidence 0 that the widget renders as a real recommendation (panel
+  // P2). Return an honest error instead so the UI can degrade cleanly.
+  if (sizes.length === 0) return { ok: false as const, error: "invalid_input" };
+
   // Parse sizeChartJson into skuMeasurements for per-SKU fit accuracy (Fix 4).
   const skuMeasurements = parseSkuMeasurements(product.sizeChartJson);
 

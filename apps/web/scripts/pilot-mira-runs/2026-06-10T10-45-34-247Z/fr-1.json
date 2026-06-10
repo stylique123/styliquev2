@@ -1,0 +1,144 @@
+{
+  "persona_id": "fr-1",
+  "region": "France · Paris",
+  "age": 39,
+  "archetype": "parisienne, hyper-critical",
+  "style": "fashion_critical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:47:50.880Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "bof, the cut on this is approximate. shoulders look square. anything more structured?",
+      "mira_voice": "The Camel Wrap Coat is quite generous, designed to layer. If you want something sharper, the Tailored Double-Breasted Blazer has a much more defined shoulder. Is that the kind of structure you had in mind?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Show me another blazer",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Camel Wrap Coat is quite generous, designed to layer. If you want something sharper, the Tailored Double-Breasted Blazer has a much more defined shoulder. Is that the kind of structure you had in mind?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Show me another blazer",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 13257,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "The Double-Breasted Blazer is cut from a substantial wool blend, giving it a much crisper line through the shoulder and body. It's a proper power piece.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "See it on me",
+        "Size this one",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Double-Breasted Blazer is cut from a substantial wool blend, giving it a much crisper line through the shoulder and body. It's a proper power piece.",
+        "route": "fabric",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "See it on me",
+          "Size this one",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 4345,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "This one runs true to size. Let's get your measurements to confirm the exact fit for you.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size me",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "This one runs true to size. Let's get your measurements to confirm the exact fit for you.",
+        "route": "size_form",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size me",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 2478,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "Done, the Tailored Double-Breasted Blazer is in your bag. Want me to build the full look around it?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Complete the look",
+        "Checkout"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Done, the Tailored Double-Breasted Blazer is in your bag. Want me to build the full look around it?",
+        "route": "add_to_cart",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Complete the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 13331,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "great. checkout",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2784,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:27.075Z",
+  "total_latency_ms": 36195
+}

@@ -1,0 +1,131 @@
+{
+  "persona_id": "uk-1-clone88",
+  "region": "UK · London",
+  "age": 34,
+  "archetype": "fashion-aware, asks brutal questions",
+  "style": "terse_skeptical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:55:30.374Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "right, is the camel really pure wool? bit dubious at that price.",
+      "mira_voice": "That's a serious piece, designed to last. It's a cashmere blend, not pure wool, but that's what gives it that soft drape. Want me to tell you more about the fabric, or help with sizing?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Tell me more",
+        "How does it fit?",
+        "Show me another coat"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "That's a serious piece, designed to last. It's a cashmere blend, not pure wool, but that's what gives it that soft drape. Want me to tell you more about the fabric, or help with sizing?",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "Tell me more",
+          "How does it fit?",
+          "Show me another coat"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 2821,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, the Camel Wrap Coat is a beautiful piece and our best seller. What are you wearing it for?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Everyday",
+        "For an occasion",
+        "Size this one"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, the Camel Wrap Coat is a beautiful piece and our best seller. What are you wearing it for?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Everyday",
+          "For an occasion",
+          "Size this one"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 13021,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 23354,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Sorry about that! I was saying the Camel Wrap Coat is a beautiful piece and our best seller. What are you wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Just looking"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Sorry about that! I was saying the Camel Wrap Coat is a beautiful piece and our best seller. What are you wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Just looking"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3482,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3337,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:56:16.389Z",
+  "total_latency_ms": 46015
+}

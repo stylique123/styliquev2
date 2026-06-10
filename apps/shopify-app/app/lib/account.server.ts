@@ -5,7 +5,7 @@
 //          postShopperSignal
 
 import { z } from "zod";
-import { createHash } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { prisma } from "../db.server";
 import { sendOtpEmail } from "./email.server";
 import { type ApiResponse } from "./shopper-types.server";
@@ -177,7 +177,11 @@ export async function postShopperAccountVerify(args: {
     }).catch(() => undefined);
   }
 
-  const isCorrect = row?.emailVerifyToken && row.emailVerifyToken === hash;
+  // Timing-safe comparison prevents timing-oracle attacks on the OTP hash
+  // (panel P1 appsec: string === leaks comparison time).
+  const storedHash = row?.emailVerifyToken ?? "";
+  const isCorrect = storedHash.length === hash.length &&
+    timingSafeEqual(Buffer.from(storedHash, "utf8"), Buffer.from(hash, "utf8"));
   const isExpired = !row?.emailVerifyExpiry || row.emailVerifyExpiry < new Date();
 
   if (!isCorrect || isExpired) {
@@ -240,6 +244,7 @@ export async function getMe(args: {
   hipCm: number | null;
   shopperId: string;
   locale: SupportedLocale;
+  currencyCode: string;                    // store's ISO 4217 currency so the widget formats prices in it
   stylist: { name: string; avatarUrl: string | null };
   brandMode: "fashion" | "beauty";
 }> & { setCookie?: string | null }> {
@@ -247,9 +252,10 @@ export async function getMe(args: {
   const shopId = await shopIdFromDomain(args.shopDomain);
   if (!shopId) return { ok: false, error: "shop_not_installed" };
 
-  const [session, plan] = await Promise.all([
+  const [session, plan, shopRow] = await Promise.all([
     getOrCreateShopperSession({ shopifyDomain: args.shopDomain, cookieId: args.shopperCookieId }),
     prisma.plan.findUnique({ where: { shopId }, select: { planFeaturesJson: true } }),
+    prisma.shop.findUnique({ where: { id: shopId }, select: { currencyCode: true } }),
   ]);
   // OI-22 fix: persist Shopify customer-id on the session row when forwarded.
   // Storefront Liquid passes {{customer.id}} into the dock as data attribute;
@@ -285,6 +291,7 @@ export async function getMe(args: {
       hipCm: me?.hipCm ?? null,
       shopperId: session.row.sessionId,
       locale: detectLocale(args.acceptLanguage ?? undefined),
+      currencyCode: shopRow?.currencyCode ?? "USD",
       stylist: {
         name: overrides?.stylist?.stylistName?.trim() || "Mira",
         avatarUrl: overrides?.stylist?.avatarUrl?.trim() || null,

@@ -8,6 +8,7 @@ export async function ensureShopRecord(args: {
   shopifyDomain: string;
   accessToken: string;
   scopes: string;
+  currencyCode?: string;
 }) {
   // OI-25: encrypted at-app when APP_ENCRYPTION_KEY env is set. See lib/crypto.server.ts
   const encryptedToken = encryptField(args.accessToken);
@@ -17,11 +18,13 @@ export async function ensureShopRecord(args: {
       accessToken: encryptedToken,
       scopes: args.scopes,
       uninstalledAt: null,
+      ...(args.currencyCode ? { currencyCode: args.currencyCode } : {}),
     },
     create: {
       shopifyDomain: args.shopifyDomain,
       accessToken: encryptedToken,
       scopes: args.scopes,
+      ...(args.currencyCode ? { currencyCode: args.currencyCode } : {}),
     },
   });
 

@@ -21,7 +21,6 @@ import { Redis as IORedis } from "ioredis";
 import { prisma } from "@stylique/db";
 import { processCatalogSync, type CatalogSyncJobData } from "./jobs/catalog-sync.js";
 import { processRecommendations, type RecommendationsJobData } from "./jobs/recommendations.js";
-import { processCreativeSet, type CreativeSetJobData } from "./jobs/creative-set.js";
 import { processImageQuality, type ImageQualityJobData } from "./jobs/image-quality.js";
 import { processBrandInstall, type BrandInstallJobData } from "./jobs/brand-install.js";
 import { processTryOnRender, type TryOnRenderJobData } from "./jobs/tryon-render.js";
@@ -30,8 +29,11 @@ import { processSizeChartExtract, type SizeChartExtractJobData } from "./jobs/si
 import { processBrandInstagram, type BrandInstagramJobData } from "./jobs/brand-instagram.js";
 import { processBrandDnaCatalog, type BrandDnaCatalogJobData } from "./jobs/brand-dna-catalog.js";
 import { processReplenishmentNotify, type ReplenishmentNotifyJobData } from "./jobs/replenishment-notify.js";
+import { processFitTuner, type FitTunerJobData } from "./jobs/fit-tuner.js";
 import { createOutcomeResolverWorker, scheduleOutcomeResolver } from "./jobs/outcome-resolver.js";
 import { createBillingReconcileWorker, scheduleBillingReconcile } from "./workers/billing-reconcile.worker.js";
+import { runRetentionCleanup } from "./jobs/retention-cleanup.js";
+import { runInjectWidget } from "./jobs/inject-widget.js";
 import { handleFailedJob } from "./dead-letter.js";
 import { startScheduler } from "./scheduler.js";
 
@@ -46,11 +48,34 @@ if (missingEnv.length) {
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 
+// Enqueue one per-shop job for every active (non-uninstalled) shop. The previous
+// scheduler enqueued a single {scope:"global"} job that reached per-shop
+// processors as shopId:undefined and silently no-op'd (consolidation P1.1).
+async function fanOutActiveShops(
+  label: string,
+  enqueue: (shopId: string) => Promise<unknown>,
+): Promise<{ fannedOut: number }> {
+  const shops = await prisma.shop.findMany({ where: { uninstalledAt: null }, select: { id: true } });
+  for (const s of shops) {
+    await enqueue(s.id).catch((e) => console.error(`[${label}] enqueue failed for ${s.id}:`, (e as Error).message));
+  }
+  console.log(`[${label}] global sweep fanned out to ${shops.length} shop(s)`);
+  return { fannedOut: shops.length };
+}
+
 const catalogWorker = new Worker<CatalogSyncJobData>(
   "catalog-sync",
   async (job) => {
-    console.log(`[catalog-sync] ${job.name} shop=${job.data.shopId}`);
-    return processCatalogSync(job.data);
+    const d = job.data as CatalogSyncJobData & { scope?: string };
+    if (d.scope === "global") {
+      return fanOutActiveShops("catalog-sync", (shopId) =>
+        catalogSyncQueue.add("full", { kind: "full", shopId }, {
+          jobId: `catalog-full:${shopId}:${Math.floor(Date.now() / 3.6e6)}`, // dedupe within the 6h window
+          removeOnComplete: 20, removeOnFail: 100,
+        }));
+    }
+    console.log(`[catalog-sync] ${job.name} shop=${d.shopId}`);
+    return processCatalogSync(d);
   },
   { connection, concurrency: 4 },
 );
@@ -58,20 +83,18 @@ const catalogWorker = new Worker<CatalogSyncJobData>(
 const recommendationsWorker = new Worker<RecommendationsJobData>(
   "recommendations",
   async (job) => {
-    console.log(`[recommendations] shop=${job.data.shopId}`);
-    return processRecommendations(job.data);
-  },
-  { connection, concurrency: 2 },
-);
-
-// Studio creative-set worker — stub until provider is chosen. Marks rows as
-// FAILED("studio_provider_not_configured") so the brand sees a real state
-// instead of "generating…" forever.
-const creativeSetWorker = new Worker<CreativeSetJobData>(
-  "creative-set",
-  async (job) => {
-    console.log(`[creative-set] shop=${job.data.shopId} set=${job.data.setId}`);
-    return processCreativeSet(job.data);
+    const d = job.data as RecommendationsJobData & { scope?: string };
+    // Defensive fan-out: a stale Redis repeatable from the old global scheduler
+    // entry self-heals into per-shop jobs instead of running shopId:undefined.
+    if (d.scope === "global" || !d.shopId) {
+      return fanOutActiveShops("recommendations", (shopId) =>
+        recommendationsQueue.add("recommendations", { shopId }, {
+          jobId: `rec:${shopId}:${Math.floor(Date.now() / 8.64e7)}`, // dedupe within the day
+          removeOnComplete: 20, removeOnFail: 100,
+        }));
+    }
+    console.log(`[recommendations] shop=${d.shopId}`);
+    return processRecommendations(d);
   },
   { connection, concurrency: 2 },
 );
@@ -101,7 +124,13 @@ const tryonRenderWorker = new Worker<TryOnRenderJobData>(
   "tryon-render",
   async (job) => {
     console.log(`[tryon-render] ${job.data.renderId} shop=${job.data.shopId}`);
-    return processTryOnRender(job.data);
+    // Hard cap so a hung provider call can't occupy a worker slot forever (panel
+    // P2 — no BullMQ job timeout). 90s = the 75s Gemini fetch timeout + margin;
+    // on timeout the job fails and retries per its attempts/backoff.
+    return Promise.race([
+      processTryOnRender(job.data),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("tryon_render_timeout_90s")), 90_000)),
+    ]);
   },
   { connection, concurrency: 3 },
 );
@@ -182,6 +211,19 @@ const replenishmentNotifyWorker = new Worker<ReplenishmentNotifyJobData>(
   { connection, concurrency: 2 },
 );
 
+// Fashion fit + look tuner — nightly closed-loop autotuner. Reads the last 30
+// days of combo + cart events, computes addAllRate / cartConvertRate /
+// per-size keep-bias, gently nudges combo scoring weights, writes back to
+// Plan.planFeaturesJson.fashion. Concurrency 1 — pure Prisma, fast.
+const fitTunerWorker = new Worker<FitTunerJobData>(
+  "fit-tuner",
+  async (job) => {
+    console.log(`[fit-tuner] shop=${job.data.shopId}`);
+    return processFitTuner(job.data);
+  },
+  { connection, concurrency: 1 },
+);
+
 // Outcome resolver worker — nightly MEASURE→LEARN sweep. Resolves every Outcome
 // whose resolution window has elapsed, classifies the result, fires
 // OUTCOME_RESOLVED, and feeds the per-shop recommendation-weight map.
@@ -192,14 +234,54 @@ const outcomeResolverWorker = createOutcomeResolverWorker(connection);
 // cancellation/expiry and emits SUBSCRIPTION_CANCELLED. Idempotent.
 const billingReconcileWorker = createBillingReconcileWorker(connection);
 
+// ── Widget auto-injection health-check worker ────────────────────────────────
+// Runs daily at 07:00 UTC. Re-ensures the widget ScriptTag is present on every
+// active store. Merchants occasionally delete the tag; this is the self-healing
+// backstop so the widget is NEVER silently absent. The first sign that injection
+// failed is Mira not appearing — catching it here means we fix it overnight, not
+// when the merchant notices and tickets.
+const injectWidgetWorker = new Worker(
+  "inject-widget",
+  async (job) => {
+    console.log(`[inject-widget] starting (jobId=${job.id})`);
+    const result = await runInjectWidget();
+    console.log(
+      `[inject-widget] done — ensured=${result.ensured} skipped=${result.skipped} errors=${result.errors}`,
+    );
+    return result;
+  },
+  { connection, concurrency: 1 },
+);
+
+// GDPR Art. 5(1)(e) retention cleanup worker — weekly Monday 03:00 UTC.
+// Deletes ShopperSession rows that exceed the retention schedule:
+//   anonymous (no account): 24 months since lastSeenAt
+//   claimed accounts:       36 months since lastSeenAt
+// Concurrency 1 — single DELETE per category, no parallelism needed.
+const retentionCleanupWorker = new Worker(
+  "retention-cleanup",
+  async (job) => {
+    console.log(`[retention-cleanup] starting (jobId=${job.id})`);
+    const result = await runRetentionCleanup(prisma);
+    console.log(
+      `[retention-cleanup] done — anonymous=${result.anonymousDeleted} claimed=${result.claimedDeleted}`,
+    );
+    return result;
+  },
+  { connection, concurrency: 1 },
+);
+
 // ─── On boot: ensure every active shop has a nightly recurring job ──────
 // BullMQ deduplicates on jobId, so this is safe to run on every worker
 // restart. Runs at 02:30 UTC daily.
 const recommendationsQueue = new Queue("recommendations", { connection });
 const sentimentQueue = new Queue("sentiment-extract", { connection });
 const sizeChartQueue = new Queue("size-chart-extract", { connection });
-const creativeSetQueue = new Queue("creative-set", { connection });
+const fitTunerQueue = new Queue("fit-tuner", { connection });
 const replenishmentNotifyQueue = new Queue("replenishment-notify", { connection });
+
+// Shared catalog-sync and catalog-maintenance queues.
+const catalogSyncQueue = new Queue("catalog-sync", { connection });
 
 async function scheduleNightlyRecommendations() {
   const shops = await prisma.shop.findMany({
@@ -217,12 +299,42 @@ async function scheduleNightlyRecommendations() {
         removeOnFail: 100,
       },
     );
+
+    // ── SCHEDULED FULL CATALOG RESYNC (06:00 UTC daily) ─────────────────────
+    // Webhooks cover individual product changes but can miss bulk edits, import
+    // jobs, or failed deliveries. A nightly full resync is the safety net that
+    // guarantees Mira's catalog is never more than 24h stale — no merchant action
+    // required. 06:00 UTC is off-peak for both UK and PAK timezones.
+    await catalogSyncQueue.add(
+      "sync",
+      { kind: "full", shopId: shop.id },
+      {
+        jobId: `catalog-full-nightly:${shop.id}`,
+        repeat: { pattern: "0 6 * * *" },
+        removeOnComplete: 5,
+        removeOnFail: 20,
+      },
+    );
     await sentimentQueue.add(
       "extract",
       { shopId: shop.id },
       {
         jobId: `sentiment-nightly:${shop.id}`,
         repeat: { pattern: "45 2 * * *" },
+        removeOnComplete: 20,
+        removeOnFail: 100,
+      },
+    );
+    // Fashion fit + look auto-tuner — closes the learning loop autonomously.
+    // 02:50 UTC = five minutes after sentiment-extract so the Gemini-heavy
+    // jobs (sentiment 02:45, sentiment finishing ~02:50) don't burst into a
+    // pure-Prisma sweep at the same instant; this one is fast (<5s/shop).
+    await fitTunerQueue.add(
+      "tune",
+      { shopId: shop.id },
+      {
+        jobId: `fit-tuner-nightly:${shop.id}`,
+        repeat: { pattern: "50 2 * * *" },
         removeOnComplete: 20,
         removeOnFail: 100,
       },
@@ -241,9 +353,26 @@ async function scheduleNightlyRecommendations() {
       },
     );
   }
+  // ── Widget injection health-check — daily 07:00 UTC ─────────────────────
+  // Not per-shop (one job checks all shops) — add outside the per-shop loop.
+  const injectWidgetQueue = new Queue("inject-widget", { connection });
+  await injectWidgetQueue.add(
+    "inject",
+    {},
+    {
+      jobId: "inject-widget-daily",
+      repeat: { pattern: "0 7 * * *" },
+      removeOnComplete: 5,
+      removeOnFail: 10,
+    },
+  );
+
+  console.log(`✓ Scheduled nightly full catalog resync for ${shops.length} shop(s) (06:00 UTC)`);
+  console.log(`✓ Scheduled daily widget injection health-check (07:00 UTC)`);
   console.log(`✓ Scheduled nightly recommendations for ${shops.length} shop(s)`);
   console.log(`✓ Scheduled nightly sentiment extraction for ${shops.length} shop(s)`);
   console.log(`✓ Scheduled nightly replenishment notifications for ${shops.length} shop(s)`);
+  console.log(`✓ Scheduled nightly fashion fit + look tuner for ${shops.length} shop(s) (02:50 UTC)`);
 }
 void scheduleNightlyRecommendations().catch((e) => {
   console.error("Failed to schedule nightly recommendations:", e);
@@ -258,74 +387,6 @@ void scheduleOutcomeResolver(connection).catch((e) => {
 void scheduleBillingReconcile(connection).catch((e) => {
   console.error("Failed to schedule billing reconcile:", e);
 });
-
-// ─── Content calendar: hourly check for scheduled creative sets ─────────
-// CreativeSets stored with providerMeta.scheduledFor (ISO string) are picked
-// up within one hour of their scheduled time. Jobs already in a non-PENDING
-// state are skipped by the worker (step 0 guard).
-async function enqueueScheduledCreativeSets() {
-  const now = new Date();
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-
-  // Find PENDING sets with scheduledFor in the past hour.
-  const pendingSets = await prisma.creativeSet.findMany({
-    where: { status: "PENDING" },
-    select: {
-      id: true,
-      shopId: true,
-      productId: true,
-      triggeredBy: true,
-      brief: true,
-      providerMeta: true,
-    },
-    take: 100, // cap per tick
-  });
-
-  let enqueued = 0;
-  for (const set of pendingSets) {
-    const meta = set.providerMeta as Record<string, unknown> | null;
-    if (!meta?.scheduledFor) continue;
-    const scheduledFor = new Date(meta.scheduledFor as string);
-    if (isNaN(scheduledFor.getTime())) continue;
-    // Only enqueue if scheduledFor is in the window [oneHourAgo, now].
-    if (scheduledFor > now || scheduledFor < oneHourAgo) continue;
-
-    const brief = (set.brief as Record<string, unknown> | null)?.text as string | undefined;
-    const kind = (meta.kind as string | undefined) as import("@stylique/core").CreativeOutputKind | undefined;
-
-    await creativeSetQueue.add(
-      "generate",
-      {
-        shopId: set.shopId,
-        setId: set.id,
-        productId: set.productId ?? "",
-        triggeredBy: set.triggeredBy ?? "scheduled",
-        brief,
-        kind,
-      },
-      {
-        jobId: `scheduled-creative:${set.id}`,
-        removeOnComplete: 20,
-        removeOnFail: 100,
-      },
-    ).catch(() => { /* best effort — already queued is fine */ });
-    enqueued++;
-  }
-
-  if (enqueued > 0) {
-    console.log(`[content-calendar] enqueued ${enqueued} scheduled creative set(s)`);
-  }
-}
-
-// Run once on boot then every hour via setInterval.
-void enqueueScheduledCreativeSets().catch((e) => {
-  console.error("[content-calendar] initial scan failed:", e);
-});
-setInterval(() => {
-  void enqueueScheduledCreativeSets().catch((e) => {
-    console.error("[content-calendar] hourly scan failed:", e);
-  });
-}, 60 * 60 * 1000);
 
 catalogWorker.on("failed", async (job, err) => {
   console.error(`[catalog-sync] failed`, job?.id, err);
@@ -343,7 +404,6 @@ catalogWorker.on("failed", async (job, err) => {
 // row in addition to the DLQ entry). All other workers get the generic handler.
 for (const [worker, name] of [
   [recommendationsWorker,      "recommendations"],
-  [creativeSetWorker,          "creative-set"],
   [brandInstallWorker,         "brand-install"],
   [tryonRenderWorker,          "tryon-render"],
   [sentimentWorker,            "sentiment-extract"],
@@ -354,6 +414,8 @@ for (const [worker, name] of [
   [replenishmentNotifyWorker,  "replenishment-notify"],
   [outcomeResolverWorker,      "outcome-resolver"],
   [billingReconcileWorker,     "billing-reconcile"],
+  [retentionCleanupWorker,     "retention-cleanup"],
+  [injectWidgetWorker,         "inject-widget"],
 ] as const) {
   (worker as { on: (event: string, cb: (...args: unknown[]) => void) => void }).on(
     "failed",
@@ -374,7 +436,6 @@ console.log(
   [
     "catalog-sync",
     "recommendations",
-    "creative-set",
     "brand-install",
     "tryon-render",
     "sentiment-extract",
@@ -385,6 +446,7 @@ console.log(
     "replenishment-notify",
     "outcome-resolver",
     "billing-reconcile",
+    "retention-cleanup",
   ].join(", "),
 );
 
@@ -405,7 +467,6 @@ const healthQueues = {
   "catalog-sync": new Queue("catalog-sync", { connection }),
   "tryon-render": tryonQueue, // reuse the shared Queue (no extra connection)
   recommendations: new Queue("recommendations", { connection }),
-  "creative-set": new Queue("creative-set", { connection }),
   "sentiment-extract": new Queue("sentiment-extract", { connection }),
   "size-chart-extract": new Queue("size-chart-extract", { connection }),
   "image-quality": new Queue("image-quality", { connection }),
@@ -415,7 +476,19 @@ const healthQueues = {
   "replenishment-notify": new Queue("replenishment-notify", { connection }),
   "outcome-resolver": new Queue("outcome-resolver", { connection }),
   "billing-reconcile": new Queue("billing-reconcile", { connection }),
+  "retention-cleanup": new Queue("retention-cleanup", { connection }),
+  "inject-widget": new Queue("inject-widget", { connection }),
 };
+
+// Health must FAIL LOUD (consolidation P1.2): the old endpoint always returned
+// ok:true even over a smoking queue, so orchestrators never restarted a broken
+// worker. These critical queues gate readiness; /health returns 503 when any of
+// them has RECENT failures (last hour, via failure timestamps so stale failures
+// don't flap red) or a runaway backlog.
+const CRITICAL_QUEUES = new Set(["catalog-sync", "recommendations", "tryon-render", "billing-reconcile", "outcome-resolver", "size-chart-extract"]);
+const HEALTH_RECENT_FAIL_MAX = Number(process.env.HEALTH_RECENT_FAIL_MAX ?? 5);
+const HEALTH_BACKLOG_MAX = Number(process.env.HEALTH_BACKLOG_MAX ?? 1000);
+const HEALTH_RECENT_WINDOW_MS = 60 * 60 * 1000;
 
 const healthServer = http.createServer(async (req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -431,17 +504,29 @@ const healthServer = http.createServer(async (req, res) => {
   }
 
   try {
+    const cutoff = Date.now() - HEALTH_RECENT_WINDOW_MS;
+    const problems: string[] = [];
     const counts = await Promise.all(
       Object.entries(healthQueues).map(async ([name, q]) => {
         const c = await q.getJobCounts("waiting", "active", "failed");
+        if (CRITICAL_QUEUES.has(name)) {
+          if ((c.waiting ?? 0) >= HEALTH_BACKLOG_MAX) problems.push(`${name}: backlog ${c.waiting}`);
+          if ((c.failed ?? 0) > 0) {
+            // Count only failures finished within the last hour (not stale retained ones).
+            const failedJobs = await q.getFailed(0, 99).catch(() => []);
+            const recent = failedJobs.filter((j) => (j.finishedOn ?? j.timestamp ?? 0) >= cutoff).length;
+            if (recent >= HEALTH_RECENT_FAIL_MAX) problems.push(`${name}: ${recent} recent failures`);
+          }
+        }
         return [name, c] as const;
       }),
     );
     const queues = Object.fromEntries(counts);
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, queues }));
+    const ok = problems.length === 0;
+    res.writeHead(ok ? 200 : 503, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok, ...(ok ? {} : { problems }), queues }));
   } catch {
-    res.writeHead(500, { "Content-Type": "application/json" });
+    res.writeHead(503, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: false, error: "redis_unavailable" }));
   }
 });
@@ -456,7 +541,6 @@ async function shutdown() {
   await Promise.all(Object.values(healthQueues).map((q) => q.close()));
   await catalogWorker.close();
   await recommendationsWorker.close();
-  await creativeSetWorker.close();
   await imageQualityWorker.close();
   await brandInstallWorker.close();
   await tryonRenderWorker.close();
@@ -465,12 +549,13 @@ async function shutdown() {
   await brandDnaCatalogWorker.close();
   await brandInstagramWorker.close();
   await replenishmentNotifyWorker.close();
+  await fitTunerWorker.close();
   await outcomeResolverWorker.close();
   await billingReconcileWorker.close();
+  await retentionCleanupWorker.close();
   await recommendationsQueue.close();
   await sentimentQueue.close();
   await sizeChartQueue.close();
-  await creativeSetQueue.close();
   await replenishmentNotifyQueue.close();
   await connection.quit();
   await prisma.$disconnect();

@@ -1,0 +1,131 @@
+{
+  "persona_id": "uk-1-clone99",
+  "region": "UK · London",
+  "age": 34,
+  "archetype": "fashion-aware, asks brutal questions",
+  "style": "terse_skeptical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:56:34.216Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "right, is the camel really pure wool? bit dubious at that price.",
+      "mira_voice": "The Camel Wrap Coat is 100% fine merino wool, yes. It's designed to be a piece you keep for years. What are you thinking of wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Everyday wear",
+        "For an occasion",
+        "How does it fit?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The Camel Wrap Coat is 100% fine merino wool, yes. It's designed to be a piece you keep for years. What are you thinking of wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Everyday wear",
+          "For an occasion",
+          "How does it fit?"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 4983,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, this is the one I'd put you in, it's a true classic.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, this is the one I'd put you in, it's a true classic.",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 23506,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "If the Wrap Coat isn't quite it, how about the Leather Trench? It's a statement piece, but wears with everything.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about it",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "If the Wrap Coat isn't quite it, how about the Leather Trench? It's a statement piece, but wears with everything.",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "Tell me about it",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 7659,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 18919,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 8047,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:57:37.330Z",
+  "total_latency_ms": 63114
+}

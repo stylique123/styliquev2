@@ -152,7 +152,10 @@ export async function postComboAddAll(args: {
   // We prefer the variant whose `size` matches the shopper's recommended size
   // (from the `sizes` map); if no match, fall back to the first variant by id.
   const variants = await prisma.productVariant.findMany({
-    where: { productId: { in: validIds } },
+    // Exclude variants Shopify has marked unavailable (panel P1) — adding a
+    // sold-out variant to /cart/add.js fails the add. NULL = unknown → keep
+    // (never block a sale on unknown stock, per D46/§3.5).
+    where: { productId: { in: validIds }, availableForSale: { not: false } },
     select: { productId: true, shopifyId: true, size: true },
     orderBy: { id: "asc" },
   });
@@ -181,6 +184,14 @@ export async function postComboAddAll(args: {
     }
   }
   const shopifyVariantIds = validIds.map((id) => variantByProduct.get(id) ?? "").filter(Boolean);
+
+  // Validated products exist but NONE resolved to a real Shopify variant id (no
+  // variants synced, or malformed shopifyId) — return an honest error instead of
+  // ok:true with an empty array, which the widget would surface as a silent
+  // failure after an apparent success (panel P1).
+  if (validIds.length > 0 && shopifyVariantIds.length === 0) {
+    return { ok: false, error: "no_variants_found" };
+  }
 
   // CartIntent is an analytics/tracking row — it must NEVER block the actual
   // cart-add. If the insert fails (e.g. table missing on a fresh migrate-deploy

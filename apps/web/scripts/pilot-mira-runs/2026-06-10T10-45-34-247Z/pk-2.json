@@ -1,0 +1,117 @@
+{
+  "persona_id": "pk-2",
+  "region": "Pakistan · Lahore",
+  "age": 27,
+  "archetype": "modern silhouettes, mom approves",
+  "style": "modesty_concern",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T10:47:35.090Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is this too low cut for a family wedding. honest answer.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3265,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "is this too low cut for — try again",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2030,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "My apologies, the connection cut out. About the Midnight Silk Gown for a family wedding, the cowl neck is a true deep scoop, so it depends on how conservative the family event is. What's the vibe of the wedding?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "It's formal",
+        "More relaxed",
+        "Show me another dress"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "My apologies, the connection cut out. About the Midnight Silk Gown for a family wedding, the cowl neck is a true deep scoop, so it depends on how conservative the family event is. What's the vibe of the wedding?",
+        "route": "talk_only",
+        "quickReplies": [
+          "It's formal",
+          "More relaxed",
+          "Show me another dress"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 7725,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok lower v but not low low — show me",
+      "mira_voice": "Given that, the Midnight Silk Gown is a true deep scoop, so it might be a touch low for a more conservative family wedding. I can show you one that has a higher neckline, still elegant.",
+      "mira_route": "reco_filter",
+      "mira_chips": [
+        "Show me a different one",
+        "What about the fit?",
+        "Show me the gown anyway"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Given that, the Midnight Silk Gown is a true deep scoop, so it might be a touch low for a more conservative family wedding. I can show you one that has a higher neckline, still elegant.",
+        "route": "reco_filter",
+        "filter": "evening",
+        "quickReplies": [
+          "Show me a different one",
+          "What about the fit?",
+          "Show me the gown anyway"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 20753,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, next",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 16502,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:25.365Z",
+  "total_latency_ms": 50275
+}

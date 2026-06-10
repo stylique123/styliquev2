@@ -1,0 +1,106 @@
+{
+  "persona_id": "in-4",
+  "region": "India · Chennai",
+  "age": 41,
+  "archetype": "petite, struggle with western sizing",
+  "style": "size_problem",
+  "pdp": "atelier-wide-leg-trouser",
+  "started_at": "2026-06-10T11:27:19.259Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "im 4'11. these will pool at my feet right. any way to actually wear these?",
+      "mira_voice": "Yes, at 4'11\" the Atelier Wide-Leg Trouser will definitely need a hem, probably around 3-4cm to sit perfectly. But they're absolutely worth it, the cut is beautiful. Want me to size them for you, or build a whole look around them?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size these for me",
+        "Build a look",
+        "Show me another option"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Yes, at 4'11\" the Atelier Wide-Leg Trouser will definitely need a hem, probably around 3-4cm to sit perfectly. But they're absolutely worth it, the cut is beautiful. Want me to size them for you, or build a whole look around them?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size these for me",
+          "Build a look",
+          "Show me another option"
+        ],
+        "intent": "suitability",
+        "productHandle": "atelier-wide-leg-trouser"
+      },
+      "http_status": 200,
+      "latency_ms": 3393,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "4'11, how do these actually wear",
+      "mira_voice": "At 4'11\", these will definitely need a hem taken up, about 3-4cm, but it's worth it for how beautifully they drape. They wear with anything from a fitted knit to a silk camisole. What's the occasion?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For work",
+        "Evening out",
+        "Casual everyday"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "At 4'11\", these will definitely need a hem taken up, about 3-4cm, but it's worth it for how beautifully they drape. They wear with anything from a fitted knit to a silk camisole. What's the occasion?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For work",
+          "Evening out",
+          "Casual everyday"
+        ],
+        "intent": "suitability",
+        "productHandle": "atelier-wide-leg-trouser"
+      },
+      "http_status": 200,
+      "latency_ms": 1697,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "4'11, how do these actually wear",
+      "mira_voice": "On that — At 4'11\", these will definitely need a hem taken up, about 3-4cm, but it's worth it for how beautifully they drape. They wear with anything from a fitted knit to a silk camisole. What's the occasion?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For work",
+        "Evening out",
+        "Casual day"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "On that — At 4'11\", these will definitely need a hem taken up, about 3-4cm, but it's worth it for how beautifully they drape. They wear with anything from a fitted knit to a silk camisole. What's the occasion?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For work",
+          "Evening out",
+          "Casual day"
+        ],
+        "intent": "suitability",
+        "productHandle": "atelier-wide-leg-trouser"
+      },
+      "http_status": 200,
+      "latency_ms": 1651,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:26.001Z",
+  "total_latency_ms": 6741
+}

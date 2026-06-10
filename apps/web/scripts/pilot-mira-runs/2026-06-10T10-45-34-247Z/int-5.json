@@ -1,0 +1,131 @@
+{
+  "persona_id": "int-5",
+  "region": "intent",
+  "age": 42,
+  "archetype": "cart-builder",
+  "style": "aov_builder",
+  "pdp": null,
+  "started_at": "2026-06-10T10:53:43.455Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i want to add 3 things at once. can you build me a look and let me add it all?",
+      "mira_voice": "I can absolutely build a look for you, what sort of occasion or vibe are we dressing for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Evening",
+        "Everyday",
+        "Something sharp"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "I can absolutely build a look for you, what sort of occasion or vibe are we dressing for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Evening",
+          "Everyday",
+          "Something sharp"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3259,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, here's the one I'd send you home with, a true statement piece. What do you think?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, a true statement piece. What do you think?",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23471,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 14326,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2651,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "My apologies, I was saying the Midnight Silk Gown is a true statement piece. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "My apologies, I was saying the Midnight Silk Gown is a true statement piece. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2353,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:54:29.515Z",
+  "total_latency_ms": 46060
+}

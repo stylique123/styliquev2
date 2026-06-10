@@ -1,0 +1,142 @@
+{
+  "persona_id": "int-2",
+  "region": "intent",
+  "age": 38,
+  "archetype": "returning visitor",
+  "style": "return_visit",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T10:53:28.182Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "back again. i looked at this last week.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 10638,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "back again. i looked at this — try again",
+      "mira_voice": "Welcome back! The Midnight Silk Gown is a beautiful piece. Want to try it on again, or should I build a look around it?",
+      "mira_route": "try_on",
+      "mira_chips": [
+        "Try it on",
+        "Build a look",
+        "What's my size?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Welcome back! The Midnight Silk Gown is a beautiful piece. Want to try it on again, or should I build a look around it?",
+        "route": "try_on",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Try it on",
+          "Build a look",
+          "What's my size?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2292,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok do it",
+      "mira_voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+      "mira_route": "try_on",
+      "mira_chips": [
+        "Looks good!",
+        "Not quite",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+        "route": "try_on",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Looks good!",
+          "Not quite",
+          "What goes with it?"
+        ],
+        "intent": "try_on"
+      },
+      "http_status": 200,
+      "latency_ms": 2042,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok do it",
+      "mira_voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+      "mira_route": "try_on",
+      "mira_chips": [
+        "Add to bag",
+        "Build the look"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+        "route": "try_on",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Add to bag",
+          "Build the look"
+        ],
+        "intent": "try_on"
+      },
+      "http_status": 200,
+      "latency_ms": 2808,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok do it",
+      "mira_voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+      "mira_route": "try_on",
+      "mira_chips": [
+        "Add to bag",
+        "Build the look"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, let's get you into the Midnight Silk Gown again. What do you think this time?",
+        "route": "try_on",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Add to bag",
+          "Build the look"
+        ],
+        "intent": "try_on"
+      },
+      "http_status": 200,
+      "latency_ms": 1988,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:53:47.950Z",
+  "total_latency_ms": 19768
+}

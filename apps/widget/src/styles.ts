@@ -140,6 +140,7 @@ export const CSS = /* css */`
 .sq-close {
   background: transparent; border: 0; color: ${TOKENS.coolGrey}; cursor: pointer;
   font-size: 22px; line-height: 1; padding: 6px 10px; border-radius: 999px;
+  min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; /* WCAG 2.5.5 touch target (panel P2) */
 }
 .sq-close:hover { color: ${TOKENS.textPrimary}; background: rgba(255,255,255,.06); }
 
@@ -187,7 +188,7 @@ export const CSS = /* css */`
   border-bottom: 1px solid ${TOKENS.borderSubtle};
 }
 .sq-step {
-  flex: 1; border: 0; cursor: pointer; padding: 8px 6px; border-radius: 10px;
+  flex: 1; border: 0; cursor: pointer; padding: 8px 6px; border-radius: 10px; min-height: 44px;
   background: transparent; color: ${TOKENS.coolGrey};
   font-size: 11.5px; letter-spacing: .2px; font-weight: 500; text-align: left;
   display: flex; flex-direction: column; gap: 2px;
@@ -230,7 +231,7 @@ export const CSS = /* css */`
   margin: 4px 0 14px;
 }
 .sq-seg__btn {
-  padding: 8px 14px; border-radius: 999px; border: 0; background: transparent;
+  padding: 8px 14px; border-radius: 999px; border: 0; background: transparent; min-height: 40px;
   color: ${TOKENS.coolGrey}; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: all .25s;
 }
 .sq-seg__btn[aria-selected="true"] { background: ${TOKENS.gradient}; color: ${TOKENS.textPrimary}; box-shadow: 0 4px 12px rgba(139,92,246,.35), inset 0 1px 0 rgba(255,255,255,.18); }
@@ -704,6 +705,16 @@ export const CSS = /* css */`
 .sq-skin-selected-label {
   font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase;
   color: ${TOKENS.textMuted};
+}
+/* Respect reduced-motion (WCAG 2.3.3, panel P2). Scoped to sq- classes so it
+   never touches the merchant theme; near-zero durations keep end-states intact. */
+@media (prefers-reduced-motion: reduce) {
+  [class*="sq-"], [class*="sq-"]::before, [class*="sq-"]::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 `;
 

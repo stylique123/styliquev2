@@ -1,0 +1,132 @@
+{
+  "persona_id": "obj-9",
+  "region": "objection",
+  "archetype": "AI-distrustful",
+  "style": "ai_skeptic",
+  "pdp": null,
+  "started_at": "2026-06-10T11:23:16.774Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "are you a real person or one of those chatbots. honest.",
+      "mira_voice": "The Crimson Bridal Lehenga Set anchors the look — a considered pairing with the Kundan Maang Tikka.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "crimson-bridal-lehenga-set",
+      "mira_full_decision": {
+        "voice": "The Crimson Bridal Lehenga Set anchors the look — a considered pairing with the Kundan Maang Tikka.",
+        "route": "look",
+        "productHandle": "crimson-bridal-lehenga-set",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 4276,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok if you're real, sell me something honest then",
+      "mira_voice": "This silk slip dress is a foundational piece for so many looks, it’s a confident place to start.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "silk-slip-dress",
+      "mira_full_decision": {
+        "voice": "This silk slip dress is a foundational piece for so many looks, it’s a confident place to start.",
+        "route": "look",
+        "productHandle": "silk-slip-dress",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 10567,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The slip dress offers a sleek base, while the maang tikka adds a touch of unexpected elegance for an evening out. | neutral with accent palette · balanced silhouette · complete look",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "silk-slip-dress",
+      "mira_full_decision": {
+        "voice": "The slip dress offers a sleek base, while the maang tikka adds a touch of unexpected elegance for an evening out. | neutral with accent palette · balanced silhouette · complete look",
+        "route": "look",
+        "productHandle": "silk-slip-dress",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 8422,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The silk slip dress and Kundan Maang Tikka create an effortlessly elegant look with a touch of unique sparkle. | neutral with accent palette · balanced silhouette · complete look",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "silk-slip-dress",
+      "mira_full_decision": {
+        "voice": "The silk slip dress and Kundan Maang Tikka create an effortlessly elegant look with a touch of unique sparkle. | neutral with accent palette · balanced silhouette · complete look",
+        "route": "look",
+        "productHandle": "silk-slip-dress",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 7376,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:24:06.917Z",
+  "total_latency_ms": 30641
+}

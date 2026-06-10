@@ -1,0 +1,145 @@
+{
+  "persona_id": "prc-3",
+  "region": "proactive",
+  "age": 39,
+  "archetype": "single word",
+  "style": "minimal_signal",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T10:50:57.307Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "hi",
+      "mira_voice": "That Midnight Silk Gown is a standout piece, the bias cut makes it really special. Want me to size it, style it, or put it in the fitting room?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "Style it for me",
+        "See it on me"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "That Midnight Silk Gown is a standout piece, the bias cut makes it really special. Want me to size it, style it, or put it in the fitting room?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "Style it for me",
+          "See it on me"
+        ],
+        "intent": "greeting"
+      },
+      "http_status": 200,
+      "latency_ms": 16125,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2673,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Sorry about that! I was saying the Midnight Silk Gown is a standout, the bias cut makes it really special. What would you like to do next?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "Style it",
+        "Try it on"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Sorry about that! I was saying the Midnight Silk Gown is a standout, the bias cut makes it really special. What would you like to do next?",
+        "route": "talk_only",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "Style it",
+          "Try it on"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 2800,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "This Midnight Silk Gown is absolutely the one I'd pick, it's a showstopper. Shall we get your size, or put it in the fitting room?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "Try it on",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "This Midnight Silk Gown is absolutely the one I'd pick, it's a showstopper. Shall we get your size, or put it in the fitting room?",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "Try it on",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2406,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "This Midnight Silk Gown is absolutely the one I'd pick, it's a showstopper. Shall we get your size, or put it in the fitting room?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "This Midnight Silk Gown is absolutely the one I'd pick, it's a showstopper. Shall we get your size, or put it in the fitting room?",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 12257,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:51:33.569Z",
+  "total_latency_ms": 36261
+}

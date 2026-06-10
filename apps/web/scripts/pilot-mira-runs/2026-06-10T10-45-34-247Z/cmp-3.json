@@ -1,0 +1,145 @@
+{
+  "persona_id": "cmp-3",
+  "region": "compare",
+  "age": 28,
+  "archetype": "two-piece comparison",
+  "style": "two_piece",
+  "pdp": null,
+  "started_at": "2026-06-10T10:54:05.533Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "show me the linen shirt and the silk slip side by side. which is more versatile.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 17023,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "show me the linen shirt and — try again",
+      "mira_voice": "The Linen Relaxed Shirt is much more versatile for everyday wear, while the Onyx Silk Slip is beautiful for dressier moments. Which one are you leaning towards?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "The linen shirt",
+        "The silk slip",
+        "Show me both"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The Linen Relaxed Shirt is much more versatile for everyday wear, while the Onyx Silk Slip is beautiful for dressier moments. Which one are you leaning towards?",
+        "route": "talk_only",
+        "quickReplies": [
+          "The linen shirt",
+          "The silk slip",
+          "Show me both"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 7131,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "linen for day, slip for night — which earns one purchase",
+      "mira_voice": "The Linen Relaxed Shirt will give you more range for daily wear, it's easy to dress up or down. The silk slip is beautiful, but more specific to evening.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "Show me the slip",
+        "What goes with it?"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "The Linen Relaxed Shirt will give you more range for daily wear, it's easy to dress up or down. The silk slip is beautiful, but more specific to evening.",
+        "route": "reco_handle",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Size this one",
+          "Show me the slip",
+          "What goes with it?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 2313,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Okay, if you're looking for something that bridges day and night easily, the Pleated Satin Midi Skirt is a strong contender. It's elegant but still very wearable.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about it",
+        "Show me another",
+        "What goes with this?"
+      ],
+      "mira_handle": "pleated-midi-skirt",
+      "mira_full_decision": {
+        "voice": "Okay, if you're looking for something that bridges day and night easily, the Pleated Satin Midi Skirt is a strong contender. It's elegant but still very wearable.",
+        "route": "reco_handle",
+        "productHandle": "pleated-midi-skirt",
+        "quickReplies": [
+          "Tell me about it",
+          "Show me another",
+          "What goes with this?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 10635,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Okay, if you're looking for something that bridges day and night easily, the Pleated Satin Midi Skirt is a strong contender. It's elegant but still very wearable.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me more",
+        "See it on",
+        "Show me another"
+      ],
+      "mira_handle": "pleated-midi-skirt",
+      "mira_full_decision": {
+        "voice": "Okay, if you're looking for something that bridges day and night easily, the Pleated Satin Midi Skirt is a strong contender. It's elegant but still very wearable.",
+        "route": "reco_handle",
+        "productHandle": "pleated-midi-skirt",
+        "quickReplies": [
+          "Tell me more",
+          "See it on",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 9840,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:54:52.475Z",
+  "total_latency_ms": 46942
+}

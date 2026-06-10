@@ -1,0 +1,110 @@
+{
+  "persona_id": "pk-2",
+  "region": "Pakistan · Lahore",
+  "age": 27,
+  "archetype": "modern silhouettes, mom approves",
+  "style": "modesty_concern",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T11:27:26.211Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is this too low cut for a family wedding. honest answer.",
+      "mira_voice": "The Midnight Silk Gown is cut to flatter, but for a family wedding, the cowl neck might be a touch low depending on the vibe. If you're worried, I'd suggest pairing it with the Tailored Double-Breasted Blazer for coverage.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Midnight Silk Gown is cut to flatter, but for a family wedding, the cowl neck might be a touch low depending on the vibe. If you're worried, I'd suggest pairing it with the Tailored Double-Breasted Blazer for coverage.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 4231,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "The blazer offers a clean, neutral line against the gown, making it feel a little more covered and formal for the occasion. It's a strong pairing at 86%.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Size the pieces",
+        "See whole look",
+        "Add full look",
+        "Show another look"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "The blazer offers a clean, neutral line against the gown, making it feel a little more covered and formal for the occasion. It's a strong pairing at 86%.",
+        "route": "look",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size the pieces",
+          "See whole look",
+          "Add full look",
+          "Show another look"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1822,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Midnight Silk Gown, the Tailored Double-Breasted Blazer, and the Camel Wrap Coat together would be $3620. That's a beautiful, complete look.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Add all three",
+        "Just the gown",
+        "Show me another option"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "The Midnight Silk Gown, the Tailored Double-Breasted Blazer, and the Camel Wrap Coat together would be $3620. That's a beautiful, complete look.",
+        "route": "talk_only",
+        "quickReplies": [
+          "Add all three",
+          "Just the gown",
+          "Show me another option"
+        ],
+        "intent": "price",
+        "productHandle": "midnight-silk-gown"
+      },
+      "http_status": 200,
+      "latency_ms": 1702,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:33.966Z",
+  "total_latency_ms": 7755
+}

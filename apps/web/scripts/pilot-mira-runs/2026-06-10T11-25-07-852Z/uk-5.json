@@ -1,0 +1,168 @@
+{
+  "persona_id": "uk-5",
+  "region": "UK · Brighton",
+  "age": 23,
+  "archetype": "first-time luxury buyer",
+  "style": "value_conscious",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T11:25:16.237Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is silk really worth £1450 vs satin from somewhere else?",
+      "mira_voice": "That's a great question. The Midnight Silk Gown is pure mulberry silk, which breathes and drapes in a way satin can't quite replicate, so it feels different against the skin and photographs beautifully. It's the kind of piece you keep for years. What's the occasion you have in mind?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Tell me more about the fabric",
+        "What's my size?",
+        "Show me another gown"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "That's a great question. The Midnight Silk Gown is pure mulberry silk, which breathes and drapes in a way satin can't quite replicate, so it feels different against the skin and photographs beautifully. It's the kind of piece you keep for years. What's the occasion you have in mind?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Tell me more about the fabric",
+          "What's my size?",
+          "Show me another gown"
+        ],
+        "intent": "price",
+        "productHandle": "midnight-silk-gown"
+      },
+      "http_status": 200,
+      "latency_ms": 3248,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "where does the price actually go",
+      "mira_voice": "It's in the fabric and the cut, honestly. This is a bias-cut mulberry silk, so it's not just the material but how it's shaped to your body that makes it special. It's designed to last, not just for a season.",
+      "mira_route": "suitability",
+      "mira_chips": [
+        "What's my size?",
+        "See it on me",
+        "Show me another gown",
+        "Build the look"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "It's in the fabric and the cut, honestly. This is a bias-cut mulberry silk, so it's not just the material but how it's shaped to your body that makes it special. It's designed to last, not just for a season.",
+        "route": "suitability",
+        "quickReplies": [
+          "What's my size?",
+          "See it on me",
+          "Show me another gown",
+          "Build the look"
+        ],
+        "intent": "price",
+        "productHandle": "midnight-silk-gown"
+      },
+      "http_status": 200,
+      "latency_ms": 1735,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok — given that, what's your pick",
+      "mira_voice": "Given all that, I'd put you in the Midnight Silk Gown. It's truly a standout. Shall I size it for you, or do you want to see it on?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?",
+        "Build the look"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Given all that, I'd put you in the Midnight Silk Gown. It's truly a standout. Shall I size it for you, or do you want to see it on?",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?",
+          "Build the look"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1877,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 3873,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "If you're looking for another option, I'd suggest the Onyx Silk Slip. It's a similar feeling, but a little more versatile.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Compare the two",
+        "Build the look"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "If you're looking for another option, I'd suggest the Onyx Silk Slip. It's a similar feeling, but a little more versatile.",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Compare the two",
+          "Build the look"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2119,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:29.089Z",
+  "total_latency_ms": 12852
+}

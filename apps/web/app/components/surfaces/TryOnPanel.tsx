@@ -8,9 +8,9 @@
 //              with a real "try this size" re-render, and combined complete-the-look
 //              (added pieces layer onto the SAME body — no restart).
 
-import { Fragment, useEffect, useRef, useState, useCallback } from "react";
+import { Fragment, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  completeLookFor, canAddToLook, products as catalog, recommendSizeForProduct, fitBreakdown, renderEaseOf, resolveAsset, ASSET_BASE,
+  completeLookFor, canAddToLook, products as catalog, recommendSizeForProduct, fitBreakdown, renderEaseOf, confidenceBreakdown, resolveAsset, ASSET_BASE,
   type Product, type FitPref, type SizeFit,
 } from "../../lib/catalog";
 import { addToCart, addOutfitToCart } from "../../lib/storefront-cart";
@@ -135,6 +135,8 @@ function computeFit(
   weightKg: number,
   _bodyType: MuseId | null,
   body?: MuseBody,
+  age?: number,
+  usualBrandSize?: string,
 ) {
   // The body that decides the size: in avatar mode the caller passes the muse's
   // real height/weight + bust/waist/hip (so her frame drives the size and the
@@ -147,6 +149,7 @@ function computeFit(
   const rec = recommendSizeForProduct(product, {
     heightCm, weightKg, fitPref: pref,
     bust: profile?.bust, waist: profile?.waist, hip: profile?.hip,
+    age, usualBrandSize,
   });
   return {
     size: rec.size,
@@ -160,6 +163,23 @@ function computeFit(
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// The body Mira already captured this session (same key MiraWidget writes on
+// `rememberBody`). Lets the fitting room reuse it instead of re-asking, and
+// keeps the size it shows consistent with the size Mira already named.
+type SavedBody = { heightCm: number; weightKg: number; age?: number; usualBrandSize?: string };
+function readSavedBody(): SavedBody | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem("mira_body_v1");
+    if (!raw) return null;
+    const b = JSON.parse(raw) as Partial<SavedBody>;
+    if (typeof b?.heightCm === "number" && typeof b?.weightKg === "number") {
+      return { heightCm: b.heightCm, weightKg: b.weightKg };
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 export default function TryOnPanel({
   product: initialProduct,
   onClose,
@@ -170,18 +190,35 @@ export default function TryOnPanel({
   const defaultProduct = catalog.find((p) => p.handle === "onyx-silk-slip") ?? catalog[0];
   const [currentProduct, setCurrentProduct] = useState<Product>(initialProduct ?? defaultProduct);
 
-  const [step,           setStep          ] = useState(0);
-  const [mode,           setMode          ] = useState<Mode>("avatar");
+  // Reuse the body the shopper already gave Mira this session (mira_body_v1) so
+  // the fitting room NEVER asks for height/weight again, and the size it shows
+  // agrees with the size Mira already named. When a body is known we also SKIP
+  // the size step entirely and open straight on model choice (founder: "when I
+  // say try it on, why does it ask me my size again").
+  const savedBody = useMemo(readSavedBody, []);
+  // Open behaviour: a returning shopper (body already saved) skips straight to the
+  // model picker — they've sized themselves before, the next step that matters is
+  // choosing the avatar. A first-timer (no body) lands on Size first so the panel
+  // never opens without the shopper having a frame on file.
+  const [step,           setStep          ] = useState(savedBody ? 1 : 0);
+  // Upload-your-own-photo was removed (founder: muses only). `mode` is locked to
+  // "avatar" — every shopper tries garments on a curated muse. The type stays
+  // `Mode` (not the literal) so the dead `=== "upload"` display branches below
+  // still compile harmlessly; `selfie` is permanently null so they never fire.
+  const [mode]                              = useState<Mode>("avatar");
   // NO auto-selection — the shopper MUST pick a model (or upload a photo) before
   // we proceed. Starts null; the footer is gated until a choice is made.
   const [muse,           setMuse          ] = useState<MuseId | null>(null);
   // Women is the default cast; switching clears any muse whose gender no longer matches.
   const [gender,         setGender        ] = useState<MuseGender>("f");
-  const [selfie,         setSelfie        ] = useState<string | null>(null);
+  const [selfie]                            = useState<string | null>(null);
   // Set when the shopper tries to advance without choosing — surfaces a prompt.
   const [chooseError,    setChooseError   ] = useState(false);
-  const [height,         setHeight        ] = useState(168);
-  const [weight,         setWeight        ] = useState(62);
+  const [height,         setHeight        ] = useState(savedBody?.heightCm ?? 168);
+  const [weight,         setWeight        ] = useState(savedBody?.weightKg ?? 62);
+  // BoldMatrix-style additional signals — optional, improve confidence score
+  const [fitAge,         setFitAge        ] = useState<number>(savedBody?.age ?? 0);
+  const [usualSize,      setUsualSize     ] = useState<string>(savedBody?.usualBrandSize ?? "none");
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderPhase,    setRenderPhase   ] = useState(0);
   // The real composited image (garment actually worn on the muse / the photo).
@@ -191,6 +228,9 @@ export default function TryOnPanel({
   // P4 — when the abuse cap trips, the result step shows a "you've reached the
   // limit, try again in N s" message instead of the generic render error.
   const [rateInfo,       setRateInfo      ] = useState<number | null>(null);
+  // Specific failure code (render_unavailable / quota_reached / timeout) so the
+  // error overlay can tell the shopper the truth instead of one generic line.
+  const [renderErrCode,  setRenderErrCode ] = useState<string | null>(null);
   // Pieces layered onto the SAME body alongside the primary product (demand l).
   const [lookItems,      setLookItems     ] = useState<Product[]>([]);
   // chosenSize = the size the CURRENT render was produced at (null → fitResult).
@@ -203,7 +243,6 @@ export default function TryOnPanel({
   // "Try the look on" button appears whenever the live selection diverges. (Fix #3)
   const [renderedSig,    setRenderedSig   ] = useState<string | null>(null);
   const [saved,          setSaved         ] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   // Monotonic token so a superseded in-flight render never overwrites a newer one.
   const renderToken = useRef(0);
   const isDesktop = useIsDesktop();
@@ -222,6 +261,30 @@ export default function TryOnPanel({
       setMuse(bestMatchMuse);
     }
   }, [mode, muse, height, weight, bestMatchMuse]);
+
+  // Persist muse + body across PDP navigation (panel rec #20). A full page reload
+  // remounts the widget, so without this the shopper re-picks their muse and
+  // re-enters their measurements on every product. Size itself is per-product
+  // (each piece is cut differently) so it correctly re-derives from the restored
+  // body. sessionStorage survives same-tab navigation, clears on tab close.
+  const tryonRestored = useRef(false);
+  useEffect(() => {
+    if (tryonRestored.current) return;
+    tryonRestored.current = true;
+    try {
+      const raw = sessionStorage.getItem("mira_tryon_v1");
+      if (!raw) return;
+      const m = JSON.parse(raw) as { muse?: MuseId; gender?: MuseGender; height?: number; weight?: number };
+      if (m.gender) setGender(m.gender);
+      if (typeof m.height === "number" && m.height > 0) setHeight(m.height);
+      if (typeof m.weight === "number" && m.weight > 0) setWeight(m.weight);
+      if (m.muse) setMuse(m.muse);
+    } catch { /* read-only / corrupt — fine */ }
+  }, []);
+  useEffect(() => {
+    try { sessionStorage.setItem("mira_tryon_v1", JSON.stringify({ muse, gender, height, weight })); }
+    catch { /* quota / read-only — fine */ }
+  }, [muse, gender, height, weight]);
   // SIZE-1 (non-negotiable): the SIZE is a clean function of the shopper's OWN
   // height + weight × this product's cut. The muse is the VISUAL avatar only —
   // her measurements NEVER enter the recommender (that was the SIZE-1 bug: the
@@ -232,7 +295,22 @@ export default function TryOnPanel({
   const fitBody = undefined;
   const fitH    = height;
   const fitW    = weight;
-  const fitResult   = computeFit(currentProduct, fitH, fitW, muse, fitBody);
+  const fitResult   = computeFit(currentProduct, fitH, fitW, muse, fitBody, fitAge > 0 ? fitAge : undefined, usualSize !== "none" ? usualSize : undefined);
+  // Persist age + usualBrandSize into the shared body store whenever they change
+  // so Mira and the sizing engine both see the most-complete profile next session.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("mira_body_v1");
+      const existing = raw ? (JSON.parse(raw) as SavedBody) : { heightCm: height, weightKg: weight };
+      const updated: SavedBody = {
+        ...existing,
+        age: fitAge > 0 ? fitAge : undefined,
+        usualBrandSize: usualSize !== "none" ? usualSize : undefined,
+      };
+      window.localStorage.setItem("mira_body_v1", JSON.stringify(updated));
+    } catch { /* quota / SSR */ }
+  }, [fitAge, usualSize, height, weight]);
   // Complete-the-look is SLOT-AWARE and DYNAMIC (founder P3a/b/c): it suggests only
   // pieces that genuinely complete what's currently worn (no camisole-with-a-gown,
   // no two jackets) and RE-RANKS every time a piece is added/removed — so adding a
@@ -287,14 +365,6 @@ export default function TryOnPanel({
   // 200cm/35kg both showed the muse's size). The shopper's typed numbers are the
   // sole size driver in both modes; switching muse only changes the avatar shown.
 
-  const handlePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setSelfie(typeof reader.result === "string" ? reader.result : null);
-    reader.readAsDataURL(file);
-  };
-
   // Cosmetic progress crawl. It asymptotes to 92% and WAITS there for the real
   // fetch to land; runRender pushes it to 100 when the composite is back, and
   // this effect then advances to the result step. So the animation length tracks
@@ -307,13 +377,18 @@ export default function TryOnPanel({
     }
     const t = window.setInterval(() => {
       setRenderProgress((p) => {
-        if (p >= 92) return p; // hold for the network
-        const next = Math.min(92, p + 3 + Math.random() * 5);
+        // Move briskly to ~85, then keep creeping slowly toward 99 so the bar
+        // NEVER looks frozen while the network finishes (founder: "it gets stuck
+        // on 92"). runRender slams it to 100 the instant the composite lands.
+        if (p >= 99) return p;
+        const next = p < 85
+          ? Math.min(85, p + 3 + Math.random() * 5)
+          : Math.min(99, p + 0.5 + Math.random() * 0.4);
         if (next >= 30 && renderPhase < 1) setRenderPhase(1);
         if (next >= 70 && renderPhase < 2) setRenderPhase(2);
         return next;
       });
-    }, 230);
+    }, 200);
     return () => clearInterval(t);
   }, [renderProgress, renderPhase]);
 
@@ -328,8 +403,9 @@ export default function TryOnPanel({
       // instead of silently auto-selecting one.
       const useUpload = mode === "upload" && !!selfie;
       if (!useUpload && (mode === "upload" || !activeMuse)) {
+        // No model picked — bounce back to the model step (now step 1).
         setChooseError(true);
-        setStep(0);
+        setStep(1);
         return;
       }
 
@@ -341,6 +417,7 @@ export default function TryOnPanel({
       const token = ++renderToken.current;
       setRenderError(false);
       setRateInfo(null);
+      setRenderErrCode(null);
       setRenderPhase(0);
       setRenderProgress(2);
 
@@ -399,6 +476,18 @@ export default function TryOnPanel({
       // "Try the look on" button can tell when the live selection has diverged.
       setRenderedSig(sigOf(garments, sizeForRender));
 
+      // Per-brand cache partition (founder fix). On the real storefront the
+      // widget bundle sets `window.Shopify.shop` (e.g. "stylee.myshopify.com");
+      // on the demo `__sqShopSlug` may be set explicitly. Otherwise we send no
+      // slug and the server uses a sentinel — preserves demo behaviour.
+      const shopSlug = (() => {
+        if (typeof window === "undefined") return undefined;
+        const w = window as unknown as Record<string, unknown>;
+        const explicit = typeof w.__sqShopSlug === "string" ? (w.__sqShopSlug as string) : null;
+        const shopify = (w.Shopify as { shop?: string } | undefined)?.shop;
+        return explicit ?? shopify ?? undefined;
+      })();
+
       const body = useUpload
         ? {
             mode: "photo" as const,
@@ -412,6 +501,7 @@ export default function TryOnPanel({
             tightness,
             bindLabel,
             garmentFits: garmentFits.length > 1 ? garmentFits : undefined,
+            shopSlug,
           }
         : {
             mode: "muse" as const,
@@ -426,6 +516,7 @@ export default function TryOnPanel({
             tightness,
             bindLabel,
             garmentFits: garmentFits.length > 1 ? garmentFits : undefined,
+            shopSlug,
           };
 
       try {
@@ -443,7 +534,14 @@ export default function TryOnPanel({
           setRenderError(true);
           return;
         }
-        if (!res.ok) throw new Error("render_failed");
+        if (!res.ok) {
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
+          if (token !== renderToken.current) return;
+          setRenderedUrl(null);
+          setRenderErrCode(j.error ?? (res.status >= 500 ? "render_unavailable" : "render_failed"));
+          setRenderError(true);
+          return;
+        }
         const data = (await res.json()) as { imageUrl?: string };
         if (token !== renderToken.current) return;
         // The render URL is served by the backend, not the storefront — a
@@ -456,6 +554,7 @@ export default function TryOnPanel({
       } catch {
         if (token !== renderToken.current) return;
         setRenderedUrl(null);
+        setRenderErrCode("timeout");
         setRenderError(true); // StepResult shows an explicit error + retry
       } finally {
         if (token === renderToken.current) setRenderProgress(100);
@@ -532,6 +631,8 @@ export default function TryOnPanel({
 
   return (
     <div
+      // Accessibility (panel P0): Escape closes, Escape/Tab trapped inside
+      onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); onClose?.(); } }}
       style={{
         // Sit above EVERYTHING — the site header (z80) and the Mira launcher
         // (z90) must not bleed through the fitting-room takeover.
@@ -549,10 +650,34 @@ export default function TryOnPanel({
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Virtual Try-On fitting room"
         onClick={(e) => e.stopPropagation()}
+        ref={(el) => {
+          // Focus trap: on mount focus first focusable element; on Tab/Shift-Tab
+          // cycle within the dialog (WCAG SC 2.1.2).
+          if (!el) return;
+          const FOCUSABLE = 'button:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])';
+          const trap = (e: KeyboardEvent) => {
+            if (e.key !== "Tab") return;
+            const els = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE));
+            if (!els.length) return;
+            const first = els[0], last = els[els.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          };
+          el.addEventListener("keydown", trap);
+          // Focus first focusable element when the panel opens.
+          const first = el.querySelector<HTMLElement>(FOCUSABLE);
+          first?.focus();
+          // Cleanup stored on element.
+          (el as HTMLElement & { __trapCleanup?: () => void }).__trapCleanup?.();
+          (el as HTMLElement & { __trapCleanup?: () => void }).__trapCleanup = () => el.removeEventListener("keydown", trap);
+        }}
         style={{
-          width: isDesktop ? "min(960px, 100%)" : "min(480px, 100%)",
-          height: isDesktop ? "min(700px, calc(100vh - 80px))" : "92dvh",
+          width: isDesktop ? "min(1120px, 100%)" : "min(480px, 100%)",
+          height: isDesktop ? "min(720px, calc(100vh - 80px))" : "92dvh",
           maxHeight: isDesktop ? "calc(100vh - 80px)" : "94dvh",
           background: "#12101A",
           borderRadius: isDesktop ? "22px" : "22px 22px 0 0",
@@ -588,6 +713,11 @@ export default function TryOnPanel({
           />
         )}
 
+        {/* Removed the middle "THE PIECE" compare pane (founder: "you can still
+            see the piece which is irrelevant, that's not needed. Why is it still
+            there?"). The composite IS the piece-on-the-body — a static product
+            photo next to it added a third column and clipped the look pieces. */}
+
         {/* Right column — drag handle, header, steps, scroll, footer */}
         <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0, height: "100%" }}>
         {/* Drag handle (mobile only — desktop modal doesn't drag) */}
@@ -600,10 +730,15 @@ export default function TryOnPanel({
         {/* Header */}
         <div style={{ flexShrink: 0, padding: isDesktop ? "16px 18px 0 24px" : "10px 16px 0 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14 }}>
           <div style={{ minWidth: 0, flex: 1, paddingTop: 2 }}>
-            <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.45em", textTransform: "uppercase", color: "var(--mute)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              The Fitting Room
-            </p>
-            <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 16, color: "rgba(255,255,255,0.62)", margin: "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {/* On desktop the left image pane already brands "The Fitting Room ·
+                Powered by Stylique", so the header shows ONLY the product name —
+                no duplicate eyebrow. On mobile (no left pane) the eyebrow stays. */}
+            {!isDesktop && (
+              <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.45em", textTransform: "uppercase", color: "var(--mute)", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                The Fitting Room
+              </p>
+            )}
+            <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: isDesktop ? 18 : 16, color: "rgba(255,255,255,0.82)", margin: isDesktop ? 0 : "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {currentProduct.name}
             </p>
           </div>
@@ -628,9 +763,18 @@ export default function TryOnPanel({
         {/* Scrollable body */}
         <ScrollBody>
           {step === 0 && (
+            <StepSize
+              height={height} onHeight={setHeight}
+              weight={weight} onWeight={setWeight}
+              age={fitAge} onAge={setFitAge}
+              usualSize={usualSize} onUsualSize={setUsualSize}
+              body={fitBody}
+              fitResult={fitResult}
+              product={currentProduct}
+            />
+          )}
+          {step === 1 && !isRendering && (
             <StepChoose
-              mode={mode}
-              onMode={(m) => { setChooseError(false); setMode(m); }}
               muse={muse}
               bestMatch={bestMatchMuse}
               onMuse={(m) => { setChooseError(false); setMuse(m); }}
@@ -643,28 +787,43 @@ export default function TryOnPanel({
                   if (cur && cur.gender !== g) setMuse(null);
                 }
               }}
-              selfie={selfie} fileRef={fileRef}
-              onPick={(e) => { setChooseError(false); handlePick(e); }}
               productName={currentProduct.name}
               sizes={currentProduct.sizes}
               chooseError={chooseError}
             />
           )}
-          {step === 1 && !isRendering && (
-            <StepSize
-              height={height} onHeight={setHeight}
-              weight={weight} onWeight={setWeight}
-              body={fitBody}
-              fitResult={fitResult}
-              product={currentProduct}
-            />
-          )}
-          {isRendering && (
+          {/* Loading state — ONE place only (founder: "fix this at both places
+              are doing same, like loading screen. One should show"). On desktop
+              the LEFT pane (DesktopVisual) already shows the breathing render
+              tile, so the right column suppresses StepRendering and shows a
+              quiet inline progress strip instead. On mobile there is no left
+              pane, so the full StepRendering screen still owns the surface. */}
+          {isRendering && !isDesktop && (
             <StepRendering
               progress={renderProgress}
               phase={renderPhase}
               bodyImg={bodyImg ?? currentProduct.images[0]}
             />
+          )}
+          {isRendering && isDesktop && (
+            <div style={{ padding: "18px 4px 8px", display: "flex", flexDirection: "column", gap: 10, animation: "sqFadeSlide 280ms ease both" }}>
+              <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--electric)", margin: 0 }}>
+                Generating your look
+              </p>
+              <p style={{ fontFamily: "var(--sans)", fontSize: 13, color: "rgba(244,242,238,0.78)", margin: 0, lineHeight: 1.5 }}>
+                {renderPhase === 0 ? "Reading your measurements…" : renderPhase === 1 ? "Composing the piece on the body…" : renderPhase === 2 ? "Refining the drape…" : "Finishing up…"}
+              </p>
+              <div style={{ position: "relative", height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  width: `${Math.max(8, Math.min(100, renderProgress))}%`,
+                  background: "var(--grad)", transition: "width 240ms ease",
+                }} />
+              </div>
+              <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--mute)", margin: "6px 0 0" }}>
+                Watch the fitting room on the left.
+              </p>
+            </div>
           )}
           {step === 2 && !isRendering && (
             <StepResult
@@ -689,6 +848,7 @@ export default function TryOnPanel({
               renderedUrl={renderedUrl}
               renderError={renderError}
               rateInfo={rateInfo}
+              errCode={renderErrCode}
               onRetry={startRender}
               isDesktop={isDesktop}
             />
@@ -697,33 +857,36 @@ export default function TryOnPanel({
 
         {/* Footer nav */}
         {!isRendering && step !== 2 && (
-          <div style={{ flexShrink: 0, padding: isDesktop ? "14px 20px 18px" : "14px 20px 48px", display: "flex", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", background: "#12101A" }}>
+          <div style={{ flexShrink: 0, padding: isDesktop ? "14px 20px 18px" : "14px 20px max(48px, env(safe-area-inset-bottom))", display: "flex", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", background: "#12101A" }}>
             <button onClick={() => (step > 0 ? setStep(step - 1) : onClose?.())} className="sq-tt-btn" style={ghostBtn()}>
               {step === 0 ? "Close" : "← Back"}
             </button>
             <button
               onClick={() => {
                 if (step === 0) {
-                  // Fix #1 — require an explicit choice before advancing.
-                  if (!hasSelection) { setChooseError(true); return; }
+                  // Step 0 is now SIZE — height/weight always have a value, so no
+                  // gate; advance to model choice (where the best-match muse is
+                  // pre-selected for them).
                   setStep(1);
                 } else {
+                  // Step 1 is MODEL — require an explicit model pick before render.
+                  if (!hasSelection) { setChooseError(true); return; }
                   startRender();
                 }
               }}
               className="sq-tt-btn sq-tt-primary"
               style={{
                 ...primaryBtn(), flex: 1,
-                ...(step === 0 && !hasSelection ? { opacity: 0.55 } : null),
+                ...(step === 1 && !hasSelection ? { opacity: 0.55 } : null),
               }}
             >
-              {step === 0 ? "Find my size →" : "Generate my look →"}
+              {step === 0 ? "Choose your model →" : "Generate my look →"}
             </button>
           </div>
         )}
 
         {step === 2 && !isRendering && (
-          <div style={{ flexShrink: 0, padding: isDesktop ? "12px 20px 16px" : "12px 20px 40px", borderTop: "1px solid rgba(255,255,255,0.08)", background: "#12101A", boxShadow: "0 -12px 24px rgba(8,7,10,0.55)" }}>
+          <div style={{ flexShrink: 0, padding: isDesktop ? "12px 20px 16px" : "12px 20px max(40px, env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,0.08)", background: "#12101A", boxShadow: "0 -12px 24px rgba(8,7,10,0.55)" }}>
             {/* Simple: buy THIS piece at the chosen size, or buy the whole look.
                 When only one piece is on, it's just one clear "Add to bag". */}
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
@@ -837,7 +1000,12 @@ function DesktopVisual({
 
   return (
     <div style={{
-      flex: "0 0 44%", position: "relative", overflow: "hidden",
+      // Founder fix: the fitting-room pane was clamped at 44% of the modal width
+      // while a middle "THE PIECE" column ate another 26% and the controls took
+      // the remaining 30%. With the middle pane removed, the composite expands
+      // to ALL the space the right controls don't claim → reads as the full
+      // canvas the founder asked for ("left screen has not become full screen").
+      flex: "1 1 auto", minWidth: 0, position: "relative", overflow: "hidden",
       background: "#0E0B14", borderRight: "1px solid rgba(255,255,255,0.06)",
     }}>
       {/* The render + its fit markers live in a TRUE 3:4 frame, centered in the
@@ -1049,7 +1217,7 @@ function ScrollBody({ children }: { children: React.ReactNode }) {
 // ── Step progress dots ────────────────────────────────────────────────────────
 
 function StepDots({ step }: { step: number }) {
-  const labels = ["Choose", "Size", "Your look"];
+  const labels = ["Size", "Model", "Your look"];
   return (
     <div style={{ flexShrink: 0, padding: "14px 20px 10px" }}>
       <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 32px 1fr 32px", alignItems: "center" }}>
@@ -1103,21 +1271,20 @@ function StepDots({ step }: { step: number }) {
 // ── Step 0 — Choose ───────────────────────────────────────────────────────────
 
 function StepChoose({
-  mode, onMode, muse, onMuse, gender, onGender, selfie, fileRef, onPick, productName, sizes, chooseError, bestMatch,
+  muse, onMuse, gender, onGender, productName, sizes, chooseError, bestMatch,
 }: {
-  mode: Mode; onMode: (m: Mode) => void;
   muse: MuseId | null; onMuse: (m: MuseId) => void;
   bestMatch: MuseId;
   gender: MuseGender; onGender: (g: MuseGender) => void;
-  selfie: string | null;
-  fileRef: React.RefObject<HTMLInputElement>;
-  onPick: (e: React.ChangeEvent<HTMLInputElement>) => void;
   productName: string;
   sizes: string[];
   chooseError: boolean;
 }) {
   const sizeRun = sizes.length ? `${sizes[0]}–${sizes[sizes.length - 1]}` : "—";
-  const shownMuses = MUSES.filter((m) => m.gender === gender);
+  // Preferred muse FIRST — the best frame for the shopper leads the carousel so
+  // it's literally in front, already selected, not buried mid-scroll.
+  const shownMuses = MUSES.filter((m) => m.gender === gender)
+    .sort((a, b) => (a.id === bestMatch ? -1 : b.id === bestMatch ? 1 : 0));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, paddingBottom: 8, animation: "sqFadeSlide 280ms ease both" }}>
       <div>
@@ -1125,7 +1292,7 @@ function StepChoose({
           See it before you buy it.
         </h3>
         <p style={{ fontFamily: "var(--sans)", fontSize: 13, color: "var(--mute)", margin: 0, lineHeight: 1.55 }}>
-          Try the <em>{productName}</em> on a model that matches your frame — or upload your own photo.
+          Try the <em>{productName}</em> on a model that matches your frame.
         </p>
         <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(139,92,246,0.7)", margin: "8px 0 0" }}>
           This piece comes in {sizeRun}
@@ -1144,35 +1311,12 @@ function StepChoose({
         >
           <span style={{ fontSize: 15, flexShrink: 0 }}>⚠</span>
           <span style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "#FECDD3", lineHeight: 1.45 }}>
-            {mode === "avatar"
-              ? "Pick a model below first — choose the frame closest to you."
-              : "Upload a photo first so we can place the piece on you."}
+            Pick a model below first — choose the frame closest to you.
           </span>
         </div>
       )}
 
-      {/* Mode toggle */}
-      <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 4, gap: 4 }}>
-        {(["avatar", "upload"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => onMode(m)}
-            style={{
-              flex: 1, padding: "10px", borderRadius: 9,
-              border: mode === m ? "1px solid rgba(139,92,246,0.5)" : "1px solid transparent",
-              background: mode === m ? "rgba(139,92,246,0.18)" : "transparent",
-              color: mode === m ? "#F4F2EE" : "var(--mute)",
-              fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.25em",
-              textTransform: "uppercase", cursor: "pointer", transition: "all 200ms",
-            }}
-          >
-            {m === "avatar" ? "Choose a model" : "Upload a photo"}
-          </button>
-        ))}
-      </div>
-
-      {mode === "avatar" ? (
-        <div>
+      <div>
           {/* Gender toggle — Women / Men. The cast is split; women is the default. */}
           <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 3, gap: 3, marginBottom: 14 }}>
             {([["f", "Women"], ["m", "Men"]] as const).map(([g, lbl]) => (
@@ -1277,110 +1421,23 @@ function StepChoose({
             })}
           </div>
         </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Dropzone — premium, clear call to action */}
-          {selfie ? (
-            <div style={{
-              position: "relative", width: "100%", aspectRatio: "4 / 5", maxHeight: 320,
-              borderRadius: 18, overflow: "hidden",
-              border: "1.5px solid rgba(139,92,246,0.5)",
-              boxShadow: "0 0 28px rgba(139,92,246,0.22)",
-            }}>
-              <img src={selfie} alt="Your photo" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(14,11,20,0.85) 0%, rgba(14,11,20,0) 42%)", pointerEvents: "none" }} />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="sq-tt-btn"
-                style={{
-                  position: "absolute", top: 12, right: 12,
-                  background: "rgba(14,11,20,0.78)", border: "1px solid rgba(255,255,255,0.18)",
-                  borderRadius: 999, color: "#F4F2EE",
-                  fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.22em",
-                  textTransform: "uppercase", padding: "7px 12px", cursor: "pointer",
-                  backdropFilter: "blur(6px)", zIndex: 2,
-                }}
-              >Change</button>
-              <div style={{ position: "absolute", left: 14, bottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--grad)", color: "#0E0A14", display: "grid", placeItems: "center", fontSize: 10, fontWeight: 700 }}>✓</span>
-                <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(244,242,238,0.9)" }}>Photo ready</span>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="sq-tt-card"
-              style={{
-                position: "relative", width: "100%", padding: "30px 22px",
-                borderRadius: 18, border: "1.5px dashed rgba(139,92,246,0.45)",
-                background: "radial-gradient(130% 100% at 50% 0%, rgba(139,92,246,0.12) 0%, rgba(139,92,246,0.03) 55%)",
-                cursor: "pointer", textAlign: "center",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
-              }}
-            >
-              <span style={{
-                width: 60, height: 60, borderRadius: "50%",
-                background: "rgba(139,92,246,0.14)", border: "1px solid rgba(199,184,255,0.3)",
-                display: "grid", placeItems: "center",
-              }}>
-                <UploadGlyph size={26} />
-              </span>
-              <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19, color: "#F4F2EE", lineHeight: 1.2 }}>
-                Upload your photo
-              </span>
-              <span style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", lineHeight: 1.5, maxWidth: 260 }}>
-                A full-length shot works best. Tap to choose from your device.
-              </span>
-              <span style={{
-                marginTop: 2, display: "inline-flex", alignItems: "center", gap: 6,
-                fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.18em", textTransform: "uppercase",
-                color: "rgba(199,184,255,0.85)", background: "rgba(139,92,246,0.12)",
-                border: "1px solid rgba(139,92,246,0.28)", borderRadius: 999, padding: "5px 11px",
-              }}>
-                🔒 Used once · never stored
-              </span>
-            </button>
-          )}
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: "none" }} onChange={onPick} />
-
-          {/* Photo guidelines — compact, high-contrast */}
-          <div style={{
-            padding: "13px 15px",
-            background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 14,
-          }}>
-            <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--mute)", margin: "0 0 10px" }}>
-              For the best try-on
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px 14px" }}>
-              {[
-                "Full body, head to feet",
-                "Facing the camera",
-                "Plain wall, good light",
-                "Fitted clothing, arms out",
-              ].map((g) => (
-                <div key={g} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <span style={{ color: "var(--electric)", fontSize: 11, lineHeight: 1.45, flexShrink: 0 }}>✓</span>
-                  <span style={{ fontFamily: "var(--sans)", fontSize: 12, color: "rgba(244,242,238,0.82)", lineHeight: 1.4 }}>{g}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ── Step 1 — Size ─────────────────────────────────────────────────────────────
 
+const USUAL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
+
 function StepSize({
-  height, onHeight, weight, onWeight, body, fitResult, product,
+  height, onHeight, weight, onWeight,
+  age, onAge, usualSize, onUsualSize,
+  body, fitResult, product,
 }: {
   height: number; onHeight: (v: number) => void;
   weight: number; onWeight: (v: number) => void;
+  age: number;    onAge: (v: number) => void;
+  usualSize: string; onUsualSize: (v: string) => void;
   body?: MuseBody;                    // avatar mode → muse bust/waist/hip refine the fit map
   fitResult: ReturnType<typeof computeFit>;
   product: Product;
@@ -1388,58 +1445,198 @@ function StepSize({
   const nudge = (cur: number, d: number, lo: number, hi: number, set: (v: number) => void) =>
     set(Math.max(lo, Math.min(hi, cur + d)));
 
+  // Live confidence breakdown — updates as the shopper adds signals.
+  const cb = confidenceBreakdown({
+    heightCm: height, weightKg: weight,
+    age: age > 0 ? age : undefined,
+    usualBrandSize: usualSize !== "none" ? usualSize : undefined,
+  });
+
+  // Unit preference — internally we always store cm/kg, but a shopper who thinks
+  // in inches/lbs needs to enter and read their measurements that way. Persist
+  // the choice so they only flip the toggle once.
+  const [units, setUnits] = useState<"metric" | "imperial">(() => {
+    if (typeof window === "undefined") return "metric";
+    try { return (window.localStorage.getItem("mira_units_v1") as "metric" | "imperial") || "metric"; } catch { return "metric"; }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try { window.localStorage.setItem("mira_units_v1", units); } catch { /* read-only storage */ }
+  }, [units]);
+
+  const cmToIn  = (cm: number) => Math.round(cm / 2.54);
+  const inToCm  = (inches: number) => Math.round(inches * 2.54);
+  const kgToLb  = (kg: number) => Math.round(kg * 2.20462);
+  const lbToKg  = (lb: number) => Math.round(lb / 2.20462);
+
+  const heightDisplay = units === "metric" ? height : cmToIn(height);
+  const heightUnit    = units === "metric" ? "cm" : "in";
+  const heightMin     = units === "metric" ? 140 : cmToIn(140); // 55
+  const heightMax     = units === "metric" ? 210 : cmToIn(210); // 83
+  const setHeightFromDisplay = (v: number) => {
+    const cm = units === "metric" ? v : inToCm(v);
+    onHeight(Math.max(140, Math.min(210, cm)));
+  };
+  const stepHeight = (d: number) => {
+    if (units === "metric") nudge(height, d, 140, 210, onHeight);
+    else { const cm = inToCm(cmToIn(height) + d); onHeight(Math.max(140, Math.min(210, cm))); }
+  };
+
+  const weightDisplay = units === "metric" ? weight : kgToLb(weight);
+  const weightUnit    = units === "metric" ? "kg" : "lb";
+  const weightMin     = units === "metric" ? 35 : kgToLb(35);  // 77
+  const weightMax     = units === "metric" ? 150 : kgToLb(150); // 331
+  const setWeightFromDisplay = (v: number) => {
+    const kg = units === "metric" ? v : lbToKg(v);
+    onWeight(Math.max(35, Math.min(150, kg)));
+  };
+  const stepWeight = (d: number) => {
+    if (units === "metric") nudge(weight, d, 35, 150, onWeight);
+    else { const kg = lbToKg(kgToLb(weight) + d); onWeight(Math.max(35, Math.min(150, kg))); }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 8, animation: "sqFadeSlide 280ms ease both" }}>
-      <div>
-        <h3 style={{ fontFamily: "var(--serif)", fontSize: 22, fontWeight: 400, margin: "0 0 4px", lineHeight: 1.15 }}>
-          Height + weight.{" "}
-          <em style={{ fontStyle: "italic" }}>I&apos;ll pick the size.</em>
-        </h3>
-        <p style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", margin: 0 }}>
-          Type it, or tap − / + — matched to this brand&apos;s real cut.
-        </p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <NumberField label="Height" unit="cm" value={height}
-          onChange={(v) => onHeight(Math.max(140, Math.min(210, v)))}
-          onStep={(d) => nudge(height, d, 140, 210, onHeight)} />
-        <NumberField label="Weight" unit="kg" value={weight}
-          onChange={(v) => onWeight(Math.max(35, Math.min(150, v)))}
-          onStep={(d) => nudge(weight, d, 35, 150, onWeight)} />
-      </div>
-
-      {/* Live recommendation — compact (B3) */}
+      {/* LEAD WITH THE ANSWER — the size that suits them, front and centre. */}
       <div
-        key={`${height}-${weight}`}
+        key={`${height}-${weight}-${age}-${usualSize}`}
         style={{
-          padding: "14px 16px",
-          background: "rgba(139,92,246,0.07)",
-          border: "1px solid rgba(139,92,246,0.28)",
-          borderRadius: 14,
-          display: "flex", flexDirection: "column", gap: 10,
+          padding: "20px 18px",
+          background: "radial-gradient(120% 100% at 50% 0%, rgba(139,92,246,0.16) 0%, rgba(139,92,246,0.05) 60%)",
+          border: "1px solid rgba(139,92,246,0.35)",
+          borderRadius: 18,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 12,
+          textAlign: "center",
           animation: "sqFadeSlide 220ms ease both",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--grad)", display: "grid", placeItems: "center", color: "#0E0A14", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
-            <span style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)" }}>Your size</span>
-          </div>
-          <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 26, color: "#C7B8FF", lineHeight: 1 }}>{fitResult.size}</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(199,184,255,0.85)" }}>
+          Your size in the {product.name}
+        </span>
+        <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 56, color: "#F4F2EE", lineHeight: 0.95 }}>
+          {fitResult.size}
+        </span>
+        <div style={{ width: "100%", maxWidth: 240 }}>
+          <FitBar value={fitResult.confidence} />
         </div>
-        <FitBar value={fitResult.confidence} />
+        {fitResult.alt && (
+          <p style={{ fontFamily: "var(--sans)", fontSize: 12, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
+            {fitResult.alt.note}{" "}
+            <span style={{ color: "var(--electric)" }}>You can try the {fitResult.alt.size} on the next step →</span>
+          </p>
+        )}
       </div>
 
-      {/* Simplified fit breakdown — moved here from the result step (B1 / B2) */}
-      <FitSummary product={product} size={fitResult.size} height={height} weight={weight} body={body} />
+      {/* Refine — height + weight tune the pick above, live. */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "0 0 10px" }}>
+          <p style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", margin: 0 }}>
+            Tune it to your frame — the size above updates as you do.
+          </p>
+          {/* cm/kg ↔ in/lb toggle — internal storage stays cm/kg, only display flips */}
+          <div role="group" aria-label="Units" style={{ display: "inline-flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: 2 }}>
+            {(["metric", "imperial"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => setUnits(u)}
+                aria-pressed={units === u}
+                className="sq-tt-btn"
+                style={{
+                  padding: "4px 10px",
+                  background: units === u ? "rgba(139,92,246,0.28)" : "transparent",
+                  border: "none",
+                  borderRadius: 999,
+                  fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase",
+                  color: units === u ? "rgba(244,242,238,0.95)" : "rgba(244,242,238,0.55)",
+                  cursor: "pointer",
+                }}
+              >{u === "metric" ? "cm · kg" : "in · lb"}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <NumberField label="Height" unit={heightUnit} value={heightDisplay}
+            onChange={(v) => setHeightFromDisplay(Math.max(heightMin, Math.min(heightMax, v)))}
+            onStep={stepHeight} />
+          <NumberField label="Weight" unit={weightUnit} value={weightDisplay}
+            onChange={(v) => setWeightFromDisplay(Math.max(weightMin, Math.min(weightMax, v)))}
+            onStep={stepWeight} />
+        </div>
+      </div>
 
-      {fitResult.alt && (
-        <p style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
-          {fitResult.alt.note}{" "}
-          <span style={{ color: "var(--electric)" }}>Try the {fitResult.alt.size} on the next step →</span>
-        </p>
-      )}
+      {/* Optional signals — BoldMatrix-style progressive disclosure */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Confidence score trail — shows the shopper exactly how each signal helps */}
+        <div style={{
+          background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 12, padding: "12px 14px",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.15em", color: "var(--electric)", textTransform: "uppercase" }}>
+              Sizing confidence
+            </span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 13, color: cb.score >= 80 ? "#4EC49E" : cb.score >= 68 ? "#E8A44C" : "var(--mute)", fontWeight: 600 }}>
+              {cb.score}%
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
+            {cb.signals.map((s) => (
+              <span key={s} style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "rgba(244,242,238,0.7)" }}>
+                ✓ {s}
+              </span>
+            ))}
+          </div>
+          {cb.score < 93 && (
+            <p style={{ fontFamily: "var(--sans)", fontSize: 11, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
+              {cb.upgradeMessage}
+            </p>
+          )}
+        </div>
+
+        {/* Age — improves waist estimate for 30+ (body composition shift) */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
+              Age <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>optional · +8%</span>
+            </label>
+            <input
+              type="number"
+              value={age > 0 ? age : ""}
+              placeholder="e.g. 34"
+              min={16} max={90}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                onAge(isNaN(v) ? 0 : Math.max(0, Math.min(90, v)));
+              }}
+              className="sq-mira-field"
+              aria-label="Your age (optional, improves sizing accuracy)"
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#F4F2EE", fontFamily: "var(--mono)", fontSize: 12, outline: "none" }}
+            />
+          </div>
+
+          {/* Usual brand size — single strongest pre-measurement predictor */}
+          <div>
+            <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
+              Usual size <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>optional · +10%</span>
+            </label>
+            <select
+              value={usualSize}
+              onChange={(e) => onUsualSize(e.target.value)}
+              aria-label="Your usual size in a similar brand"
+              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: usualSize === "none" ? "rgba(244,242,238,0.4)" : "#F4F2EE", fontFamily: "var(--mono)", fontSize: 12, outline: "none", cursor: "pointer" }}
+            >
+              <option value="none">In similar brands…</option>
+              {USUAL_SIZES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Simplified fit breakdown — region by region (B1 / B2) */}
+      <FitSummary product={product} size={fitResult.size} height={height} weight={weight} body={body} />
     </div>
   );
 }
@@ -1522,7 +1719,7 @@ function StepRendering({ progress, phase, bodyImg }: { progress: number; phase: 
         borderRadius: 16, overflow: "hidden",
         animation: "sqGlowPulse 2s ease-in-out infinite",
       }}>
-        <img src={bodyImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center", filter: "saturate(0.9) brightness(0.92)" }} />
+        <img src={bodyImg} alt="Fit-preview model" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "top center", filter: "saturate(0.9) brightness(0.92)" }} />
         {/* sweeping scan line */}
         <div style={{
           position: "absolute", left: 0, right: 0, height: "14%",
@@ -1596,7 +1793,7 @@ function StepResult({
   product, muse, selfie, height, weight, body, fitResult, outfit, lookItems,
   onToggleLook, onFocus, onRemoveLook, onTryTheLook, lookDirty, onRetry,
   size, previewSize, onPreviewSize, onTryThisSize,
-  renderedUrl, renderError, rateInfo, isDesktop,
+  renderedUrl, renderError, rateInfo, errCode, isDesktop,
 }: {
   product: Product;
   muse: (typeof MUSES)[number] | null;
@@ -1619,6 +1816,7 @@ function StepResult({
   renderedUrl: string | null;         // the real composited render
   renderError: boolean;               // true → show an explicit error, never the bare product
   rateInfo: number | null;            // P4 — non-null → abuse cap hit, retry after N seconds
+  errCode: string | null;             // specific failure code for honest per-code copy
   isDesktop: boolean;                 // desktop → image + fit-telling live in the LEFT pane
 }) {
   const museLabel = selfie ? "your photo" : muse?.label ?? "your model";
@@ -1664,11 +1862,18 @@ function StepResult({
             <span style={{ fontSize: 34 }}>{rateInfo ? "⏳" : "⚠"}</span>
             <div>
               <div style={{ fontFamily: "var(--serif)", fontSize: 20, color: "#F4F2EE", marginBottom: 6 }}>
-                {rateInfo ? "Easy there — give it a moment." : "The try-on didn’t come through."}
+                {rateInfo ? "Easy there — give it a moment."
+                  : errCode === "render_unavailable" ? "Try-on is briefly offline."
+                  : errCode === "quota_reached" ? "You’ve used your try-ons for now."
+                  : errCode === "feature_disabled" ? "Try-on isn’t enabled here."
+                  : "The try-on didn’t come through."}
               </div>
               <p style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", margin: 0, lineHeight: 1.5, maxWidth: 280 }}>
                 {rateInfo
                   ? `You’ve run a lot of try-ons quickly. Try again in about ${rateInfo < 90 ? `${rateInfo}s` : `${Math.ceil(rateInfo / 60)} min`}.`
+                  : errCode === "render_unavailable" ? "The try-on service is taking a quick breather — try again in a few minutes."
+                  : errCode === "quota_reached" ? "You’ve hit the try-on limit for now — it refreshes soon."
+                  : errCode === "feature_disabled" ? "This store hasn’t turned on virtual try-on yet."
                   : "The render timed out or the model couldn’t place the piece. Let’s run it again."}
               </p>
             </div>
@@ -1778,12 +1983,21 @@ function StepResult({
                     onClick={() => onRemoveLook(p.handle)}
                     aria-label={`Remove ${p.name}`}
                     style={{
-                      position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%",
-                      background: "rgba(14,11,20,0.92)", border: "1px solid rgba(255,255,255,0.22)",
-                      color: "#F4F2EE", fontSize: 12, lineHeight: 1, cursor: "pointer",
-                      display: "grid", placeItems: "center", backdropFilter: "blur(6px)",
+                      // 44×44 transparent hit target (WCAG 2.5.5 / iOS HIG) with a
+                      // smaller visible chip inside, so the tap area is reachable on
+                      // a phone without a giant badge over the thumbnail (panel P1).
+                      position: "absolute", top: -12, right: -12, width: 44, height: 44, padding: 0,
+                      background: "transparent", border: "none", cursor: "pointer",
+                      display: "grid", placeItems: "center",
                     }}
-                  >×</button>
+                  >
+                    <span style={{
+                      width: 24, height: 24, borderRadius: "50%",
+                      background: "rgba(14,11,20,0.92)", border: "1px solid rgba(255,255,255,0.22)",
+                      color: "#F4F2EE", fontSize: 13, lineHeight: 1,
+                      display: "grid", placeItems: "center", backdropFilter: "blur(6px)",
+                    }}>×</span>
+                  </button>
                 )}
                 <div style={{ height: LOOK_CAP_H, display: "flex", flexDirection: "column", justifyContent: "flex-start", marginTop: 6, overflow: "hidden" }}>
                   <div style={{ fontFamily: "var(--sans)", fontSize: 11, lineHeight: 1.2, color: "rgba(255,255,255,0.78)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -1880,7 +2094,12 @@ function StepResult({
           <p style={{ fontFamily: "var(--sans)", fontSize: 11, color: "rgba(255,255,255,0.32)", margin: "0 0 12px", lineHeight: 1.4 }}>
             Tap pieces to build your look — then try them on together.
           </p>
-          <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+          {/* GRID, not horizontal scroll. Founder: "I can't open it. It's not…
+              some are big, some are small. It's not well placed." Cards now wrap
+              into a uniform 2-column grid (one column on a very narrow right
+              pane) so every piece is visible at once and tappable. Same fixed
+              aspect-ratio per card → consistent sizing, no clipped edge. */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 10, paddingBottom: 4 }}>
             {outfit.map((p, i) => {
               const inLook = lookItems.some((x) => x.handle === p.handle);
               return (
@@ -1889,10 +2108,12 @@ function StepResult({
                   onClick={() => onToggleLook(p)}
                   className="sq-tt-card"
                   style={{
-                    flex: `0 0 ${LOOK_CARD_W}px`, background: "transparent", border: "none",
+                    width: "100%", background: "transparent", border: "none",
                     cursor: "pointer", color: "#F4F2EE", textAlign: "left", padding: 0,
                     animation: LOOK_ANIM,
                     animationDelay: lookCardStagger(i),
+                    // Guarantee a real tap target — WCAG 2.5.5 + matches mobile audit
+                    minHeight: 44,
                   }}
                 >
                   <div style={{

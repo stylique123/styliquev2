@@ -1,0 +1,151 @@
+{
+  "persona_id": "de-1",
+  "region": "Germany · Berlin",
+  "age": 30,
+  "archetype": "technical, returns-policy first",
+  "style": "policy_first",
+  "pdp": null,
+  "started_at": "2026-06-10T10:48:38.351Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "before i look at anything: return policy? duties? eu shipping?",
+      "mira_voice": "We offer returns within 14 days for unworn items with original packaging, handled directly through our team. As for duties and EU shipping, I'll have the team confirm the exact details for you.",
+      "mira_route": "returns",
+      "mira_chips": [
+        "What's your style?",
+        "Show me dresses",
+        "Where are you based?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We offer returns within 14 days for unworn items with original packaging, handled directly through our team. As for duties and EU shipping, I'll have the team confirm the exact details for you.",
+        "route": "returns",
+        "quickReplies": [
+          "What's your style?",
+          "Show me dresses",
+          "Where are you based?"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 3863,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. now show me 2 to start",
+      "mira_voice": "Okay, let's get you started. What's the vibe you're going for today, sharp, soft, or somewhere between?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Sharp",
+        "Soft",
+        "A bit of both"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Okay, let's get you started. What's the vibe you're going for today, sharp, soft, or somewhere between?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Sharp",
+          "Soft",
+          "A bit of both"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2653,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "before that — returns and shipping policy?",
+      "mira_voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What's the vibe?",
+        "Show me dresses"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+        "route": "talk_only",
+        "quickReplies": [
+          "What's the vibe?",
+          "Show me dresses"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 4839,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "before that — returns and shipping policy?",
+      "mira_voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What should I look at?",
+        "Show me dresses",
+        "What's new?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+        "route": "talk_only",
+        "quickReplies": [
+          "What should I look at?",
+          "Show me dresses",
+          "What's new?"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 2504,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "before that — returns and shipping policy?",
+      "mira_voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What's the vibe?",
+        "Show me something"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We offer returns within a 14-day window for unworn items with original packaging, handled directly through our team. For shipping and duties, I'll have the team confirm the exact details.",
+        "route": "talk_only",
+        "quickReplies": [
+          "What's the vibe?",
+          "Show me something"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 16750,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:49:08.960Z",
+  "total_latency_ms": 30609
+}

@@ -1,0 +1,132 @@
+{
+  "persona_id": "siz-3",
+  "region": "sizing",
+  "archetype": "real measurements",
+  "style": "measurements",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T11:27:25.812Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "bust 92, waist 72, hip 100. what's actually my size in this gown",
+      "mira_voice": "This gown will highlight your figure beautifully, perfect for a special event.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "What's my size?",
+        "See it on me",
+        "Something else"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "This gown will highlight your figure beautifully, perfect for a special event.",
+        "route": "size_form",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on me",
+          "Something else"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 7841,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "bust 92 waist 72 hip 100 — what size",
+      "mira_voice": "The Indigo High-Waist Wide Leg Jeans (PKR 7,200) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "What's my size?",
+        "See it on me",
+        "Something else"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "The Indigo High-Waist Wide Leg Jeans (PKR 7,200) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "size_form",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on me",
+          "Something else"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 3869,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "bust 92 waist 72 hip 100 — what size",
+      "mira_voice": "The Indigo High-Waist Wide Leg Jeans (PKR 7,200) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "What's my size?",
+        "See it on me",
+        "Something else"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "The Indigo High-Waist Wide Leg Jeans (PKR 7,200) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "size_form",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on me",
+          "Something else"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 4336,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "bust 92 waist 72 hip 100 — what size",
+      "mira_voice": "This gown will highlight your figure beautifully, perfect for a special event.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "What's my size?",
+        "See it on me",
+        "Something else"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "This gown will highlight your figure beautifully, perfect for a special event.",
+        "route": "size_form",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on me",
+          "Something else"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 6436,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:28:07.799Z",
+  "total_latency_ms": 22482
+}

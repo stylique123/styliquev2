@@ -1,0 +1,116 @@
+{
+  "persona_id": "in-4",
+  "region": "India · Chennai",
+  "age": 41,
+  "archetype": "petite, struggle with western sizing",
+  "style": "size_problem",
+  "pdp": "atelier-wide-leg-trouser",
+  "started_at": "2026-06-10T10:47:30.497Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "im 4'11. these will pool at my feet right. any way to actually wear these?",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2657,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "im 4'11. these will pool at — try again",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2405,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2861,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "No worries, these trousers are cut for a longer torso, so at 4'11\" they will definitely need a hem. Most petite customers take them up 3-4cm.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "Show me another trouser",
+        "What goes with them?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "No worries, these trousers are cut for a longer torso, so at 4'11\" they will definitely need a hem. Most petite customers take them up 3-4cm.",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "Show me another trouser",
+          "What goes with them?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 5238,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "4'11, how do these actually wear",
+      "mira_voice": "The Atelier Wide-Leg Trouser is cut for a longer torso, so at 4'11\" they will definitely need a hem. Most petite customers take them up about 3-4cm. If that works for you, I can show you the best top to wear with them.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What top would work?",
+        "Show me another trouser",
+        "What's my size?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The Atelier Wide-Leg Trouser is cut for a longer torso, so at 4'11\" they will definitely need a hem. Most petite customers take them up about 3-4cm. If that works for you, I can show you the best top to wear with them.",
+        "route": "talk_only",
+        "quickReplies": [
+          "What top would work?",
+          "Show me another trouser",
+          "What's my size?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 4519,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:47:48.177Z",
+  "total_latency_ms": 17680
+}

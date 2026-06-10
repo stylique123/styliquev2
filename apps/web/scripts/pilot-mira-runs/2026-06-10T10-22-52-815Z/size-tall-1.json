@@ -1,0 +1,89 @@
+{
+  "persona_id": "size-tall-1",
+  "archetype": "size query — tall",
+  "pdp": "wide-leg-denim",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm 5'10 145, what's my size in these jeans",
+      "http_status": 0,
+      "latency_ms": 20002,
+      "transport_error": "The operation was aborted due to timeout",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 1,
+      "shopper_said": "is the inseam long enough?",
+      "http_status": 200,
+      "latency_ms": 9525,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Given your height, these should hit perfectly at the ankle or just above, the inseam is designed for that. Do you want me to confirm your exact size in this pair?",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "Given your height, these should hit perfectly at the ankle or just above, the inseam is designed for that. Do you want me to confirm your exact size in this pair?",
+        "route": "size_form",
+        "quickReplies": [
+          "Yes, size me",
+          "See them on me",
+          "What goes with them?"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "yes please size me",
+      "http_status": 200,
+      "latency_ms": 12164,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, let's get you sized perfectly for this pair. What's your waist and hip measurement?",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "Okay, let's get you sized perfectly for this pair. What's your waist and hip measurement?",
+        "route": "size_form",
+        "quickReplies": [
+          "I'm a 28 waist",
+          "I'm a 30 waist"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "yes please size me",
+      "http_status": 200,
+      "latency_ms": 2112,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, let's get you sized perfectly for this pair. What's your waist and hip measurement?",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "Okay, let's get you sized perfectly for this pair. What's your waist and hip measurement?",
+        "route": "size_form",
+        "productHandle": "wide-leg-denim",
+        "quickReplies": [
+          "My measurements",
+          "What's the fit like?"
+        ],
+        "intent": "size"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 1,
+  "invented_anything": false,
+  "asked_repeatedly": true,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 43803,
+  "started_at": "2026-06-10T10:23:40.639Z",
+  "ended_at": "2026-06-10T10:24:24.442Z"
+}

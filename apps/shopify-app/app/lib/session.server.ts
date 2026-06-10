@@ -14,7 +14,10 @@ import type { ChatMessage } from "@stylique/ai";
 
 // ─── Cookie helpers ─────────────────────────────────────────────────────
 const COOKIE_NAME = "sq_shopper_id";
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1y — feels persistent, easy to flush
+// 180 days — GDPR Art. 5(1)(e) data minimisation: anonymous sessions purged
+// after 24 months via retention-cleanup worker. Cookie lifetime shorter than
+// retention to balance UX continuity with data minimisation.
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
 export function readShopperCookie(request: Request): string | null {
   const raw = request.headers.get("cookie") ?? "";

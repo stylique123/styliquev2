@@ -1,0 +1,134 @@
+{
+  "persona_id": "us-7",
+  "region": "US · Boston",
+  "age": 49,
+  "archetype": "old-money quietness",
+  "style": "discerning",
+  "pdp": "cashmere-v-neck",
+  "started_at": "2026-06-10T10:46:39.454Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "what's the cashmere grade. mongolian, scottish, or marketing word.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2151,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "what's the cashmere grade. mongolian, scottish, — try again",
+      "mira_voice": "This one is Grade-A Mongolian cashmere, a beautiful handfeel. What are you wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Everyday",
+        "For an occasion",
+        "Size this one"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "This one is Grade-A Mongolian cashmere, a beautiful handfeel. What are you wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Everyday",
+          "For an occasion",
+          "Size this one"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 2293,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "scottish, ideally — and ply",
+      "mira_voice": "This one is a two-ply Grade-A Mongolian cashmere, not Scottish. It's truly soft and warm.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What's my size?",
+        "Show it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "This one is a two-ply Grade-A Mongolian cashmere, not Scottish. It's truly soft and warm.",
+        "route": "fabric",
+        "disagree": true,
+        "quickReplies": [
+          "What's my size?",
+          "Show it on me",
+          "What goes with it?"
+        ],
+        "intent": "fabric",
+        "nearMiss": true,
+        "nearMissCategory": "cashmere knitwear",
+        "nearMissAttribute": "Scottish cashmere",
+        "nearMissReason": "Shopper wanted Scottish cashmere; we stock Mongolian."
+      },
+      "http_status": 200,
+      "latency_ms": 5047,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "This one is a true-to-size fit, but if you like your knits a bit more relaxed, going up one size works well. Want me to size it for you?",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size me",
+        "Show it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "This one is a true-to-size fit, but if you like your knits a bit more relaxed, going up one size works well. Want me to size it for you?",
+        "route": "size_form",
+        "quickReplies": [
+          "Size me",
+          "Show it on me",
+          "What goes with it?"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 23613,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 16830,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:47:29.388Z",
+  "total_latency_ms": 49934
+}

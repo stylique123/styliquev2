@@ -27,20 +27,12 @@ const MODULES = [
       "Photorealistic try-on powered by IDM-VTON. Shoppers pick a model or upload their photo, see your pieces on a body like theirs. Fewer returns. More confidence.",
     accent: "pink",
   },
-  {
-    tag: "Module 03",
-    name: "Creative Studio",
-    tagline: "Agency-quality imagery, zero budget",
-    description:
-      "Generate editorial campaign imagery from any product. Styled by Mira's taste engine, produced in seconds. Your brand voice, your aesthetic — infinite creative volume.",
-    accent: "electric",
-  },
 ];
 
 const STATS = [
   { value: "4.2×", label: "avg. lift in cart adds via Mira chat" },
   { value: "18%", label: "return rate reduction with try-on" },
-  { value: "$450", label: "avg. savings per creative vs. agency shoot" },
+  { value: "+23%", label: "avg. order value with complete-the-look" },
 ];
 
 export default function LandingPage() {
@@ -144,9 +136,9 @@ export default function LandingPage() {
                 margin: "0 0 48px",
               }}
             >
-              Stylique gives fashion brands an AI stylist, virtual try-on, and
-              creative studio — all in one platform that knows your catalog and
-              learns from every shopper interaction.
+              Stylique gives fashion brands an AI sales associate that guides
+              shoppers, builds complete looks, and gets the fit right — on one
+              platform that knows your catalog and learns from every shopper.
             </p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               <Link

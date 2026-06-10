@@ -1,0 +1,131 @@
+{
+  "persona_id": "obj-4",
+  "region": "objection",
+  "age": 50,
+  "archetype": "return policy upfront",
+  "style": "policy_first",
+  "pdp": null,
+  "started_at": "2026-06-10T10:49:22.661Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm not going to look at anything until you tell me how returns work. don't dance around it.",
+      "mira_voice": "Of course, I can tell you exactly how returns work. You have 14 days from delivery to return unworn items with original packaging, and our team handles it directly.",
+      "mira_route": "returns",
+      "mira_chips": [
+        "What's your style?",
+        "Show me dresses",
+        "Where are you located?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Of course, I can tell you exactly how returns work. You have 14 days from delivery to return unworn items with original packaging, and our team handles it directly.",
+        "route": "returns",
+        "quickReplies": [
+          "What's your style?",
+          "Show me dresses",
+          "Where are you located?"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 8251,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. now show me 2 to start",
+      "mira_voice": "Okay, here are two pieces I think you'll appreciate. What do you think of this pair?",
+      "mira_route": "reco_filter",
+      "mira_chips": [
+        "Tell me about them",
+        "Show me another",
+        "What's new?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Okay, here are two pieces I think you'll appreciate. What do you think of this pair?",
+        "route": "reco_filter",
+        "filter": "new",
+        "quickReplies": [
+          "Tell me about them",
+          "Show me another",
+          "What's new?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23687,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, next",
+      "mira_voice": "No problem, here's another piece I think you'll like. Is this closer to what you had in mind?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Show me another",
+        "What goes with it?",
+        "Size this one"
+      ],
+      "mira_handle": "cashmere-v-neck",
+      "mira_full_decision": {
+        "voice": "No problem, here's another piece I think you'll like. Is this closer to what you had in mind?",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Show me another",
+          "What goes with it?",
+          "Size this one"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 6240,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 6108,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 1834,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:50:08.781Z",
+  "total_latency_ms": 46120
+}

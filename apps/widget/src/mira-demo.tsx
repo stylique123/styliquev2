@@ -17,12 +17,20 @@ import { render, h } from "preact";
 // build-time asset base. esbuild bundles it (react→preact + next/image aliases).
 import MiraWidget from "../../web/app/components/mira/MiraWidget";
 
-// ONE backend — the same one the demo uses (Mira chat + try-on render + assets).
-const ORIGIN = "https://stylique-web-production.up.railway.app";
+// ═══ ONE SHOPIFY BACKEND ═══
+// The storefront ALWAYS runs on Shopify, so Mira + try-on now route through the
+// App Proxy (/apps/<subpath>) → the REAL Shopify app (stylique-app): the
+// per-tenant brain + THIS shop's real synced catalog. The demo backend is no
+// longer in the shopper path — there is one backend that powers any store. The
+// proxy subpath is merchant-configurable; the liquid block may set __sqProxyBase,
+// else the standard /apps/stylique. Static muse/portrait images are the only
+// thing still served from the CDN origin (they're shop-agnostic assets).
 const w = window as unknown as Record<string, unknown>;
-w.__sqApi = ORIGIN;                 // API base for Mira/tryon fetches
-w.__styliqueTryonApiBase = ORIGIN;  // try-on render base (legacy global name)
-w.__sqAssetBase = ORIGIN;           // runtime asset base (belt-and-braces with the build-time define)
+const PROXY = (typeof w.__sqProxyBase === "string" && w.__sqProxyBase) || "/apps/stylique";
+const ASSET_CDN = "https://stylique-web-production.up.railway.app"; // static images only
+w.__sqApi = PROXY;                  // Mira + try-on API → the one Shopify backend
+w.__styliqueTryonApiBase = PROXY;   // try-on render → the one Shopify backend
+w.__sqAssetBase = ASSET_CDN;        // static muse/portrait images only
 w.__sqProductSeg = "products";      // Shopify PDP path is /products/<handle> (plural)
 
 // Design tokens — single source, shared by widget + dashboard + demo.

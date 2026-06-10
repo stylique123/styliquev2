@@ -20,6 +20,7 @@ import {
 import { prisma } from "../db.server";
 import { shopIdFromDomain, rateOk, analytics } from "./shopper-helpers.server";
 import { getOrCreateShopperSession } from "./session.server";
+import { readShadeWeights } from "./shade-tuner.server";
 import type { ApiResponse } from "./shopper-types.server";
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
@@ -285,6 +286,8 @@ export async function postBeautyShadeMatch(args: {
     })),
   }));
 
+  // Closing the loop: per-shop tuned weights from past match outcomes.
+  const weights = await readShadeWeights(shopId);
   const matches = matchShades(
     shadeProducts,
     {
@@ -292,7 +295,7 @@ export async function postBeautyShadeMatch(args: {
       undertone: (session?.skinUndertone as SkinUndertone) ?? undefined,
       depth: (session?.skinDepth as SkinDepth) ?? undefined,
     },
-    { limit, inStockOnly },
+    { limit, inStockOnly, weights },
   );
 
   // Fire analytics for the top match (fire-and-forget).

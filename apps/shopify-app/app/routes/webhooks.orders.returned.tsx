@@ -14,6 +14,7 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { recomputeTasteVector, applyReturnBias } from "../lib/taste.server";
+import { seenRecently } from "../lib/ratelimit.server";
 
 interface RefundLineItem {
   line_item?: {
@@ -37,7 +38,12 @@ interface ReturnedOrderPayload {
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
+    const webhookId = request.headers.get("x-shopify-webhook-id");
     const { shop, payload } = await authenticate.webhook(request);
+
+    // Idempotency (panel P1 #5): applyReturnBias mutates the fit penalty (−1,
+    // floored −5); a redelivered webhook would compound it. Dedupe on delivery id.
+    if (webhookId && (await seenRecently(`wh:${webhookId}`, 600))) return new Response(null, { status: 200 });
 
     // 1. Resolve shop.
     const shopRecord = await prisma.shop.findUnique({

@@ -45,7 +45,6 @@ export async function buildOverview(args: {
     cartFromWidgetStyle: number;
     tryOnSessions: number;
     fitSubmitted: number;
-    creativesGenerated: number;
     signupsClaimed: number;
     catalogGaps: number;
     windowDays: number;
@@ -138,8 +137,6 @@ export async function buildOverview(args: {
   const capByMetric: Record<string, number | null> = {
     TRYON_PERSONAL:         cap(f.widget.monthlyTryOnPersonal),
     TRYON_BODY:             cap(f.widget.monthlyTryOnBody),
-    CREATIVE_GENERATED:     cap(f.studio.monthlyCreatives),
-    CREATIVE_SET_GENERATED: cap(f.studio.monthlyCreativeSets),
     STYLE_RECOMMENDATION:   cap(f.widget.monthlyStyleRecs),
     FIT_RECOMMENDATION:     cap(f.widget.monthlyFitRecs),
   };
@@ -169,7 +166,6 @@ export async function buildOverview(args: {
     cartFromWidgetStyle: evt("CART_FROM_WIDGET_STYLE"),
     tryOnSessions:       evt("WIDGET_OPENED"),
     fitSubmitted:        evt("WIDGET_FIT_SUBMITTED"),
-    creativesGenerated:  evt("CREATIVE_SET_GENERATED") + evt("CREATIVE_IMPRESSION"),
     signupsClaimed:      evt("SIGNUP_CLAIMED"),
     catalogGaps:         await prisma.catalogGap.count({ where: { shopId: args.shopId, createdAt: { gte: since } } }),
     windowDays:          win,
@@ -287,17 +283,8 @@ export async function buildOverview(args: {
   // rather than defaulting everything unknown to "gemini-image" (D38a-r1).
   const tryonProvider: string = rawTryon?.providerKey ?? "gemini-image";
 
-  // ─── studio (only if enabled) ───────────────────────────────────────
-  let studio: Awaited<ReturnType<typeof buildOverview>>["studio"] = null;
-  if (f.studio.enabled) {
-    const [sets, creatives, pending, sourced] = await Promise.all([
-      prisma.creativeSet.count({ where: { shopId: args.shopId, createdAt: { gte: since } } }),
-      prisma.creative.count({ where: { shopId: args.shopId, createdAt: { gte: since } } }),
-      prisma.creativeSet.count({ where: { shopId: args.shopId, triggeredBy: { startsWith: "recommendation:" } } }),
-      prisma.creative.count({ where: { shopId: args.shopId, sourceComboName: { not: null }, createdAt: { gte: since } } }),
-    ]);
-    studio = { setsGenerated: sets, creativesGenerated: creatives, pendingFromRecommendations: pending, sourcedFromCombos: sourced };
-  }
+  // Creative Studio removed — no studio section on the dashboard.
+  const studio: Awaited<ReturnType<typeof buildOverview>>["studio"] = null;
 
   // ─── catalog (top queries + gaps), Growth+ only ─────────────────────
   let catalog: Awaited<ReturnType<typeof buildOverview>>["catalog"] = null;

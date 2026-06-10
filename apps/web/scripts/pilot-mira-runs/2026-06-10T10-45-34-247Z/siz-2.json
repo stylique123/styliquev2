@@ -1,0 +1,117 @@
+{
+  "persona_id": "siz-2",
+  "region": "sizing",
+  "age": 28,
+  "archetype": "size of someone else (gift)",
+  "style": "gift_sizing",
+  "pdp": "cashmere-v-neck",
+  "started_at": "2026-06-10T10:52:14.945Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "buying for my sister. she's 5'4, 60kg. what size and is this a safe gift",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2737,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "buying for my sister. she's 5'4, — try again",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3445,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3524,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, it seems my connection dropped for a moment. You mentioned this is for your sister, 5'4, 60kg. Was there anything else you wanted to tell me about her style?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Her style is minimal",
+        "She likes relaxed fits",
+        "What size is it?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, it seems my connection dropped for a moment. You mentioned this is for your sister, 5'4, 60kg. Was there anything else you wanted to tell me about her style?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Her style is minimal",
+          "She likes relaxed fits",
+          "What size is it?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 7484,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "This is the one I'd pick, it feels special and always looks good. Want me to size it for your sister?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "cashmere-v-neck",
+      "mira_full_decision": {
+        "voice": "This is the one I'd pick, it feels special and always looks good. Want me to size it for your sister?",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Size this one",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2662,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:52:34.797Z",
+  "total_latency_ms": 19852
+}

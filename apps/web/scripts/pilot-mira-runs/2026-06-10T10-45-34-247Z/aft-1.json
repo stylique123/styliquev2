@@ -1,0 +1,142 @@
+{
+  "persona_id": "aft-1",
+  "region": "after",
+  "age": 41,
+  "archetype": "post-add momentum",
+  "style": "post_add",
+  "pdp": "linen-relaxed-shirt",
+  "started_at": "2026-06-10T10:54:28.555Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "just added the linen shirt. now what",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 7952,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "just added the linen shirt. now — try again",
+      "mira_voice": "Got it, the Linen Relaxed Shirt is in your bag. Want me to build a full look around it?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Yes, the full look",
+        "Show me bottoms",
+        "What about a jacket?"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "Got it, the Linen Relaxed Shirt is in your bag. Want me to build a full look around it?",
+        "route": "look",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, the full look",
+          "Show me bottoms",
+          "What about a jacket?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 6118,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Linen Relaxed Shirt is in your bag. With the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket, the full look is $689. Want to add the rest?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Yes, add them",
+        "Show me another option",
+        "Just the denim"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "The Linen Relaxed Shirt is in your bag. With the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket, the full look is $689. Want to add the rest?",
+        "route": "add_to_cart",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, add them",
+          "Show me another option",
+          "Just the denim"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 6875,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "great. checkout",
+      "mira_voice": "Great, adding the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket to your bag. Time to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Yes, checkout",
+        "No, remove one"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "Great, adding the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket to your bag. Time to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, checkout",
+          "No, remove one"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 23672,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "great. checkout",
+      "mira_voice": "Great, adding the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket to your bag. Time to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Yes, checkout",
+        "Show other tops"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "Great, adding the Wide-Leg Heritage Denim and the Vintage Wash Denim Jacket to your bag. Time to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, checkout",
+          "Show other tops"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 15285,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:55:28.457Z",
+  "total_latency_ms": 59902
+}

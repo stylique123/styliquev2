@@ -1,0 +1,92 @@
+{
+  "persona_id": "budget-1",
+  "archetype": "budget objector — under $200",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i want something nice under $200 total",
+      "http_status": 200,
+      "latency_ms": 5295,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Under $200, I can definitely help with that. This maxi dress is a favorite, it's $75. Does that sound like what you're looking for?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Under $200, I can definitely help with that. This maxi dress is a favorite, it's $75. Does that sound like what you're looking for?",
+        "route": "reco_handle",
+        "productHandle": "floral-maxi-inclusive",
+        "quickReplies": [
+          "Tell me more",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "is that the cheapest you have?",
+      "http_status": 200,
+      "latency_ms": 9156,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Floral Print Maxi Dress is our easiest price point at $75. Would you like to see it closer?",
+      "mira_route": "navigate",
+      "mira_decision": {
+        "voice": "The Floral Print Maxi Dress is our easiest price point at $75. Would you like to see it closer?",
+        "route": "navigate",
+        "productHandle": "floral-maxi-inclusive",
+        "quickReplies": [
+          "Tell me more",
+          "Show me something else"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "what's actually under 200",
+      "http_status": 200,
+      "latency_ms": 23854,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Yes, everything I'm about to show you is under $200. This is a great place to start, it's $28. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Yes, everything I'm about to show you is under $200. This is a great place to start, it's $28. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "oversized-white-tee",
+        "quickReplies": [
+          "Show me another",
+          "What goes with it?",
+          "Size this one"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "is that the cheapest you have?",
+      "http_status": 200,
+      "latency_ms": 4802,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    }
+  ],
+  "fall_to_fallback_count": 1,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 43107,
+  "started_at": "2026-06-10T10:31:24.852Z",
+  "ended_at": "2026-06-10T10:32:07.959Z"
+}

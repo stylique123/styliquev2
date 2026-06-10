@@ -17,10 +17,28 @@ const shopify = shopifyApp({
   isEmbeddedApp: true,
   hooks: {
     afterAuth: async ({ session }) => {
+      // Fetch the store's own currency so Mira formats prices in it (panel P0).
+      // Best-effort — defaults to USD in ensureShopRecord if this fails.
+      let currencyCode: string | undefined;
+      try {
+        if (session.accessToken) {
+          const res = await fetch(`https://${session.shop}/admin/api/2025-01/graphql.json`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": session.accessToken },
+            body: JSON.stringify({ query: "query { shop { currencyCode } }" }),
+            signal: AbortSignal.timeout(10000),
+          });
+          const j = (await res.json()) as { data?: { shop?: { currencyCode?: string } } };
+          currencyCode = j.data?.shop?.currencyCode;
+        }
+      } catch (err) {
+        console.error(`[afterAuth] currency fetch failed for ${session.shop}:`, (err as Error).message);
+      }
       const shop = await ensureShopRecord({
         shopifyDomain: session.shop,
         accessToken: session.accessToken ?? "",
         scopes: session.scope ?? env.SHOPIFY_SCOPES,
+        currencyCode,
       });
       await shopify.registerWebhooks({ session });
       // D38a-r1 — kick off the per-brand muse library + top-50 pre-warm
@@ -72,6 +90,10 @@ const shopify = shopifyApp({
     // emit CART_CONFIRMED / CART_CANCELLED events and trigger a taste recompute.
     ORDERS_FULFILLED:   { deliveryMethod: DeliveryMethod.Http, callbackUrl: "/webhooks/orders/fulfilled" },
     REFUNDS_CREATE:     { deliveryMethod: DeliveryMethod.Http, callbackUrl: "/webhooks/orders/returned" },
+    // Mandatory Shopify privacy/GDPR compliance webhooks (App Store requirement).
+    CUSTOMERS_DATA_REQUEST: { deliveryMethod: DeliveryMethod.Http, callbackUrl: "/webhooks/customers/data-request" },
+    CUSTOMERS_REDACT:       { deliveryMethod: DeliveryMethod.Http, callbackUrl: "/webhooks/customers/redact" },
+    SHOP_REDACT:            { deliveryMethod: DeliveryMethod.Http, callbackUrl: "/webhooks/shop/redact" },
   },
   future: { unstable_newEmbeddedAuthStrategy: true },
 });

@@ -121,6 +121,24 @@ function inferOccasion(payload: unknown): string | null {
 export async function recomputeTasteVector(shopperRowId: string): Promise<TasteVector> {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000);
 
+  // Coalesce concurrent triggers (panel P1 — taste-vector write race). A chat turn
+  // and an order webhook can fire recompute at the same instant and race the
+  // unprotected UPDATE below, silently dropping the loser's result (e.g. the +10
+  // PURCHASE signal). If a fresh vector was written in the last 20s, reuse it
+  // instead of recomputing — collapses the burst into a single write. 20s staleness
+  // is immaterial for a slowly-evolving aggregate.
+  const existing = await prisma.shopperSession.findUnique({
+    where: { id: shopperRowId },
+    select: { tasteComputedAt: true, tasteVectorJson: true },
+  }).catch(() => null);
+  if (
+    existing?.tasteComputedAt &&
+    Date.now() - existing.tasteComputedAt.getTime() < 20_000 &&
+    existing.tasteVectorJson
+  ) {
+    return existing.tasteVectorJson as unknown as TasteVector;
+  }
+
   // Pull events with the product they referenced (if any). We hand-craft the
   // include so we only join columns we actually score against.
   const events = await prisma.analyticsEvent.findMany({
@@ -128,7 +146,7 @@ export async function recomputeTasteVector(shopperRowId: string): Promise<TasteV
     orderBy: { createdAt: "desc" },
     take: MAX_EVENTS,
     select: {
-      name: true, productId: true, payload: true,
+      name: true, productId: true, payload: true, shopId: true,
     },
   });
 
@@ -140,9 +158,14 @@ export async function recomputeTasteVector(shopperRowId: string): Promise<TasteV
     events.flatMap((e) => eventProductIds(e.productId, e.payload)),
   ));
 
+  // Scope the product join to the shop(s) these events belong to — never join
+  // another shop's product even if a stale payload carried a foreign productId
+  // (§3 / §3.5 invariant #1: cross-shop reads impossible by construction).
+  const shopIds = Array.from(new Set(events.map((e) => e.shopId).filter((s): s is string => !!s)));
+
   const products = productIds.length
     ? await prisma.product.findMany({
-        where: { id: { in: productIds } },
+        where: { id: { in: productIds }, shopId: { in: shopIds } },
         select: {
           id: true, category: true, colorFamily: true,
           variants: { select: { priceCents: true } },

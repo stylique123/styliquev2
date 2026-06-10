@@ -1,0 +1,132 @@
+{
+  "persona_id": "int-2",
+  "region": "intent",
+  "archetype": "returning visitor",
+  "style": "return",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T11:31:40.864Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "back again. i looked at this last week.",
+      "mira_voice": "Welcome back! That silk slip dress is still a favorite. What were you thinking about pairing it with this time?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "silk-slip-dress",
+      "mira_full_decision": {
+        "voice": "Welcome back! That silk slip dress is still a favorite. What were you thinking about pairing it with this time?",
+        "route": "look",
+        "productHandle": "silk-slip-dress",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 10514,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 7726,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 4844,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "You're loving the Forest Green Anarkali Suit at PKR 18,000. Want me to help with sizing, or would you like to see it on a model?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "You're loving the Forest Green Anarkali Suit at PKR 18,000. Want me to help with sizing, or would you like to see it on a model?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 11227,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:32:34.681Z",
+  "total_latency_ms": 34311
+}

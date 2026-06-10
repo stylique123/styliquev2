@@ -1,0 +1,160 @@
+{
+  "persona_id": "obj-7",
+  "region": "objection",
+  "age": 31,
+  "archetype": "indecisive (high LTV though)",
+  "style": "indecisive",
+  "pdp": null,
+  "started_at": "2026-06-10T10:49:41.832Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i don't know what i want. show me anything good and i'll tell you yes or no.",
+      "mira_voice": "Okay, let's find something. This is the one I'd pull first, it's a piece you can wear so many ways. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Show me another",
+        "What's my size?",
+        "What goes with it?"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Okay, let's find something. This is the one I'd pull first, it's a piece you can wear so many ways. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Show me another",
+          "What's my size?",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 11275,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "hmm. maybe. show me another",
+      "mira_voice": "Okay, let's try a different mood. This blazer is always a favorite, it just pulls everything together. Is this closer to what you had in mind?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Show me another",
+        "What goes with this?",
+        "Size this one"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Okay, let's try a different mood. This blazer is always a favorite, it just pulls everything together. Is this closer to what you had in mind?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Show me another",
+          "What goes with this?",
+          "Size this one"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 14177,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "hmm. maybe. show me another",
+      "mira_voice": "Okay, let's try a different mood. This blazer is always a favorite, it just pulls everything together. Is this closer to what you had in mind?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Okay, let's try a different mood. This blazer is always a favorite, it just pulls everything together. Is this closer to what you had in mind?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 5122,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "hmm. maybe. show me another",
+      "mira_voice": "Okay, let's try something softer. This silk camisole is beautiful on its own or layered. Does this feel more like you?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Yes, this is it",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "ivory-silk-camisole",
+      "mira_full_decision": {
+        "voice": "Okay, let's try something softer. This silk camisole is beautiful on its own or layered. Does this feel more like you?",
+        "route": "reco_handle",
+        "productHandle": "ivory-silk-camisole",
+        "quickReplies": [
+          "Yes, this is it",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 24617,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "hmm. maybe. show me another",
+      "mira_voice": "Okay, let's try something softer. This silk camisole is beautiful on its own or layered. Does this feel more like you?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Not quite",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "ivory-silk-camisole",
+      "mira_full_decision": {
+        "voice": "Okay, let's try something softer. This silk camisole is beautiful on its own or layered. Does this feel more like you?",
+        "route": "reco_handle",
+        "productHandle": "ivory-silk-camisole",
+        "quickReplies": [
+          "Not quite",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23732,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:51:00.755Z",
+  "total_latency_ms": 78923
+}

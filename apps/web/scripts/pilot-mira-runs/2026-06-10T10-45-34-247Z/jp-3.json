@@ -1,0 +1,130 @@
+{
+  "persona_id": "jp-3",
+  "region": "Japan · Kyoto",
+  "age": 56,
+  "archetype": "traditional aesthetic, soft palettes",
+  "style": "soft_traditional",
+  "pdp": null,
+  "started_at": "2026-06-10T10:47:48.179Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "anything in soft cream or wheat tones. not too modern.",
+      "mira_voice": "We have some beautiful pieces in those warm, soft tones. This Cashmere V-Neck in Oat is a favorite, it's really gentle and classic. Is this for something dressy, or everyday?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Dressy",
+        "Everyday",
+        "Show me another"
+      ],
+      "mira_handle": "cashmere-v-neck",
+      "mira_full_decision": {
+        "voice": "We have some beautiful pieces in those warm, soft tones. This Cashmere V-Neck in Oat is a favorite, it's really gentle and classic. Is this for something dressy, or everyday?",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Dressy",
+          "Everyday",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2831,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a beautiful, soft knit in Grade-A Mongolian cashmere, perfect for layering or wearing on its own. It's designed to last for years.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What about sizing?",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "cashmere-v-neck",
+      "mira_full_decision": {
+        "voice": "It's a beautiful, soft knit in Grade-A Mongolian cashmere, perfect for layering or wearing on its own. It's designed to last for years.",
+        "route": "fabric",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "What about sizing?",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 6988,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 7170,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Sorry about that. You're asking about sizing for the Cashmere V-Neck, right? I can help you find your exact size for it.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size me for this",
+        "Show me another knit"
+      ],
+      "mira_handle": "cashmere-v-neck",
+      "mira_full_decision": {
+        "voice": "Sorry about that. You're asking about sizing for the Cashmere V-Neck, right? I can help you find your exact size for it.",
+        "route": "size_form",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Size me for this",
+          "Show me another knit"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 5852,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 5592,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:16.612Z",
+  "total_latency_ms": 28433
+}

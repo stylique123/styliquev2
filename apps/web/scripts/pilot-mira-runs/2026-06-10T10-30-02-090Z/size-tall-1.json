@@ -1,0 +1,92 @@
+{
+  "persona_id": "size-tall-1",
+  "archetype": "size query — tall",
+  "pdp": "wide-leg-denim",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm 5'10 145, what's my size in these jeans",
+      "http_status": 200,
+      "latency_ms": 4809,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Wide-Leg Heritage Denim has minimal stretch, so for your height and weight, I'd suggest a size 28. Want to put it in the fitting room?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "The Wide-Leg Heritage Denim has minimal stretch, so for your height and weight, I'd suggest a size 28. Want to put it in the fitting room?",
+        "route": "try_on",
+        "productHandle": "wide-leg-denim",
+        "quickReplies": [
+          "Try it on",
+          "Add to bag",
+          "What goes with them?"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "is the inseam long enough?",
+      "http_status": 200,
+      "latency_ms": 3557,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "At 5'10\", the inseam on these will hit right at the ankle, a really clean line. Want to see them on?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "At 5'10\", the inseam on these will hit right at the ankle, a really clean line. Want to see them on?",
+        "route": "try_on",
+        "productHandle": "wide-leg-denim",
+        "quickReplies": [
+          "See them on me",
+          "Add to bag",
+          "Show me the full look"
+        ]
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "is the inseam long enough?",
+      "http_status": 200,
+      "latency_ms": 3738,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "is the inseam long enough?",
+      "http_status": 200,
+      "latency_ms": 2311,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Yes, at 5'10\", the inseam will hit right at the ankle, a really clean line. Want to see them on in the fitting room?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "Yes, at 5'10\", the inseam will hit right at the ankle, a really clean line. Want to see them on in the fitting room?",
+        "route": "try_on",
+        "productHandle": "wide-leg-denim",
+        "quickReplies": [
+          "See them on",
+          "Add to bag",
+          "What pairs with them?"
+        ],
+        "intent": "size"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 1,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 14415,
+  "started_at": "2026-06-10T10:31:10.898Z",
+  "ended_at": "2026-06-10T10:31:25.313Z"
+}

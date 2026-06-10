@@ -1,0 +1,101 @@
+{
+  "persona_id": "discover-occasion-2",
+  "archetype": "discovery — wedding-guest",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "im a wedding guest in december what do you have",
+      "http_status": 200,
+      "latency_ms": 8821,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "A December wedding, lovely. Is it a formal evening event, or something a bit more relaxed?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "A December wedding, lovely. Is it a formal evening event, or something a bit more relaxed?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Formal evening",
+          "More relaxed",
+          "Show me anyway"
+        ],
+        "intent": "occasion"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "anything warmer?",
+      "http_status": 200,
+      "latency_ms": 3837,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "If you're thinking warmth, the Tailored Double-Breasted Blazer in Charcoal pairs beautifully over a dress. It's structured and elegant.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "If you're thinking warmth, the Tailored Double-Breasted Blazer in Charcoal pairs beautifully over a dress. It's structured and elegant.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What dress?",
+          "Show me another blazer",
+          "See it on me"
+        ],
+        "intent": "occasion"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "size me",
+      "http_status": 200,
+      "latency_ms": 11088,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Let me get your measurements for the Tailored Double-Breasted Blazer, it's a piece that really benefits from a precise fit.",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "Let me get your measurements for the Tailored Double-Breasted Blazer, it's a piece that really benefits from a precise fit.",
+        "route": "size_form",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "Show me another blazer"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "anything warmer?",
+      "http_status": 200,
+      "latency_ms": 15923,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "If you're looking for something even warmer and truly luxurious, the Camel Wrap Coat is a beautiful choice. It drapes so elegantly and feels incredible.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "If you're looking for something even warmer and truly luxurious, the Camel Wrap Coat is a beautiful choice. It drapes so elegantly and feels incredible.",
+        "route": "reco_handle",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "occasion"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 39669,
+  "started_at": "2026-06-10T10:23:20.771Z",
+  "ended_at": "2026-06-10T10:24:00.440Z"
+}

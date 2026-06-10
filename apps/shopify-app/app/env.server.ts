@@ -16,7 +16,7 @@ const schema = z.object({
   SHOPIFY_APP_PROXY_SUBPATH: z.string().default("stylique"),
 
   GEMINI_API_KEY: z.string().min(1, "Required — chat is non-functional without it (get from https://aistudio.google.com)"),
-  STORAGE_PATH: z.string().optional(), // When set, VTO and Creative images are written to disk here instead of inline data URLs
+  STORAGE_PATH: z.string().optional(), // When set, VTO images are written to disk here instead of inline data URLs
 
   STYLIQUE_INTERNAL_SECRET: z
     .string()
@@ -84,14 +84,6 @@ if (parsed.success && parsed.data.NODE_ENV === "production") {
       Boolean(process.env.REPLICATE_API_TOKEN) ||
       Boolean(parsed.data.GEMINI_API_KEY);
     if (!hasVtoProvider) missing.push("VTO provider env (Vertex, Replicate, or GEMINI_API_KEY)");
-  }
-
-  const creativeEnabled = process.env.CREATIVE_ENABLED !== "0";
-  if (creativeEnabled) {
-    const hasCreativeProvider =
-      Boolean(process.env.VERTEX_SERVICE_ACCOUNT_JSON && process.env.VERTEX_PROJECT_ID) ||
-      Boolean(process.env.REPLICATE_API_TOKEN);
-    if (!hasCreativeProvider) missing.push("creative provider env (Vertex or REPLICATE_API_TOKEN)");
   }
 
   if (missing.length) {

@@ -150,29 +150,8 @@ export const seeOnMeToolSchema: ToolDef = {
   metric: "TRYON_PERSONAL",
 };
 
-// ─── Future — Studio integration. Brain triggers creative generation. ────
-
-export const requestCreativeSetToolSchema: ToolDef = {
-  name: "request_creative_set",
-  description:
-    "Trigger Creative Studio to generate a 4-still + 1-video set for a product or combo. Use when the brand-side surface asks for marketing assets. Returns a job id — generation is asynchronous.",
-  schema: {
-    type: "object",
-    properties: {
-      productId:       { type: "string", description: "Anchor product." },
-      sourceComboName: { type: "string", description: "Optional combo this creative is sourced from." },
-      brief:           { type: "string", description: "1-2 sentences on the visual direction." },
-    },
-    required: ["productId"],
-  },
-  requiresFeature: "studio.enabled",
-  metric: "CREATIVE_SET_GENERATED",
-  // Handler IS wired (D20 / Sprint 2) — creates CreativeSet row + enqueues
-  // BullMQ job. The downstream worker stub returns FAILED until a creative
-  // provider lands (OI-17), but the Brain side fires correctly. Do NOT
-  // re-add `unimplemented: true` — it short-circuits the dispatcher and
-  // the handler never runs (A1, fixed Sprint 6 audit).
-};
+// (Creative Studio / creative-generation tool removed — Stylique is a sales +
+// intelligence layer, not a content generator.)
 
 // ─── Skills layer (Sprint 3) — domain reasoning tools ─────────────────
 // These are LIGHTWEIGHT — they don't fetch from the catalog. They return
@@ -498,7 +477,7 @@ export const completeOutfitToolSchema: ToolDef = {
 export const offerTryonNaturalToolSchema: ToolDef = {
   name: "offer_tryon_natural",
   description:
-    "Offer try-on at the RIGHT moment — only when the shopper is uncertain about fit/look, comparing products, has dwelled on a PDP, or explicitly asked. NEVER as a first message and NEVER before intent is understood. Returns a structured offer with options (this product / the full outfit / a model close to their build / upload their photo) and sets up the cross-surface VTO trigger. Frame it as a useful next step, not a gimmick.",
+    "Offer try-on at the RIGHT moment — only when the shopper is uncertain about fit/look, comparing products, has dwelled on a PDP, or explicitly asked. NEVER as a first message and NEVER before intent is understood. Returns a structured offer with options (this product / the full outfit / a model close to their build) and sets up the cross-surface VTO trigger. Try-on is model-only — never offer the shopper's own photo. Frame it as a useful next step, not a gimmick.",
   schema: {
     type: "object",
     properties: {
@@ -569,7 +548,6 @@ export const ALL_TOOL_SCHEMAS: ToolDef[] = [
   offerSignupToolSchema,
   seeOnModelToolSchema,
   seeOnMeToolSchema,
-  requestCreativeSetToolSchema,
   // Skills layer
   applyColorRuleToolSchema,
   suggestOccasionDressingToolSchema,

@@ -1085,6 +1085,8 @@ class StyliqueStylist extends HTMLElement {
 
   /** Stored IntersectionObserver for combo dwell so it can be disconnected before recreation. */
   private _comboObserver: IntersectionObserver | null = null;
+  private _dialogReturnFocus: HTMLElement | null = null;
+  private _dialogKeydown: ((event: KeyboardEvent) => void) | null = null;
 
   // Fire-and-forget analytics. Same shape as the widget's track helper so the
   // backend dedupes / aggregates uniformly. Failures are swallowed.
@@ -1210,6 +1212,7 @@ class StyliqueStylist extends HTMLElement {
     // and wireIntentEmitters so the element leaves no trace after removal.
     this._listenerAbort?.abort();
     this._listenerAbort = null;
+    this.removeDialogKeyboardHandling();
     // Disconnect combo dwell observer.
     if (this._comboObserver) {
       this._comboObserver.disconnect();
@@ -1707,8 +1710,10 @@ class StyliqueStylist extends HTMLElement {
           this.toast(`Added ${cart.added} piece${cart.added !== 1 ? "s" : ""} to your bag`);
         }
         // Emit analytics only after successful cart mutation.
-        this.track("COMBO_ADD_ALL", { comboName, itemCount: cart.added, productIds });
-        this.track("CART_FROM_MIRA", { productIds, comboName, source: "mira_recommendation", itemCount: cart.added });
+        for (const productId of productIds.slice(0, cart.added)) {
+          this.track("COMBO_ADD_ALL", { comboName, itemCount: cart.added, productIds }, productId);
+          this.track("CART_FROM_MIRA", { productIds, comboName, source: "mira_recommendation", itemCount: cart.added }, productId);
+        }
         setTimeout(() => {
           btn.textContent = original;
           btn.disabled = false;
@@ -1755,9 +1760,11 @@ class StyliqueStylist extends HTMLElement {
           this.toast(`Added ${cart.added} piece${cart.added !== 1 ? "s" : ""} to your bag`);
         }
         // Emit analytics only after successful cart mutation.
-        this.track("COMBO_ADD_ALL", { comboName, itemCount: cart.added, productIds });
-        // Attribution: outfit add was driven by Mira's recommendation.
-        this.track("CART_FROM_MIRA", { productIds, comboName, source: "mira_recommendation", itemCount: cart.added });
+        for (const productId of productIds.slice(0, cart.added)) {
+          this.track("COMBO_ADD_ALL", { comboName, itemCount: cart.added, productIds }, productId);
+          // Attribution: outfit add was driven by Mira's recommendation.
+          this.track("CART_FROM_MIRA", { productIds, comboName, source: "mira_recommendation", itemCount: cart.added }, productId);
+        }
       } else {
         this.toast("Could not add all items. Please try adding individually.");
       }
@@ -1815,17 +1822,17 @@ class StyliqueStylist extends HTMLElement {
       : "";
     this.root().innerHTML = `
       <div class="sq-stl-back" data-open="false"></div>
-      <div class="sq-stl-dock" data-open="false" role="dialog" aria-label="Stylique Stylist">
+      <div class="sq-stl-dock" data-open="false" role="dialog" aria-modal="true" aria-labelledby="sq-stl-dialog-title">
         <div class="sq-stl-glow"></div>
         <div class="sq-stl-head">
           ${faceHtml}
           <div class="sq-stl-head__meta">
-            <div class="sq-stl-head__name">${this.me?.displayName ? `Hi, ${esc(this.me.displayName)}` : esc(stylistName)}</div>
+            <div class="sq-stl-head__name" id="sq-stl-dialog-title">${this.me?.displayName ? `Hi, ${esc(this.me.displayName)}` : esc(stylistName)}</div>
             <div class="sq-stl-head__sub">${this.me?.accountClaimed ? `Saved · I remember your taste` : `Your stylist · knows the catalog`}</div>
           </div>
           <button class="sq-stl-close" aria-label="Close">×</button>
         </div>
-        <div class="sq-stl-scroll" id="sq-stl-scroll"></div>
+        <div class="sq-stl-scroll" id="sq-stl-scroll" role="log" aria-live="polite" aria-relevant="additions text"></div>
         <div class="sq-stl-pending" id="sq-stl-pending" hidden></div>
         ${this.state.socialProof ? `<div class="sq-stl-social">${esc(this.state.socialProof)}</div>` : ""}
         <form class="sq-stl-compose" id="sq-stl-compose">
@@ -1848,6 +1855,7 @@ class StyliqueStylist extends HTMLElement {
 
     this.root().querySelector(".sq-stl-close")!.addEventListener("click", () => this.toggle(false));
     back.addEventListener("click", () => this.toggle(false));
+    this.installDialogKeyboardHandling(dock);
 
     this.renderThread();
 
@@ -2239,8 +2247,8 @@ class StyliqueStylist extends HTMLElement {
           <button class="sq-stl-combo-add-all" type="button" data-combo-name="${comboNameEsc}" data-product-ids="${productIdsCsv}" data-sizes="${esc(JSON.stringify(Object.fromEntries(c.products.map(p => [p.id, p.sizes[0] ?? ""]))))}">Add all to bag</button>
         </div>
         <div class="sq-stl-combo-votes" data-combo-idx="${comboIndex}">
-          <button class="sq-stl-vote sq-stl-vote-up" data-vote="up" data-combo="${comboNameEsc}" title="Love this" type="button">♡</button>
-          <button class="sq-stl-vote sq-stl-vote-dn" data-vote="down" data-combo="${comboNameEsc}" title="Not for me" type="button">✕</button>
+          <button class="sq-stl-vote sq-stl-vote-up" data-vote="up" data-combo="${comboNameEsc}" title="Love this" aria-label="Love this outfit" type="button">♡</button>
+          <button class="sq-stl-vote sq-stl-vote-dn" data-vote="down" data-combo="${comboNameEsc}" title="Not for me" aria-label="Not for me" type="button">✕</button>
         </div>
       </div>`;
     }).join("");
@@ -2906,6 +2914,9 @@ class StyliqueStylist extends HTMLElement {
   // ─── Open / close ─────────────────────────────────────────────────────
   private toggle(open: boolean) {
     if (open && !this.open) {
+      this._dialogReturnFocus = this.shadow.activeElement instanceof HTMLElement
+        ? this.shadow.activeElement
+        : null;
       this.openedAt = Date.now();
       this.track("CHAT_OPENED", { surface: "dock" });
       // Fetch the personalised opener (returning-shopper recall) the first
@@ -2917,6 +2928,7 @@ class StyliqueStylist extends HTMLElement {
         dwellMs: Date.now() - this.openedAt,
         turns: this.state.messages.length,
       });
+      this.removeDialogKeyboardHandling();
     }
     this.open = open;
     if (open) {
@@ -2925,7 +2937,54 @@ class StyliqueStylist extends HTMLElement {
       this.renderOpen();
     } else {
       this.renderClosed();
+      requestAnimationFrame(() => {
+        const returnTarget = this._dialogReturnFocus;
+        this._dialogReturnFocus = null;
+        if (returnTarget?.isConnected) returnTarget.focus();
+        else this.root().querySelector<HTMLButtonElement>(".sq-stl-bubble")?.focus();
+      });
     }
+  }
+
+  private installDialogKeyboardHandling(dock: HTMLElement): void {
+    this.removeDialogKeyboardHandling();
+    const selector =
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
+    this._dialogKeydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        this.toggle(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = [...dock.querySelectorAll<HTMLElement>(selector)]
+        .filter((element) => element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        dock.focus();
+        return;
+      }
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      const active = this.shadow.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", this._dialogKeydown);
+    requestAnimationFrame(() => {
+      dock.querySelector<HTMLInputElement>(".sq-stl-input")?.focus();
+    });
+  }
+
+  private removeDialogKeyboardHandling(): void {
+    if (!this._dialogKeydown) return;
+    document.removeEventListener("keydown", this._dialogKeydown);
+    this._dialogKeydown = null;
   }
 
   private async hydrateOpener() {
@@ -3000,10 +3059,17 @@ class StyliqueStylist extends HTMLElement {
           const e = evt as Record<string, unknown>;
           if (e.event === "error") {
             this.state.sending = false;
-            this.state.messages.push({
-              role: "model",
-              text: "Sorry — I had trouble connecting. Try that again?",
-            });
+            // Honest, specific copy per error code (panel P1) — don't blame the
+            // network when the real cause is rate-limit / busy / offline.
+            const code = typeof e.error === "string" ? e.error : "";
+            const text = code === "rate_limited"
+              ? "You're sending those a little fast — give it a sec and try again."
+              : code === "chat_unavailable"
+              ? "Mira's offline for a moment. Try again shortly."
+              : code === "chat_busy"
+              ? "Mira's a bit swamped right now — try again in a moment."
+              : "Sorry — I had trouble connecting. Try that again?";
+            this.state.messages.push({ role: "model", text });
             this.renderThread();
             return;
           }
@@ -3042,6 +3108,13 @@ class StyliqueStylist extends HTMLElement {
                   status: "open",
                 };
               }
+            }
+
+            // The primary streaming path must execute the full-outfit cart
+            // action too. Previously this only ran in the non-streaming fallback.
+            const outfitReq = data.actions.find((a) => a.kind === "add_outfit_to_cart");
+            if (outfitReq && outfitReq.kind === "add_outfit_to_cart" && outfitReq.items?.length) {
+              void this.performOutfitAddAll(outfitReq.items, outfitReq.comboName ?? "mira_outfit");
             }
 
             // Soft account offer.
@@ -3207,10 +3280,15 @@ class StyliqueStylist extends HTMLElement {
       const json = (await res.json()) as ApiResp<ChatReply>;
       this.state.sending = false;
       if (!json.ok) {
-        this.state.messages.push({
-          role: "model",
-          text: "Sorry — I had trouble connecting. Try that again?",
-        });
+        const code = typeof json.error === "string" ? json.error : "";
+        const text = code === "rate_limited"
+          ? "You're sending those a little fast — give it a sec and try again."
+          : code === "chat_unavailable"
+          ? "Mira's offline for a moment. Try again shortly."
+          : code === "chat_busy"
+          ? "Mira's a bit swamped right now — try again in a moment."
+          : "Sorry — I had trouble connecting. Try that again?";
+        this.state.messages.push({ role: "model", text });
         this.renderThread();
         return;
       }
@@ -4019,6 +4097,8 @@ class StyliqueStylist extends HTMLElement {
     if (old) old.remove();
     const t = document.createElement("div");
     t.className = "sq-stl-toast";
+    t.setAttribute("role", "status");
+    t.setAttribute("aria-live", "polite");
     t.textContent = text;
     this.root().appendChild(t);
     requestAnimationFrame(() => t.setAttribute("data-show", "true"));

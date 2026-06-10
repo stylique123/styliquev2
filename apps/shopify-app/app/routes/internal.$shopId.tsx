@@ -40,15 +40,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const intent = formData.get("intent") as string;
 
-  if (intent === "requeue_set") {
-    const setId = formData.get("setId") as string;
-    await prisma.creativeSet.update({
-      where: { id: setId },
-      data: { status: "PENDING", error: null, retryCount: 0 },
-    });
-    return json({ ok: true, message: `Creative set ${setId.slice(0, 8)} re-queued` });
-  }
-
   if (intent === "save_plan_features") {
     const raw = formData.get("planFeaturesJson") as string;
     let parsed: unknown;
@@ -457,31 +448,7 @@ export default function BrandDetailPage() {
               <ActivityChart data={d.activityByDay} />
             </Section>
 
-            {/* Creative sets */}
-            <Section title={`Creative Studio — ${d.totalCreativeSets} sets`}>
-              {d.recentCreativeSets.length === 0 ? (
-                <p style={{ color: "#888", fontSize: 13 }}>No creative sets yet.</p>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Status</th>
-                      <th>Triggered by</th>
-                      <th>Error</th>
-                      <th>Created</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.recentCreativeSets.map((set) => (
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      <CreativeSetRow key={set.id} csrf={csrf} set={set as unknown as { id: string; status: string; triggeredBy: string | null; error: string | null; createdAt: Date; updatedAt: Date }} />
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </Section>
+            {/* Creative Studio section removed — module deleted per repositioning */}
 
             {/* VTO sessions */}
             <Section title="VTO renders — last 10">

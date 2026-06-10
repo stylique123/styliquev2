@@ -1,0 +1,170 @@
+{
+  "persona_id": "pk-2",
+  "region": "Pakistan · Lahore",
+  "age": 27,
+  "archetype": "modern silhouettes, mom approves",
+  "style": "modesty_concern",
+  "pdp": "midnight-silk-gown",
+  "started_at": "2026-06-10T11:25:46.520Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is this too low cut for a family wedding. honest answer.",
+      "mira_voice": "For that occasion, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "For that occasion, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1471,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1179,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "On that — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "On that — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1315,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1379,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Right — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Right — Here's the strongest place to start, the Midnight Silk Gown is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1289,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:53.153Z",
+  "total_latency_ms": 6633
+}

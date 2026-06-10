@@ -1,0 +1,119 @@
+{
+  "persona_id": "uk-2",
+  "region": "UK · Edinburgh",
+  "age": 52,
+  "archetype": "winter-warm needs",
+  "style": "practical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:45:34.287Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "I need something that'll actually keep me warm walking the dog in scotland. is this it?",
+      "mira_voice": "That Camel Wrap Coat is a beautiful piece, but it's more of a refined layer than a heavy-duty winter coat for walking the dog in Scotland. It's not designed for extreme cold.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What's warmer?",
+        "Show me something else",
+        "What is it for then?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "That Camel Wrap Coat is a beautiful piece, but it's more of a refined layer than a heavy-duty winter coat for walking the dog in Scotland. It's not designed for extreme cold.",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "What's warmer?",
+          "Show me something else",
+          "What is it for then?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 3133,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "yes — outdoor scotland in winter, big wool, hooded if poss",
+      "mira_voice": "Ah, outdoor Scotland in winter needs serious warmth. We don't have a hooded coat like that, or anything in a heavy-duty wool designed for that kind of weather. I'd suggest something more suited to extreme cold.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Show me a warmer coat",
+        "What's the warmest you have?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Ah, outdoor Scotland in winter needs serious warmth. We don't have a hooded coat like that, or anything in a heavy-duty wool designed for that kind of weather. I'd suggest something more suited to extreme cold.",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "Show me a warmer coat",
+          "What's the warmest you have?"
+        ],
+        "intent": "suitability",
+        "unmet": true,
+        "unmetCategory": "heavy winter coat",
+        "unmetReason": "Shopper wants a heavy, hooded wool coat for extreme winter weather; current catalog doesn't carry this type of outerwear."
+      },
+      "http_status": 200,
+      "latency_ms": 3039,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "yes — outdoor scotland in winter, big wool, hooded if poss",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 23670,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 21076,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 7748,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:46:32.954Z",
+  "total_latency_ms": 58666
+}

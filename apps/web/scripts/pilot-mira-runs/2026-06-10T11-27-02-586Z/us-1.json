@@ -1,0 +1,108 @@
+{
+  "persona_id": "us-1",
+  "region": "US · NYC",
+  "age": 38,
+  "archetype": "corporate, time-poor",
+  "style": "direct",
+  "pdp": "tailored-blazer-double",
+  "started_at": "2026-06-10T11:27:08.690Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "need a blazer for a board meeting tuesday. is this it?",
+      "mira_voice": "The Tailored Double-Breasted Blazer is exactly what I'd put you in for a board meeting. It's sharp, but still comfortable enough for a long day. Want to see it on, or should I size it for you?",
+      "mira_route": "suitability",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Tailored Double-Breasted Blazer is exactly what I'd put you in for a board meeting. It's sharp, but still comfortable enough for a long day. Want to see it on, or should I size it for you?",
+        "route": "suitability",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "occasion",
+        "productHandle": "tailored-blazer-double"
+      },
+      "http_status": 200,
+      "latency_ms": 1720,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok — given that, what's your pick",
+      "mira_voice": "Right, for a board meeting on Tuesday, I'd pair the Tailored Double-Breasted Blazer with the Atelier Wide-Leg Trouser. The structured blazer with the flowing trouser creates a really confident silhouette, and together they're $1430.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Size the pieces",
+        "See whole look",
+        "Add full look",
+        "Show another look"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Right, for a board meeting on Tuesday, I'd pair the Tailored Double-Breasted Blazer with the Atelier Wide-Leg Trouser. The structured blazer with the flowing trouser creates a really confident silhouette, and together they're $1430.",
+        "route": "look",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size the pieces",
+          "See whole look",
+          "Add full look",
+          "Show another look"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 1550,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Tailored Double-Breasted Blazer, Atelier Wide-Leg Trouser, and Cashmere V-Neck together are $1,850. Should I add them to your bag?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Yes, add them",
+        "Just the blazer"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Tailored Double-Breasted Blazer, Atelier Wide-Leg Trouser, and Cashmere V-Neck together are $1,850. Should I add them to your bag?",
+        "route": "add_to_cart",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Yes, add them",
+          "Just the blazer"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2648,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:14.608Z",
+  "total_latency_ms": 5918
+}

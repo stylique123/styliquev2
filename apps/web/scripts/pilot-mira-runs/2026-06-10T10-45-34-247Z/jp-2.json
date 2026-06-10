@@ -1,0 +1,158 @@
+{
+  "persona_id": "jp-2",
+  "region": "Japan · Osaka",
+  "age": 28,
+  "archetype": "very petite",
+  "style": "petite_precise",
+  "pdp": "tailored-blazer",
+  "started_at": "2026-06-10T10:47:37.587Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "I am 152cm 44kg. XS will still be loose on shoulders. what to do.",
+      "mira_voice": "That's helpful, thanks. Our pieces are cut with a relaxed feel, but let's find one that works for your frame. What are you shopping for today?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Dresses",
+        "Tops",
+        "Outerwear"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "That's helpful, thanks. Our pieces are cut with a relaxed feel, but let's find one that works for your frame. What are you shopping for today?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Dresses",
+          "Tops",
+          "Outerwear"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 3203,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, here's the one I'd send you home with, it has a beautiful drape that works well. Want to see it on?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "See it on me",
+        "Size this one",
+        "What goes with it?"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, it has a beautiful drape that works well. Want to see it on?",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "See it on me",
+          "Size this one",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 7597,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "what size on me specifically",
+      "mira_voice": "Let's find your exact size for this piece. It's cut to drape beautifully.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size me",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Let's find your exact size for this piece. It's cut to drape beautifully.",
+        "route": "size_form",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Size me",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 2859,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "i'm 152cm 44kg — XS still feels loose, options?",
+      "mira_voice": "Given your height and weight, the XS in this piece is designed to drape. If you're looking for a more fitted silhouette, we can explore other options, or I can show you how to style this one.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Show other options",
+        "How to style it",
+        "What's the smallest size?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Given your height and weight, the XS in this piece is designed to drape. If you're looking for a more fitted silhouette, we can explore other options, or I can show you how to style this one.",
+        "route": "talk_only",
+        "quickReplies": [
+          "Show other options",
+          "How to style it",
+          "What's the smallest size?"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 3829,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, here's the one I'd send you home with, it has a beautiful drape that works well. Want to see it on?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, it has a beautiful drape that works well. Want to see it on?",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 8015,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:03.090Z",
+  "total_latency_ms": 25503
+}

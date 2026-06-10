@@ -1,0 +1,145 @@
+{
+  "persona_id": "fr-2",
+  "region": "France · Lyon",
+  "age": 44,
+  "archetype": "elegance + function",
+  "style": "dual_purpose",
+  "pdp": "tailored-blazer",
+  "started_at": "2026-06-10T10:48:03.092Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i want a blazer that works for the office AND a dinner. one piece, two lives. which?",
+      "mira_voice": "The Tailored Double-Breasted Blazer is exactly that, sharp enough for work, but easy to dress up for evening. Want to see it on?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Tailored Double-Breasted Blazer is exactly that, sharp enough for work, but easy to dress up for evening. Want to see it on?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 4044,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's structured but not stiff, so it holds its shape for the office, then the double-breasted cut makes it feel more intentional for dinner. It's a proper piece. What color are you leaning towards, Charcoal or Ink?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Charcoal",
+        "Ink",
+        "Show me another"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "It's structured but not stiff, so it holds its shape for the office, then the double-breasted cut makes it feel more intentional for dinner. It's a proper piece. What color are you leaning towards, Charcoal or Ink?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Charcoal",
+          "Ink",
+          "Show me another"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 16418,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "yes, office + dinner",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2865,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "The Tailored Double-Breasted Blazer is structured enough for the office, and the double-breasted cut makes it feel intentional for dinner. Which color works best for you, Charcoal or Ink?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Charcoal",
+        "Ink",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "The Tailored Double-Breasted Blazer is structured enough for the office, and the double-breasted cut makes it feel intentional for dinner. Which color works best for you, Charcoal or Ink?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Charcoal",
+          "Ink",
+          "Show me another"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2408,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Okay, if you want another option that handles both, the Camel Wrap Coat is also incredibly versatile. It's softer than the blazer but still looks very put-together.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "See it on me",
+        "Compare the two",
+        "Show me another blazer"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "Okay, if you want another option that handles both, the Camel Wrap Coat is also incredibly versatile. It's softer than the blazer but still looks very put-together.",
+        "route": "reco_handle",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "See it on me",
+          "Compare the two",
+          "Show me another blazer"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 4886,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:48:33.713Z",
+  "total_latency_ms": 30621
+}

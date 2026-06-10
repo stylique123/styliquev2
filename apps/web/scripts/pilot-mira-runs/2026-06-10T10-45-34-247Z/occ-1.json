@@ -1,0 +1,118 @@
+{
+  "persona_id": "occ-1",
+  "region": "occasion",
+  "age": 39,
+  "archetype": "funeral — sensitive",
+  "style": "occasion_sensitive",
+  "pdp": null,
+  "started_at": "2026-06-10T10:52:29.148Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i need something appropriate for a funeral. nothing showy.",
+      "mira_voice": "For a funeral, I'd suggest the Onyx Silk Slip. It's understated and elegant without being showy, and the silk feels right for the occasion.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "For a funeral, I'd suggest the Onyx Silk Slip. It's understated and elegant without being showy, and the silk feels right for the occasion.",
+        "route": "reco_handle",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "Size this one",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 6534,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a beautiful bias-cut slip, so it drapes softly without clinging, and the Onyx is a deep, true black. It's designed to be simple and refined.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What about sizing?",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "onyx-silk-slip",
+      "mira_full_decision": {
+        "voice": "It's a beautiful bias-cut slip, so it drapes softly without clinging, and the Onyx is a deep, true black. It's designed to be simple and refined.",
+        "route": "fabric",
+        "productHandle": "onyx-silk-slip",
+        "quickReplies": [
+          "What about sizing?",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 15249,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 24923,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 7466,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3043,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:53:26.363Z",
+  "total_latency_ms": 57215
+}

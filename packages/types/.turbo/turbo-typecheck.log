@@ -1,5 +1,4 @@
 
-
 > @stylique/types@0.0.0 typecheck /Users/apple/Desktop/stylique  re build/fashion/packages/types
 > tsc --noEmit
 

@@ -33,27 +33,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     totalProducts,
     embeddedProducts,
   ] = await Promise.all([
-    prisma.creativeSet.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-    }),
+    // Creative Studio removed — creative-set queue no longer exists.
+    Promise.resolve([] as Array<{ status: string; _count: { _all: number } }>),
     prisma.tryOnSession.groupBy({
       by: ["status"],
       _count: { _all: true },
     }),
-    prisma.creativeSet.findMany({
-      where: { status: "FAILED", updatedAt: { gte: since24h } },
-      select: {
-        id: true,
-        shopId: true,
-        error: true,
-        triggeredBy: true,
-        updatedAt: true,
-        shop: { select: { shopifyDomain: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 30,
-    }),
+    Promise.resolve([] as Array<{ id: string; shopId: string; error: string | null; triggeredBy: string | null; updatedAt: Date; shop: { shopifyDomain: string } }>),
     prisma.tryOnSession.findMany({
       where: { status: "FAILED", createdAt: { gte: since24h } },
       select: {
@@ -75,7 +61,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       orderBy: { _count: { name: "desc" } },
       take: 15,
     }),
-    prisma.creativeSet.count({ where: { status: "PENDING" } }),
+    Promise.resolve(0), // pending creative sets — Creative Studio removed
     prisma.product.count(),
     prisma.productEmbedding.count(),
   ]);
@@ -133,14 +119,6 @@ export async function action({ request }: ActionFunctionArgs) {
   requireInternalAuth(request);
   const formData = await request.formData();
   const intent = formData.get("intent") as string;
-
-  if (intent === "requeue_all_failed") {
-    const result = await prisma.creativeSet.updateMany({
-      where: { status: "FAILED" },
-      data: { status: "PENDING", error: null, retryCount: 0 },
-    });
-    return json({ ok: true, message: `Re-queued ${result.count} failed creative set(s)` });
-  }
 
   if (intent === "pause_all") {
     // Set paused: true on all plans

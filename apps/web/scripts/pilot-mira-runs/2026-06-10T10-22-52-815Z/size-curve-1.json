@@ -1,0 +1,103 @@
+{
+  "persona_id": "size-curve-1",
+  "archetype": "size anxious — curve",
+  "pdp": "linen-relaxed-shirt",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm a 14 usually but this brand i don't know — what size?",
+      "http_status": 200,
+      "latency_ms": 2970,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "This one is intentionally oversized, even at an XS. If you usually wear a 14 and want a relaxed fit, I'd suggest the Large. If you prefer it more fitted, try the Medium.",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "This one is intentionally oversized, even at an XS. If you usually wear a 14 and want a relaxed fit, I'd suggest the Large. If you prefer it more fitted, try the Medium.",
+        "route": "size_form",
+        "quickReplies": [
+          "Size me precisely",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "size",
+        "productHandle": "linen-relaxed-shirt"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "5'6 175lb please size me",
+      "http_status": 200,
+      "latency_ms": 4045,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Based on your measurements, the Large would give you that relaxed, effortless look. Shall I put it in the fitting room?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "Based on your measurements, the Large would give you that relaxed, effortless look. Shall I put it in the fitting room?",
+        "route": "try_on",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, try it on",
+          "Add to bag",
+          "Show me the look"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "in this specific shirt?",
+      "http_status": 200,
+      "latency_ms": 16837,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Yes, that's for this exact Linen Relaxed Shirt. If you're still thinking about the fit, I can put the Large in the fitting room to see it on you.",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "Yes, that's for this exact Linen Relaxed Shirt. If you're still thinking about the fit, I can put the Large in the fitting room to see it on you.",
+        "route": "try_on",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Try it on",
+          "Add to bag",
+          "Show me another"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "in this specific shirt?",
+      "http_status": 200,
+      "latency_ms": 3650,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Yes, that's for this exact Linen Relaxed Shirt. If you're still thinking about the fit, I can put the Large in the fitting room to see it on you.",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "Yes, that's for this exact Linen Relaxed Shirt. If you're still thinking about the fit, I can put the Large in the fitting room to see it on you.",
+        "route": "try_on",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "See it on me",
+          "Add the Large",
+          "Show me another"
+        ],
+        "intent": "size"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": true,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 27502,
+  "started_at": "2026-06-10T10:23:32.909Z",
+  "ended_at": "2026-06-10T10:24:00.411Z"
+}

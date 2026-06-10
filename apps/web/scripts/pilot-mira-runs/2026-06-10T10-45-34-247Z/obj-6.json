@@ -1,0 +1,130 @@
+{
+  "persona_id": "obj-6",
+  "region": "objection",
+  "age": 24,
+  "archetype": "comparison shopper",
+  "style": "comparison",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:49:41.016Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i've been looking at toteme and totême for the same money. why yours.",
+      "mira_voice": "The Camel Wrap Coat is designed to wear over tailoring, so it has a generous cut that still feels clean. It's beautiful quality, and you're paying for how it's cut to last. What are you wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For work",
+        "Everyday",
+        "Show it on me"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The Camel Wrap Coat is designed to wear over tailoring, so it has a generous cut that still feels clean. It's beautiful quality, and you're paying for how it's cut to last. What are you wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For work",
+          "Everyday",
+          "Show it on me"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 4069,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 21053,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, sometimes the connection drops. I was saying the Camel Wrap Coat is cut generously, meant for layering over tailoring, and built to last. What's the main occasion you're thinking of wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Everyday",
+        "Dressy",
+        "Tell me more"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, sometimes the connection drops. I was saying the Camel Wrap Coat is cut generously, meant for layering over tailoring, and built to last. What's the main occasion you're thinking of wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Everyday",
+          "Dressy",
+          "Tell me more"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 12194,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "This one, the Camel Wrap Coat, is a true classic and one of our best. Is it for something dressy, or more for everyday?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Dressy occasions",
+        "Everyday wear",
+        "Show me another"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "This one, the Camel Wrap Coat, is a true classic and one of our best. Is it for something dressy, or more for everyday?",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Dressy occasions",
+          "Everyday wear",
+          "Show me another"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 23198,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok and how is that better than my second option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 24117,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:51:05.647Z",
+  "total_latency_ms": 84631
+}

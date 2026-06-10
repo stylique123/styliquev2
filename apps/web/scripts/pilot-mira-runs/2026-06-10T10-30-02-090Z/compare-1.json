@@ -1,0 +1,102 @@
+{
+  "persona_id": "compare-1",
+  "archetype": "comparison shopper",
+  "pdp": "wrap-coat-camel",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "is this better than the wool coat?",
+      "http_status": 200,
+      "latency_ms": 15810,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Camel Wrap Coat is a statement piece, beautiful drape, really designed to wear over tailoring. What kind of wool coat were you thinking of?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "The Camel Wrap Coat is a statement piece, beautiful drape, really designed to wear over tailoring. What kind of wool coat were you thinking of?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Something tailored",
+          "Something softer",
+          "Just general"
+        ],
+        "intent": "suitability"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "honest opinion",
+      "http_status": 200,
+      "latency_ms": 23862,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Camel Wrap Coat is a more relaxed luxury, with that beautiful drape. If you're looking for something that feels a bit more structured and sharp, the Tailored Double-Breasted Blazer is a classic.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "The Camel Wrap Coat is a more relaxed luxury, with that beautiful drape. If you're looking for something that feels a bit more structured and sharp, the Tailored Double-Breasted Blazer is a classic.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's the difference?",
+          "Show me another coat",
+          "What goes with this?"
+        ],
+        "intent": "suitability"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "show me the alternative",
+      "http_status": 200,
+      "latency_ms": 23445,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Tailored Double-Breasted Blazer is a strong, sharp piece. It's a different look from the wrap coat, more structured. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "The Tailored Double-Breasted Blazer is a strong, sharp piece. It's a different look from the wrap coat, more structured. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "specific"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "show me the alternative",
+      "http_status": 200,
+      "latency_ms": 7580,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, a different direction. If the wrap coat is too soft and the blazer is too sharp, the Leather Trench is the third way. It has structure but in a modern way.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, a different direction. If the wrap coat is too soft and the blazer is too sharp, the Leather Trench is the third way. It has structure but in a modern way.",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "Size this one",
+          "What goes with this?",
+          "Back to the wrap coat"
+        ],
+        "intent": "discover"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 70697,
+  "started_at": "2026-06-10T10:32:31.962Z",
+  "ended_at": "2026-06-10T10:33:42.659Z"
+}

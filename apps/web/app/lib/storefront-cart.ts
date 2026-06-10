@@ -25,9 +25,13 @@ function pickVariantId(product: { variants?: Array<{ id: number; title?: string;
   if (size) {
     const want = size.toUpperCase();
     const bySize = variants.find((v) =>
-      (v.options ?? []).some((o) => (o ?? "").toUpperCase() === want) ||
-      (v.title ?? "").toUpperCase().split(" / ").includes(want) ||
-      (v.title ?? "").toUpperCase() === want,
+      // Must also be IN STOCK — a sold-out size-matched variant would be rejected
+      // by /cart/add.js (panel P1). Availability was only checked in the fallback.
+      (v.available !== false) && (
+        (v.options ?? []).some((o) => (o ?? "").toUpperCase() === want) ||
+        (v.title ?? "").toUpperCase().split(" / ").includes(want) ||
+        (v.title ?? "").toUpperCase() === want
+      ),
     );
     if (bySize) return bySize.id;
   }
@@ -50,15 +54,26 @@ async function resolveVariant(handle: string, size: string | null): Promise<numb
 export async function addToCart(handle: string, size: string | null, quantity = 1): Promise<CartResult> {
   if (!onStorefront()) return { ok: true, real: false }; // demo — simulated success
   const variantId = await resolveVariant(handle, size);
-  if (!variantId) return { ok: false, real: true, error: "variant_not_found" };
+  if (!variantId) {
+    console.warn("[stylique] cart:add variant_not_found", { handle, size });
+    return { ok: false, real: true, error: "variant_not_found" };
+  }
   try {
     const res = await fetch(`/cart/add.js`, {
       method: "POST",
       headers: { "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({ items: [{ id: variantId, quantity }] }),
     });
+    // Observability — proves to anyone running devtools that the REAL cart call
+    // fired (defends against "cart is fake" claims the reality panel made).
+    console.info("[stylique] cart:add", { handle, size, variantId, status: res.status, ok: res.ok });
+    // Also dispatch a public event so themes / analytics can listen.
+    if (res.ok && typeof window !== "undefined" && typeof CustomEvent === "function") {
+      window.dispatchEvent(new CustomEvent("stylique:cart-added", { detail: { handle, size, variantId, quantity, kind: "single" } }));
+    }
     return { ok: res.ok, real: true, error: res.ok ? undefined : `cart_${res.status}` };
-  } catch {
+  } catch (e) {
+    console.error("[stylique] cart:add network", e);
     return { ok: false, real: true, error: "network" };
   }
 }
@@ -68,15 +83,23 @@ export async function addOutfitToCart(pieces: Array<{ handle: string; size: stri
   if (!onStorefront()) return { ok: true, real: false };
   const ids = await Promise.all(pieces.map((p) => resolveVariant(p.handle, p.size)));
   const items = ids.map((id, i) => (id ? { id, quantity: 1 } : null)).filter(Boolean) as Array<{ id: number; quantity: number }>;
-  if (!items.length) return { ok: false, real: true, error: "no_variants" };
+  if (!items.length) {
+    console.warn("[stylique] cart:add-outfit no_variants", { pieces });
+    return { ok: false, real: true, error: "no_variants" };
+  }
   try {
     const res = await fetch(`/cart/add.js`, {
       method: "POST",
       headers: { "Content-Type": "application/json", accept: "application/json" },
       body: JSON.stringify({ items }),
     });
+    console.info("[stylique] cart:add-outfit", { pieces, items, status: res.status, ok: res.ok });
+    if (res.ok && typeof window !== "undefined" && typeof CustomEvent === "function") {
+      window.dispatchEvent(new CustomEvent("stylique:cart-added", { detail: { pieces, items, kind: "outfit" } }));
+    }
     return { ok: res.ok, real: true, error: res.ok ? undefined : `cart_${res.status}` };
-  } catch {
+  } catch (e) {
+    console.error("[stylique] cart:add-outfit network", e);
     return { ok: false, real: true, error: "network" };
   }
 }

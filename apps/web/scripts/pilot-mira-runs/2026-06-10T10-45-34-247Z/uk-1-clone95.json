@@ -1,0 +1,129 @@
+{
+  "persona_id": "uk-1-clone95",
+  "region": "UK · London",
+  "age": 34,
+  "archetype": "fashion-aware, asks brutal questions",
+  "style": "terse_skeptical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:56:19.953Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "right, is the camel really pure wool? bit dubious at that price.",
+      "mira_voice": "That's a smart question. The Camel Wrap Coat is a beautiful piece, it's 100% pure virgin wool, not a blend. It's designed to last for years, which is why it sits at this price. Want me to tell you more about the fit or put it in the fitting room?",
+      "mira_route": "suitability",
+      "mira_chips": [
+        "Tell me about the fit",
+        "See it on me",
+        "Show me something similar"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "That's a smart question. The Camel Wrap Coat is a beautiful piece, it's 100% pure virgin wool, not a blend. It's designed to last for years, which is why it sits at this price. Want me to tell you more about the fit or put it in the fitting room?",
+        "route": "suitability",
+        "quickReplies": [
+          "Tell me about the fit",
+          "See it on me",
+          "Show me something similar"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 4849,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok — given that, what's your pick",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2317,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, I was saying the Camel Wrap Coat is 100% pure virgin wool, designed to last. What's your pick from the collection?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "Show me another coat",
+        "What goes with it?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, I was saying the Camel Wrap Coat is 100% pure virgin wool, designed to last. What's your pick from the collection?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "Show me another coat",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3271,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3887,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, I was saying the Camel Wrap Coat is 100% pure virgin wool, designed to last. What's your pick from the collection?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "My best pick",
+        "What's new?",
+        "Show me dresses"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, I was saying the Camel Wrap Coat is 100% pure virgin wool, designed to last. What's your pick from the collection?",
+        "route": "talk_only",
+        "quickReplies": [
+          "My best pick",
+          "What's new?",
+          "Show me dresses"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 5189,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:56:39.466Z",
+  "total_latency_ms": 19513
+}

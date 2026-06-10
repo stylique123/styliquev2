@@ -1,0 +1,135 @@
+{
+  "persona_id": "obj-8",
+  "region": "objection",
+  "age": 47,
+  "archetype": "hates discount language",
+  "style": "anti_discount",
+  "pdp": null,
+  "started_at": "2026-06-10T10:49:44.704Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "if you offer me 10% off in the next message i'm closing this tab.",
+      "mira_voice": "We don't do discounts, we focus on quality pieces that last. What are you looking for today?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Something specific",
+        "Just browsing",
+        "What's the brand about?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We don't do discounts, we focus on quality pieces that last. What are you looking for today?",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "Something specific",
+          "Just browsing",
+          "What's the brand about?"
+        ],
+        "intent": "price",
+        "unmet": true,
+        "unmetCategory": "discount",
+        "unmetReason": "Shopper asked for a discount; we do not offer them."
+      },
+      "http_status": 200,
+      "latency_ms": 3706,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "called it. closing.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 16681,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4197,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "We don't do discounts, we focus on quality pieces that last. What are you looking for today?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Just looking"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We don't do discounts, we focus on quality pieces that last. What are you looking for today?",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Just looking"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23282,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "called it. closing.",
+      "mira_voice": "We don't do discounts, but I can show you pieces that offer real value in how long they last. What are you looking for today?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What's the brand about?",
+        "Show me something lasting",
+        "Just browsing"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We don't do discounts, but I can show you pieces that offer real value in how long they last. What are you looking for today?",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "What's the brand about?",
+          "Show me something lasting",
+          "Just browsing"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23609,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": true
+  },
+  "ended_at": "2026-06-10T10:50:56.179Z",
+  "total_latency_ms": 71475
+}

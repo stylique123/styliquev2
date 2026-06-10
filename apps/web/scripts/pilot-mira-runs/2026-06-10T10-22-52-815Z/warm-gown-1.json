@@ -1,0 +1,103 @@
+{
+  "persona_id": "warm-gown-1",
+  "archetype": "warm lead — silk gown for event",
+  "pdp": "midnight-silk-gown",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "wedding guest in november — too cold for this?",
+      "http_status": 200,
+      "latency_ms": 8034,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Midnight Silk Gown is a beautiful choice, and yes, it's a true evening piece. For a November wedding, I'd definitely layer it with our Camel Wrap Coat for warmth and a complete look.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "The Midnight Silk Gown is a beautiful choice, and yes, it's a true evening piece. For a November wedding, I'd definitely layer it with our Camel Wrap Coat for warmth and a complete look.",
+        "route": "reco_handle",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Show the gown again",
+          "Size the coat",
+          "Show another coat"
+        ],
+        "intent": "suitability"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "do you have a coat that goes over?",
+      "http_status": 200,
+      "latency_ms": 11576,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Yes, the tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Yes, the tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size this blazer",
+          "How does it look on?",
+          "Show me another option"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "do you have a coat that goes over?",
+      "http_status": 200,
+      "latency_ms": 5820,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "The tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "do you have a coat that goes over?",
+      "http_status": 200,
+      "latency_ms": 14609,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "We do, the tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "We do, the tailored blazer has the right structure to wear over the gown without hiding it. Let me pull it up for you.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Size the gown",
+          "See it on me",
+          "Show another coat"
+        ],
+        "intent": "specific"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 40039,
+  "started_at": "2026-06-10T10:22:52.870Z",
+  "ended_at": "2026-06-10T10:23:32.909Z"
+}

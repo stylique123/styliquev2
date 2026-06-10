@@ -122,8 +122,11 @@ export async function processSizeChartExtract(data: SizeChartExtractJobData): Pr
     }
   }
 
-  // Log catalog gap if no size chart found anywhere.
-  if (!result.winner) {
+  // Log catalog gap ONLY if no size chart exists anywhere — including a chart a
+  // PRIOR sync already wrote. Gemini Vision OCR is intermittently empty (~1-in-3),
+  // so a retry-exhausted re-sync must NOT log a false gap for a product that
+  // already has a good chart (panel P1 — false-gap audit pollution).
+  if (!result.winner && !product.sizeChartJson) {
     await prisma.catalogGap
       .create({
         data: {

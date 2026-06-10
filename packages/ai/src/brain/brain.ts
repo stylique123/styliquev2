@@ -78,7 +78,7 @@ export class Brain {
     }
   }
 
-  async run(input: BrainInput): Promise<BrainOutput> {
+  async run(input: BrainInput & { signal?: AbortSignal }): Promise<BrainOutput> {
     const started = Date.now();
     const cfg = input.config ?? {};
 
@@ -170,7 +170,28 @@ export class Brain {
     const MAX_UNKNOWN_TOOL_RETRIES = 3;
     let unknownToolRetries = 0;
 
+    // Product-intent turns must START with a catalog tool call, or flash will
+    // dead-end on a chatty reply (the loop breaks on first text → no combo ever
+    // forms). Force search_catalog/propose_combo on the first hops until a combo
+    // exists; greetings/support stay free-text. Gated on the classifier intent —
+    // when no classifier ran, we don't force (the prompt still nudges).
+    const PRODUCT_INTENTS = new Set([
+      "discover", "occasion", "outfit", "compare", "stock", "size", "tryon", "complex",
+    ]);
+    const wantsProduct = routingDecision ? PRODUCT_INTENTS.has(routingDecision.intent) : false;
+    const FORCE_TOOLS = ["search_catalog", "propose_combo"].filter(
+      (n) => visibleTools.some((v) => v.name === n),
+    );
+
     for (let hop = 0; hop < maxHops; hop++) {
+      // Force the opening hops of a product turn to call catalog tools
+      // (search_catalog → propose_combo) until a combo forms, so the brain
+      // RELIABLY proposes its own look instead of dead-ending on chat. Capped to
+      // the first 2 hops; greetings/support never force.
+      const forceToolNames =
+        wantsProduct && combos.length === 0 && hop < 2 && FORCE_TOOLS.length
+          ? FORCE_TOOLS
+          : undefined;
       const turn = await provider.turn({
         systemPrompt,
         messages: input.messages,
@@ -178,6 +199,8 @@ export class Brain {
         priorToolCalls,
         pendingToolResults: pendingResults,
         temperature: cfg.temperature,
+        forceToolNames,
+        signal: input.signal,
       });
 
       if (turn.toolCalls.length === 0) {
@@ -285,6 +308,13 @@ export class Brain {
         break;
       }
 
+      // Early exit: once a FORCED product turn has produced a combo, stop here —
+      // we don't spend another LLM round-trip just to write a closing line. The
+      // reply falls back to the combo's own reasoning below (set when !reply), so
+      // the shopper gets a real stylist rationale + the cards. Saves ~1 hop (~4s)
+      // on every product turn that proposes a look.
+      if (forceToolNames && combos.length > 0) break;
+
       // Carry the model's tool-call turn forward so the next hop reconstructs
       // the wire chain correctly (model{funcCall} → user{funcResponse} → …).
       priorToolCalls = turn.toolCalls;
@@ -298,8 +328,12 @@ export class Brain {
     // combos.length === 0 — which is dishonest (nothing's been pulled). Both
     // branches now match the actual side-effect state.
     if (!reply) {
+      // When a combo formed but no closing line was written (e.g. we broke early
+      // after a forced propose), speak the combo's OWN reasoning — a real stylist
+      // rationale — instead of a generic placeholder. Helps every surface, not
+      // just the demo. Falls back to the generic line only if reasoning is empty.
       reply = combos.length
-        ? "Take a look — let me know what catches your eye."
+        ? (combos[0].reasoning?.trim() || "Take a look — let me know what catches your eye.")
         : "One sec — pulling something that fits.";
     }
 

@@ -22,7 +22,7 @@ export default function TermsPage() {
 
         <h2 className="serif">What we provide</h2>
         <ul>
-          <li>An AI stylist, a try-on widget, and a creative studio, installed via your Shopify theme.</li>
+          <li>An AI stylist and virtual try-on experience installed via your Shopify theme.</li>
           <li>Tier-based usage limits as documented on the pricing page.</li>
           <li>Brand-side analytics, recommendations, and an admin dashboard.</li>
         </ul>

@@ -1,0 +1,146 @@
+{
+  "persona_id": "prc-2",
+  "region": "proactive",
+  "age": 26,
+  "archetype": "vague",
+  "style": "minimal_signal",
+  "pdp": null,
+  "started_at": "2026-06-10T10:50:56.180Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "anything new",
+      "mira_voice": "The new pieces just landed. Let me show you.",
+      "mira_route": "reco_filter",
+      "mira_chips": [
+        "Just show me dresses",
+        "What's most popular?",
+        "Show me outerwear"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The new pieces just landed. Let me show you.",
+        "route": "reco_filter",
+        "filter": "new",
+        "quickReplies": [
+          "Just show me dresses",
+          "What's most popular?",
+          "Show me outerwear"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 16172,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok, next",
+      "mira_voice": "Right, what about this one? It's a gorgeous new piece.",
+      "mira_route": "reco_filter",
+      "mira_chips": [
+        "Tell me about it",
+        "Show me another",
+        "What's the price?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Right, what about this one? It's a gorgeous new piece.",
+        "route": "reco_filter",
+        "filter": "new",
+        "quickReplies": [
+          "Tell me about it",
+          "Show me another",
+          "What's the price?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 8232,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, next",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 15628,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Sorry about that! I was showing you the new Pleated Satin Midi Skirt in Champagne, it's a beautiful piece. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "See it on me",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "pleated-midi-skirt",
+      "mira_full_decision": {
+        "voice": "Sorry about that! I was showing you the new Pleated Satin Midi Skirt in Champagne, it's a beautiful piece. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "pleated-midi-skirt",
+        "quickReplies": [
+          "See it on me",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 20188,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok pick one for me",
+      "mira_voice": "Okay, here's the one I'd send you home with, the Midnight Silk Gown. It's a showstopper.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?"
+      ],
+      "mira_handle": "midnight-silk-gown",
+      "mira_full_decision": {
+        "voice": "Okay, here's the one I'd send you home with, the Midnight Silk Gown. It's a showstopper.",
+        "route": "navigate",
+        "productHandle": "midnight-silk-gown",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 12508,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:52:08.908Z",
+  "total_latency_ms": 72728
+}

@@ -8,6 +8,7 @@
     "dev": "shopify app dev",
     "start": "remix-serve ./build/server/index.js",
     "typecheck": "tsc --noEmit",
+    "eval:mira": "node scripts/mira-eval.mjs",
     "lint": "eslint .",
     "config:link": "shopify app config link",
     "deploy": "shopify app deploy"

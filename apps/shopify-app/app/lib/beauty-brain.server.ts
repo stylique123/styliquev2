@@ -37,6 +37,7 @@ import {
 
 import { prisma } from "../db.server";
 import { handleSuggestReplenishment } from "./replenishment.server";
+import { readShadeWeights } from "./shade-tuner.server";
 
 // ─── Validation schemas for Brain tool args ──────────────────────────────────
 // The Brain tool args arrive from LLM output — they MUST be Zod-validated before
@@ -288,6 +289,10 @@ export function buildBeautyToolHandlers(): BeautyToolHandlers {
         }),
       }));
 
+      // Closing the learning loop: pull the per-shop shade weights tuned by
+      // shade-tuner.server.ts from past BEAUTY_SHADE_MATCHED + cart outcomes.
+      // Falls back to DEFAULT_SHADE_WEIGHTS when no tuned weights exist yet.
+      const weights = await readShadeWeights(ctx.shopId);
       const matches = matchShades(
         shadeProducts,
         {
@@ -295,7 +300,7 @@ export function buildBeautyToolHandlers(): BeautyToolHandlers {
           undertone: (session?.skinUndertone as SkinUndertone) ?? undefined,
           depth: (session?.skinDepth as SkinDepth) ?? undefined,
         },
-        { limit, inStockOnly },
+        { limit, inStockOnly, weights },
       );
 
       return {
@@ -808,6 +813,7 @@ export function buildBeautyToolHandlers(): BeautyToolHandlers {
         }),
       }));
 
+      const weights = await readShadeWeights(ctx.shopId);
       const matches = matchShades(
         shadeProducts,
         {
@@ -815,7 +821,7 @@ export function buildBeautyToolHandlers(): BeautyToolHandlers {
           undertone: undertone as SkinUndertone | undefined,
           depth: depth as SkinDepth | undefined,
         },
-        { limit: Math.min(limit, 5), inStockOnly: true },
+        { limit: Math.min(limit, 5), inStockOnly: true, weights },
       );
 
       return {

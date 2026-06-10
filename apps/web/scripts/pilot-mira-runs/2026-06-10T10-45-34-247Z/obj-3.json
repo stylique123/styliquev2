@@ -1,0 +1,145 @@
+{
+  "persona_id": "obj-3",
+  "region": "objection",
+  "age": 28,
+  "archetype": "size-shamed",
+  "style": "size_hostile",
+  "pdp": "linen-relaxed-shirt",
+  "started_at": "2026-06-10T10:49:17.701Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "you guys don't go past XL right. another brand that doesn't see plus sizes.",
+      "mira_voice": "We do carry some pieces in extended sizing, like our Floral Print Maxi Dress, up to 4XL. This linen shirt only goes to XL though. Should I show you the maxi dress?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Show me the dress",
+        "What about this shirt?"
+      ],
+      "mira_handle": "floral-maxi-inclusive",
+      "mira_full_decision": {
+        "voice": "We do carry some pieces in extended sizing, like our Floral Print Maxi Dress, up to 4XL. This linen shirt only goes to XL though. Should I show you the maxi dress?",
+        "route": "reco_handle",
+        "productHandle": "floral-maxi-inclusive",
+        "quickReplies": [
+          "Show me the dress",
+          "What about this shirt?"
+        ],
+        "intent": "size",
+        "unmet": true,
+        "unmetCategory": "plus sizing",
+        "unmetReason": "Shopper wanted plus sizing for the linen shirt; this piece only goes to XL. Suggested an alternative that does."
+      },
+      "http_status": 200,
+      "latency_ms": 3965,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "The Floral Print Maxi Dress is a beautiful, easy piece in a soft floral print. It's designed to be comfortable and flattering, up to a 4XL. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "floral-maxi-inclusive",
+      "mira_full_decision": {
+        "voice": "The Floral Print Maxi Dress is a beautiful, easy piece in a soft floral print. It's designed to be comfortable and flattering, up to a 4XL. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "floral-maxi-inclusive",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 8516,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4566,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Sorry about that! I was saying the Floral Print Maxi Dress is a beautiful, easy piece designed to be comfortable and flattering, and it goes up to a 4XL. Want to see it closer?",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Yes, show me",
+        "What else is there?"
+      ],
+      "mira_handle": "floral-maxi-inclusive",
+      "mira_full_decision": {
+        "voice": "Sorry about that! I was saying the Floral Print Maxi Dress is a beautiful, easy piece designed to be comfortable and flattering, and it goes up to a 4XL. Want to see it closer?",
+        "route": "navigate",
+        "productHandle": "floral-maxi-inclusive",
+        "quickReplies": [
+          "Yes, show me",
+          "What else is there?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 6439,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Of course. How about the Emerald Wrap Dress? It's another flattering option that goes up to 4XL.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "See it closer",
+        "What about tops?",
+        "Show me the maxi again"
+      ],
+      "mira_handle": "emerald-wrap-dress-curve",
+      "mira_full_decision": {
+        "voice": "Of course. How about the Emerald Wrap Dress? It's another flattering option that goes up to 4XL.",
+        "route": "reco_handle",
+        "productHandle": "emerald-wrap-dress-curve",
+        "quickReplies": [
+          "See it closer",
+          "What about tops?",
+          "Show me the maxi again"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3516,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:49:44.703Z",
+  "total_latency_ms": 27002
+}

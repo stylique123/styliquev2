@@ -1,0 +1,104 @@
+{
+  "persona_id": "uk-4",
+  "region": "UK · Bristol",
+  "age": 41,
+  "archetype": "size-anxious returner",
+  "style": "data_focused",
+  "pdp": "linen-relaxed-shirt",
+  "started_at": "2026-06-10T11:27:02.630Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "this brand's UK 12 or US 8 — what's a real M for someone 5'7 70kg?",
+      "mira_voice": "The Linen Relaxed Shirt is one of our best sellers. For your measurements, you'd be a Medium in this for that relaxed, tucked-out look. Want me to add it, or see it on you?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Add to bag",
+        "See it on me",
+        "Build the look"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "The Linen Relaxed Shirt is one of our best sellers. For your measurements, you'd be a Medium in this for that relaxed, tucked-out look. Want me to add it, or see it on you?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Add to bag",
+          "See it on me",
+          "Build the look"
+        ],
+        "intent": "size",
+        "productHandle": "linen-relaxed-shirt"
+      },
+      "http_status": 200,
+      "latency_ms": 2398,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "5'7 70kg, prefer relaxed",
+      "mira_voice": "Perfect, then a Medium is exactly right for that relaxed fit you like. Should I add it to your bag, or would you like to build a full look around it?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Yes, add it",
+        "Build the look",
+        "See it on me"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "Perfect, then a Medium is exactly right for that relaxed fit you like. Should I add it to your bag, or would you like to build a full look around it?",
+        "route": "add_to_cart",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Yes, add it",
+          "Build the look",
+          "See it on me"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 2637,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "great. checkout",
+      "mira_voice": "I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "I'll put the Linen Relaxed Shirt in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1397,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": true,
+    "offered_size": false,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:09.062Z",
+  "total_latency_ms": 6432
+}

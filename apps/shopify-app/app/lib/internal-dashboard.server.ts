@@ -155,7 +155,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       },
       _count: {
         select: {
-          creativeSets: true,
           tryOnSessions: true,
         },
       },
@@ -188,18 +187,9 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       where: { shopifyDomain: { in: shops.map((s) => s.shopifyDomain) } },
       _count: { _all: true },
     }),
-    // Failed creative sets per shop
-    prisma.creativeSet.groupBy({
-      by: ["shopId"],
-      where: { shopId: { in: shopIds }, status: "FAILED" },
-      _count: { _all: true },
-    }),
-    // Pending creative sets per shop
-    prisma.creativeSet.groupBy({
-      by: ["shopId"],
-      where: { shopId: { in: shopIds }, status: "PENDING" },
-      _count: { _all: true },
-    }),
+    // Creative Studio removed — failed/pending creative sets no longer tracked.
+    Promise.resolve([] as Array<{ shopId: string; _count: { _all: number } }>),
+    Promise.resolve([] as Array<{ shopId: string; _count: { _all: number } }>),
     // Total chat messages per shop
     prisma.analyticsEvent.groupBy({
       by: ["shopId"],
@@ -273,7 +263,7 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       lastActiveAt,
       totalShopperSessions: totalSessions,
       sessionsLast7Days: s7,
-      totalCreativeSets: shop._count.creativeSets,
+      totalCreativeSets: 0,
       pendingCreativeSets: pending,
       failedCreativeSets: failed,
       totalTryOnSessions: shop._count.tryOnSessions,
@@ -309,7 +299,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
       brandProfile: {
         select: { paletteJson: true, toneJson: true, trainedAt: true },
       },
-      _count: { select: { creativeSets: true, tryOnSessions: true } },
+      _count: { select: { tryOnSessions: true } },
     },
   });
   if (!shop) return null;
@@ -343,12 +333,8 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
       take: 10,
       select: { id: true, status: true, providerKey: true, latencyMs: true, error: true, createdAt: true },
     }),
-    prisma.creativeSet.findMany({
-      where: { shopId },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-      select: { id: true, status: true, triggeredBy: true, error: true, createdAt: true, updatedAt: true },
-    }),
+    // Creative Studio removed — no recent creative sets.
+    Promise.resolve([] as Array<{ id: string; status: string; triggeredBy: string | null; error: string | null; createdAt: Date; updatedAt: Date }>),
     prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
       where: { shopId },
@@ -358,8 +344,8 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     }),
     prisma.shopperSession.count({ where: { shopifyDomain: shop.shopifyDomain } }),
     prisma.shopperSession.count({ where: { shopifyDomain: shop.shopifyDomain, lastSeenAt: { gte: since7d } } }),
-    prisma.creativeSet.count({ where: { shopId, status: "FAILED" } }),
-    prisma.creativeSet.count({ where: { shopId, status: "PENDING" } }),
+    Promise.resolve(0), // failed creative sets — Creative Studio removed
+    Promise.resolve(0), // pending creative sets — Creative Studio removed
     prisma.analyticsEvent.count({ where: { shopId, name: "CHAT_MESSAGE_SENT" } }),
     prisma.tryOnSession.count({ where: { shopId, status: "SUCCEEDED" } }),
     prisma.tryOnSession.count({ where: { shopId, status: "FAILED" } }),
@@ -416,7 +402,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     lastActiveAt: lastActiveEvt,
     totalShopperSessions: sessionsAllTime,
     sessionsLast7Days: sessions7d,
-    totalCreativeSets: shop._count.creativeSets,
+    totalCreativeSets: 0,
     pendingCreativeSets: pendingSetsCount,
     failedCreativeSets: failedSetsCount,
     totalTryOnSessions: shop._count.tryOnSessions,

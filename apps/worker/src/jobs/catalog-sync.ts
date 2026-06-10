@@ -80,6 +80,24 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
   });
 
   if (data.kind === "full") {
+    // Refresh the store's currency on every full sync — afterAuth is unreliable
+    // with token-exchange auth, so the sync is the dependable place to keep
+    // Shop.currencyCode fresh (Mira formats every price in it).
+    try {
+      const token = decryptField(shop.accessToken);
+      if (token) {
+        const cr = await fetch(`https://${shop.shopifyDomain}/admin/api/2025-01/graphql.json`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+          body: JSON.stringify({ query: "query { shop { currencyCode } }" }),
+          signal: AbortSignal.timeout(10000),
+        });
+        const cj = (await cr.json()) as { data?: { shop?: { currencyCode?: string } } };
+        const cc = cj.data?.shop?.currencyCode;
+        if (cc) await prisma.shop.update({ where: { id: shop.id }, data: { currencyCode: cc } }).catch(() => undefined);
+      }
+    } catch { /* best-effort — currency defaults to USD */ }
+
     const res = await sync.syncAll(data.shopId, client);
     // Embed every product whose modelKey is stale or missing. Cheap at Gemini
     // quota; idempotent. Vector search becomes useful as soon as this finishes.

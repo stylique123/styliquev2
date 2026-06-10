@@ -1148,16 +1148,14 @@ class StyliqueWidget extends HTMLElement {
       return;
     }
 
-    const isModel = this.state.experience === "model";
+    // Upload-your-own-photo was removed (founder: muses only). Try-on is
+    // model-only — `isModel` is locked true, the experience toggle is gone, and
+    // the dead upload branch below never renders.
+    const isModel = true;
     const personalAllowed = this.state.entitlement?.personalPhotoAllowed === true;
     this.bodyEl!.innerHTML = `
       <h2 class="sq-h2 serif">Try it on — <em>cinematically.</em></h2>
-      <p class="sq-sub">Pick a styling muse, or save your spot for personal try-on coming soon.</p>
-
-      <div class="sq-seg" role="tablist">
-        <button class="sq-seg__btn" data-exp="model" role="tab" aria-selected="${isModel}">Use a Model</button>
-        <button class="sq-seg__btn" data-exp="photo" role="tab" aria-selected="${!isModel}">Upload My Photo</button>
-      </div>
+      <p class="sq-sub">Pick a styling muse closest to your build.</p>
 
       ${isModel ? `
         <div class="sq-eyebrow" style="margin:6px 0 8px">Stylique roster</div>

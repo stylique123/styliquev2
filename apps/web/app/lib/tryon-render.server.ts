@@ -116,6 +116,15 @@ export interface TryOnRequest {
   museId?: string;
   /** Stable handle for the focus product, used in the cache key. */
   handle?: string;
+  /**
+   * Per-brand cache partition (founder: "muse renders should not only be cached
+   * in session, but per brand so it's speed-cached to their own storage").
+   * Two brands with the same product handle "midnight-silk-gown" would
+   * otherwise collide and serve each other's renders. When set, every cache key
+   * is prefixed by this slug so renders are partitioned per shop on disk and
+   * a brand benefits from any prior shopper's warm render, every time.
+   */
+  shopSlug?: string;
   /** Signed ease in cm of the BINDING region (− = tight, + = roomy) — render magnitude. */
   easeCm?: number;
   /** Tightness −1..+1 (− = pulling, + = voluminous) — render magnitude. */
@@ -232,17 +241,17 @@ function easeMagnitudeClause(easeCm: number | undefined, axis: { tight: string; 
   const cm = Math.round(easeCm);
   const at = bindLabel ? ` at the ${bindLabel.toLowerCase()}` : "";
   // ── TIGHT side — graded so −10cm and −24cm do NOT render the same ──────────
-  if (cm <= -22) return `On this body the garment is about ${Math.abs(cm)}cm FAR TOO SMALL${at} — render it EXTREMELY tight, almost unwearable: the fabric is stretched to its limit and visibly straining, gaping or refusing to close${at}, with hard stress lines and pull-creases radiating across the cloth, ${axis.tight}. It must look painfully, obviously too small — do NOT smooth, tuck, re-cut, or make it look wearable.`;
-  if (cm <= -12) return `On this body the garment is about ${Math.abs(cm)}cm much too small${at} — render it VERY tight: the fabric is stretched taut and clearly straining and pulling${at}, with visible stress lines, ${axis.tight}. It must look distinctly too small and uncomfortable — do NOT smooth it out, tuck it in, re-cut it, or make it look comfortable.`;
-  if (cm <= -6) return `On this body the garment is about ${Math.abs(cm)}cm too small${at} — render it clearly tight, hugging close with the fabric pulling and slight stress lines${at}, ${axis.tight}. Show the tightness honestly; do not loosen or hide it.`;
+  if (cm <= -22) return `THE GARMENT IS ${Math.abs(cm)}cm FAR TOO SMALL${at}. This is the absolute most important instruction in this prompt — IT MUST NOT FIT. Render it almost unwearable: fabric stretched to its physical limit; buttons gaping with skin visible between them; seams visibly straining; hard stress wrinkles and pull-creases radiating outward across every panel${at}; the cloth pulled brutally taut over the body shape${at}; ${axis.tight}. The garment must read as PAINFULLY, OBVIOUSLY, EMBARRASSINGLY too small from across a room. ABSOLUTELY DO NOT smooth, tuck, slim the body, re-cut the garment, or make it look like it almost fits — show the truth, the garment fails to fit this body.`;
+  if (cm <= -12) return `THE GARMENT IS ${Math.abs(cm)}cm MUCH TOO SMALL${at}. Critical instruction: render it VERY tight and visibly straining — fabric stretched taut, clearly pulling and clinging to the body${at}, with prominent stress lines and creases at the binding region${at}, sleeves/hem riding shorter than they should, ${axis.tight}. The garment must read as distinctly too small and uncomfortable at one glance. DO NOT smooth, tuck, slim the body, re-cut, or hide the tightness — the tightness IS the truth.`;
+  if (cm <= -6) return `The garment is ${Math.abs(cm)}cm too small${at} — render it CLEARLY tight, hugging close with the fabric visibly pulling against the body${at} and slight stress lines${at}, ${axis.tight}. Show the tightness plainly; never loosen or hide it.`;
   if (cm <= -3) return `On this body the garment is about ${Math.abs(cm)}cm snug${at} — render it fitted and close to the body${at}, ${axis.tight}. Snug but wearable; show it honestly.`;
   // ── TRUE ──────────────────────────────────────────────────────────────────
   if (cm < 4) return "On this body the garment sits true — render a clean, body-skimming fit with natural ease.";
   // ── LOOSE side — graded so +16cm and +33cm do NOT render the same ─────────
   if (cm < 9) return `On this body the garment has about ${cm}cm of ease${at} — render it lightly relaxed with a little soft give${at}, ${axis.loose}. Not tight, not baggy — gently roomy.`;
-  if (cm < 16) return `On this body the garment has about ${cm}cm of ease${at} — render it clearly OVERSIZED and roomy with visible loose folds${at}, ${axis.loose}. Make the looseness obvious; do not take it in.`;
-  if (cm < 26) return `On this body the garment has about ${cm}cm of ease${at} — render it VERY oversized and baggy with large folds of excess fabric draping and hanging off the body${at}, ${axis.loose}. It must look unmistakably big and slouchy — do NOT take it in or make it look fitted.`;
-  return `On this body the garment has about ${cm}cm of ease${at} — render it EXTREMELY oversized, the body practically swimming in fabric: huge billowing folds, dropped shoulders, sleeves and hem pooling far past where they should sit${at}, ${axis.loose}. It must look enormously, comically too big — absolutely do NOT take it in, fit it, or make it look intentional.`;
+  if (cm < 16) return `The garment has ${cm}cm of ease${at} — render it CLEARLY oversized and roomy, with visible loose folds${at} and a hanging silhouette, ${axis.loose}. The looseness must be obvious at a glance; do not take it in.`;
+  if (cm < 26) return `THE GARMENT IS ${cm}cm OVERSIZED${at}. Critical instruction: render it VERY baggy and slouchy — large folds of excess fabric draping off the shoulders/waist${at}, sleeves and hem clearly long, the silhouette unmistakably loose and oversized, ${axis.loose}. DO NOT take it in, slim it, pin it, or make it look fitted. The bagginess IS the truth.`;
+  return `THE GARMENT IS ${cm}cm EXTREMELY OVERSIZED${at}. The absolute most important instruction in this prompt — THE BODY IS SWIMMING IN FABRIC. Render: enormous billowing folds; shoulders dropped far off the actual shoulder line; sleeves and hem pooling and bunching far past where they should sit${at}; the entire garment hanging tent-like off the body, ${axis.loose}. The fit must read as comically, unmistakably gigantic on this body. ABSOLUTELY DO NOT take it in, fit it, drape it artfully, or make it look intentional — show the truth that it is far too big for this person.`;
 }
 
 // Relative anchor: how this size compares to the size we recommended for THIS
@@ -367,6 +376,8 @@ function buildPrompt(garmentCount: number, size: string, recommended?: string, k
     replacementClause(kind, true),
     "Dress the person in ALL of the supplied garments at once, layered/combined into a single complete, coherent outfit, each worn in its natural position (tops on top, bottoms on the lower body, outerwear as the outer layer, accessories placed correctly).",
     "Every garment must fit naturally and photorealistically with correct drape and shadows; the pieces should look styled together.",
+    // Consistency across size changes (founder: 'I only change the size and the OTHER garments change'):
+    "Each supplied garment keeps its EXACT colour, fabric, print, cut and silhouette from its own reference image — do NOT substitute, recolour, restyle, or swap any garment for a different one. The ONLY thing that varies per piece is how tight or loose it sits, driven by that piece's selected size below. Render every supplied garment; never drop or replace one.",
     multiFit,
     "Full-length, head-to-feet fashion lookbook photograph showing the person's whole body from head to feet, soft even studio lighting, sharp focus.",
     "Output ONLY the edited photograph.",
@@ -441,7 +452,28 @@ function easeBucket(easeCm?: number): string {
   return `e${b >= 0 ? "p" : "m"}${Math.abs(b)}`;
 }
 
-function museCacheKey(museId: string, handle: string, size: string, lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[]): string {
+// Prompt version. Bump WHENEVER the buildPrompt / easeMagnitudeClause / fit
+// language changes, so old renders made under weaker prompts (e.g. the previous
+// XS-vs-XL "looks the same" pass) are NEVER served stale. Founder complaint:
+// "extra small and large are showing almost similar tightness." That bug was a
+// prompt-strength issue and an old-cache issue; bumping this guarantees the
+// new dramatic clauses re-render fresh.
+const PROMPT_VERSION = "v3";
+
+// Sanitise shop identifier into a filesystem-safe slug. Brand domain comes in
+// as `stylee.myshopify.com` or similar; collapse to alphanumerics + dashes so
+// it composes safely with the rest of the cache key + survives any disk write.
+function shopKey(shopSlug?: string): string {
+  if (!shopSlug) return "_";
+  const s = shopSlug.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+  return s.slice(0, 40) || "_";
+}
+
+function museCacheKey(
+  shopSlug: string | undefined,
+  museId: string, handle: string, size: string,
+  lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[],
+): string {
   const look = lookHandles.length ? `_look-${[...lookHandles].sort().join("-")}` : "";
   // Combined looks: fold each non-focus piece's size + ease bucket into the key
   // so the same look rendered at different per-piece fits caches as distinct
@@ -456,7 +488,12 @@ function museCacheKey(museId: string, handle: string, size: string, lookHandles:
         .sort()
         .join("");
   }
-  return `m-${museId}-${handle}-${size.toLowerCase()}-${easeBucket(easeCm)}${look}${perPiece}`;
+  // Brand-partitioned. Two brands that happen to share a product handle
+  // (e.g. both have "midnight-silk-gown") never collide, and each brand's
+  // warmed renders are reused across every subsequent shopper from that
+  // brand — the per-brand cache the founder asked for.
+  const s = shopKey(shopSlug);
+  return `s-${s}_m-${museId}-${handle}-${size.toLowerCase()}-${easeBucket(easeCm)}${look}${perPiece}-${PROMPT_VERSION}`;
 }
 
 export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
@@ -479,7 +516,7 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
     const lookHandles = garmentImages
       .slice(1)
       .map((g) => g.split("/").pop()?.replace(/\.png$/i, "").replace(/-\d+$/, "") ?? "");
-    const key = museCacheKey(req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
+    const key = museCacheKey(req.shopSlug, req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
     const url = museRenderUrl(key);
 
     // Cache hit anywhere (memory → writable disk → baked) → instant.

@@ -15,7 +15,6 @@
 import { prisma } from "../db.server";
 import type { PlanTier } from "@stylique/types";
 import { createRecommendationsService, createOutcomeService } from "@stylique/core";
-import { enqueueCreativeSet } from "../queue.server";
 
 // The orchestrator now lives in @stylique/core so both apps/shopify-app and
 // apps/worker share the same generator logic. This file keeps only the
@@ -126,16 +125,12 @@ export async function markRecommendationTaken(shopId: string, id: string): Promi
 // (which records the Outcome via markRecommendationTaken). Returns a small
 // result describing what was dispatched so the caller can surface a toast.
 //
-//   • WEAK_PDP_CREATIVE     → create a PENDING CreativeSet + enqueue the
-//                             creative-set BullMQ job for the product.
-//   • TOP_COMBO_TO_PROMOTE  → create a PENDING CreativeSet seeded with the
-//                             combo context + enqueue with combo triggeredBy.
 //   • CATALOG_GAP           → append the gap query to
 //                             Plan.planFeaturesJson.activeCatalogGaps (capped
 //                             at 10) so Mira can read it as live demand.
 //   • anything else         → taken-only (no side effect to dispatch).
+//   (Creative-generation dispatch removed — Stylique no longer produces creative.)
 export type ExecuteResult =
-  | { ok: true; dispatched: "creative_set"; setId: string }
   | { ok: true; dispatched: "catalog_gap"; query: string }
   | { ok: true; dispatched: "taken_only" }
   | { ok: false; error: "not_found" | "execute_failed" };
@@ -152,60 +147,6 @@ export async function executeRecommendation(
     if (!rec) return { ok: false, error: "not_found" };
 
     const kind = rec.kind as RecKind;
-
-    if (kind === "WEAK_PDP_CREATIVE" && rec.productId) {
-      const set = await prisma.creativeSet.create({
-        data: {
-          shopId,
-          productId: rec.productId,
-          status: "PENDING",
-          brief: { brief: rec.title, source: "recommendation", recommendationId: rec.id },
-          triggeredBy: `recommendation:${rec.id}`,
-        },
-        select: { id: true },
-      });
-      void enqueueCreativeSet({
-        shopId,
-        setId: set.id,
-        productId: rec.productId,
-        triggeredBy: `recommendation:${rec.id}`,
-        brief: rec.title,
-      }).catch(() => undefined);
-      await markRecommendationTaken(shopId, rec.id);
-      return { ok: true, dispatched: "creative_set", setId: set.id };
-    }
-
-    if (kind === "TOP_COMBO_TO_PROMOTE") {
-      const ev = (rec.evidence as { comboName?: string; productIds?: string[] } | null) ?? {};
-      const comboName = ev.comboName ?? rec.title;
-      // Seed the creative set from the first product in the combo (the anchor)
-      // so the worker has a product to render against.
-      const anchorProductId = ev.productIds?.[0] ?? rec.productId ?? null;
-      if (!anchorProductId) {
-        // No product to anchor — record as taken-only.
-        await markRecommendationTaken(shopId, rec.id);
-        return { ok: true, dispatched: "taken_only" };
-      }
-      const set = await prisma.creativeSet.create({
-        data: {
-          shopId,
-          productId: anchorProductId,
-          status: "PENDING",
-          brief: { brief: comboName, sourceComboName: comboName, source: "recommendation", recommendationId: rec.id },
-          triggeredBy: `recommendation_combo:${comboName}`,
-        },
-        select: { id: true },
-      });
-      void enqueueCreativeSet({
-        shopId,
-        setId: set.id,
-        productId: anchorProductId,
-        triggeredBy: `stylist_combo:${comboName}`,
-        brief: comboName,
-      }).catch(() => undefined);
-      await markRecommendationTaken(shopId, rec.id);
-      return { ok: true, dispatched: "creative_set", setId: set.id };
-    }
 
     if (kind === "CATALOG_GAP") {
       const ev = (rec.evidence as { query?: string } | null) ?? {};

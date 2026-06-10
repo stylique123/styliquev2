@@ -1,0 +1,102 @@
+{
+  "persona_id": "styling-1",
+  "archetype": "styling help — what goes with",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "what goes with a camel coat?",
+      "http_status": 200,
+      "latency_ms": 23567,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "A camel coat is so versatile! What kind of look are you hoping to create? More tailored, or relaxed?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "A camel coat is so versatile! What kind of look are you hoping to create? More tailored, or relaxed?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Tailored",
+          "Relaxed",
+          "Everyday"
+        ],
+        "intent": "discover"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok",
+      "http_status": 200,
+      "latency_ms": 14079,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, let's start with a beautiful pair of wide-leg trousers that would work for either. How does this feel?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, let's start with a beautiful pair of wide-leg trousers that would work for either. How does this feel?",
+        "route": "reco_handle",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Show me something tailored",
+          "Show me something relaxed",
+          "Not quite"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "show me a sweater too",
+      "http_status": 200,
+      "latency_ms": 2354,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "This cashmere V-neck in Oat would layer beautifully under the Camel Wrap Coat, keeping the whole look soft and elegant.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "This cashmere V-neck in Oat would layer beautifully under the Camel Wrap Coat, keeping the whole look soft and elegant.",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another sweater"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "show me a sweater too",
+      "http_status": 200,
+      "latency_ms": 3398,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "This cashmere V-neck in Oat would layer beautifully under the Camel Wrap Coat, keeping the whole look soft and elegant.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "This cashmere V-neck in Oat would layer beautifully under the Camel Wrap Coat, keeping the whole look soft and elegant.",
+        "route": "reco_handle",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "What about a skirt?",
+          "Show me another sweater",
+          "Add the coat and sweater"
+        ],
+        "intent": "look"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": true,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 43398,
+  "started_at": "2026-06-10T10:31:29.408Z",
+  "ended_at": "2026-06-10T10:32:12.806Z"
+}

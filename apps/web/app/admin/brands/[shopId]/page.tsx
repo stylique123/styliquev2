@@ -99,7 +99,6 @@ export default async function BrandDetailPage({ params }: PageProps) {
           products: true,
           events: true,
           tryOnSessions: true,
-          creatives: true,
         },
       },
     },
@@ -246,7 +245,6 @@ export default async function BrandDetailPage({ params }: PageProps) {
         <KpiCard label="Products" value={shopData._count.products.toLocaleString()} />
         <KpiCard label="Events (30d)" value={eventsByName.reduce((s: number, e) => s + (e._count as { _all: number })._all, 0).toLocaleString()} />
         <KpiCard label="Try-ons" value={shopData._count.tryOnSessions.toLocaleString()} />
-        <KpiCard label="Creatives" value={shopData._count.creatives.toLocaleString()} />
         <KpiCard
           label="Assisted revenue"
           value={

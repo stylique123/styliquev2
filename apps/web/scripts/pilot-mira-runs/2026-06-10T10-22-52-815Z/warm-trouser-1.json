@@ -1,0 +1,102 @@
+{
+  "persona_id": "warm-trouser-1",
+  "archetype": "warm lead — wide leg trouser",
+  "pdp": "atelier-wide-leg-trouser",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm 5'9, what top would actually balance these?",
+      "http_status": 200,
+      "latency_ms": 7503,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Atelier Wide-Leg Trouser is a beautiful piece, and at 5'9\" you won't need to worry about the hem. For balancing the volume, I'd pair it with our Merino Ribbed Turtleneck. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "The Atelier Wide-Leg Trouser is a beautiful piece, and at 5'9\" you won't need to worry about the hem. For balancing the volume, I'd pair it with our Merino Ribbed Turtleneck. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "Show me another top",
+          "What about a blazer?",
+          "Size the trousers"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "love it. all in M?",
+      "http_status": 200,
+      "latency_ms": 12924,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Merino Ribbed Turtleneck and the Atelier Wide-Leg Trouser together in a Medium would be a beautiful look. Shall I add both to your bag?",
+      "mira_route": "add_to_cart",
+      "mira_decision": {
+        "voice": "The Merino Ribbed Turtleneck and the Atelier Wide-Leg Trouser together in a Medium would be a beautiful look. Shall I add both to your bag?",
+        "route": "add_to_cart",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "Yes, add them",
+          "Show me the full look",
+          "What's my size?"
+        ],
+        "intent": "specific"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "anything more cropped?",
+      "http_status": 200,
+      "latency_ms": 2867,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "You're looking for something a bit more cropped to balance the trousers, I love that idea. We don't have a truly cropped top, but the Ivory Silk Camisole is a more fitted piece that would give a similar effect.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "You're looking for something a bit more cropped to balance the trousers, I love that idea. We don't have a truly cropped top, but the Ivory Silk Camisole is a more fitted piece that would give a similar effect.",
+        "route": "reco_handle",
+        "productHandle": "ivory-silk-camisole",
+        "quickReplies": [
+          "See it on me",
+          "Size this one",
+          "Show me another"
+        ],
+        "intent": "look"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "love it. all in M?",
+      "http_status": 200,
+      "latency_ms": 2761,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "The Ivory Silk Camisole runs true to size, so a Medium would be perfect. Shall I add it to your bag along with the trousers?",
+      "mira_route": "add_to_cart",
+      "mira_decision": {
+        "voice": "The Ivory Silk Camisole runs true to size, so a Medium would be perfect. Shall I add it to your bag along with the trousers?",
+        "route": "add_to_cart",
+        "productHandle": "ivory-silk-camisole",
+        "quickReplies": [
+          "Yes, add it",
+          "Show me another top"
+        ],
+        "intent": "specific"
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": true,
+  "qualified_before_show": false,
+  "total_latency_ms": 26055,
+  "started_at": "2026-06-10T10:22:52.871Z",
+  "ended_at": "2026-06-10T10:23:18.928Z"
+}

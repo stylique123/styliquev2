@@ -1,0 +1,92 @@
+{
+  "persona_id": "size-petite-1",
+  "archetype": "size query — petite",
+  "pdp": "cashmere-v-neck",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "5 foot 1, 105 lbs — XS or S?",
+      "http_status": 200,
+      "latency_ms": 2895,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "That cashmere is the real thing. Based on your measurements, I'd suggest an XS in this one. It will relax a little with wear. Want to try it on?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "That cashmere is the real thing. Based on your measurements, I'd suggest an XS in this one. It will relax a little with wear. Want to try it on?",
+        "route": "try_on",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Add to bag",
+          "Build the look",
+          "Show me another knit"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "is it cropped on petites?",
+      "http_status": 200,
+      "latency_ms": 2835,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "It's not designed as a cropped style, but on 5'1\" it will likely hit closer to the hip than the mid-thigh. Want to see it on?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "It's not designed as a cropped style, but on 5'1\" it will likely hit closer to the hip than the mid-thigh. Want to see it on?",
+        "route": "try_on",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "Try it on",
+          "Show me another knit",
+          "What goes with it?"
+        ],
+        "intent": "suitability"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "is it cropped on petites?",
+      "http_status": 200,
+      "latency_ms": 2663,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "is it cropped on petites?",
+      "http_status": 200,
+      "latency_ms": 3181,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "It's not designed as a cropped style, but on 5'1\" it will likely hit closer to the hip than the mid-thigh. Want to see it on?",
+      "mira_route": "try_on",
+      "mira_decision": {
+        "voice": "It's not designed as a cropped style, but on 5'1\" it will likely hit closer to the hip than the mid-thigh. Want to see it on?",
+        "route": "try_on",
+        "productHandle": "cashmere-v-neck",
+        "quickReplies": [
+          "See it on me",
+          "Show me another",
+          "What goes with it?"
+        ]
+      }
+    }
+  ],
+  "fall_to_fallback_count": 1,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 11574,
+  "started_at": "2026-06-10T10:31:17.833Z",
+  "ended_at": "2026-06-10T10:31:29.407Z"
+}

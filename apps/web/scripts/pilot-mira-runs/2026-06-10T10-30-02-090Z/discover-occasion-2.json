@@ -1,0 +1,72 @@
+{
+  "persona_id": "discover-occasion-2",
+  "archetype": "discovery — wedding-guest",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "im a wedding guest in december what do you have",
+      "http_status": 200,
+      "latency_ms": 16371,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "A December wedding, love that. Is it a daytime or evening event? That changes the one I'd pull.",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "A December wedding, love that. Is it a daytime or evening event? That changes the one I'd pull.",
+        "route": "talk_only",
+        "quickReplies": [
+          "Evening",
+          "Daytime",
+          "Not sure"
+        ],
+        "intent": "occasion"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "anything warmer?",
+      "http_status": 200,
+      "latency_ms": 10094,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 2,
+      "shopper_said": "anything warmer?",
+      "http_status": 200,
+      "latency_ms": 5584,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "anything warmer?",
+      "http_status": 200,
+      "latency_ms": 2444,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    }
+  ],
+  "fall_to_fallback_count": 3,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 34493,
+  "started_at": "2026-06-10T10:30:43.339Z",
+  "ended_at": "2026-06-10T10:31:17.832Z"
+}

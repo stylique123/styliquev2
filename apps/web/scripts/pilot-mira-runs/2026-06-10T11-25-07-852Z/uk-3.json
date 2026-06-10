@@ -1,0 +1,153 @@
+{
+  "persona_id": "uk-3",
+  "region": "UK · Manchester",
+  "age": 27,
+  "archetype": "wedding guest, panicking",
+  "style": "urgent",
+  "pdp": null,
+  "started_at": "2026-06-10T11:25:07.900Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "wedding sunday and i have nothing. budget £300 max. help.",
+      "mira_voice": "Right, a wedding this Sunday, and your budget is £300, got it. For that price point, I'd suggest the Merino Ribbed Turtleneck at $290, it's elegant and pairs beautifully with a skirt or trousers you might already have. What do you think?",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about the fabric",
+        "Show me another",
+        "What skirt would work?",
+        "What's my size?"
+      ],
+      "mira_handle": "merino-ribbed-turtleneck",
+      "mira_full_decision": {
+        "voice": "Right, a wedding this Sunday, and your budget is £300, got it. For that price point, I'd suggest the Merino Ribbed Turtleneck at $290, it's elegant and pairs beautifully with a skirt or trousers you might already have. What do you think?",
+        "route": "reco_handle",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "Tell me about the fabric",
+          "Show me another",
+          "What skirt would work?",
+          "What's my size?"
+        ],
+        "intent": "occasion"
+      },
+      "http_status": 200,
+      "latency_ms": 2710,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a really soft merino wool, finely ribbed for a sleek fit, and it comes in versatile shades like Bone, Black, or Espresso. It's the kind of piece you can easily dress up or down.",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "What about the skirt?",
+        "Show me the black one",
+        "How does it fit?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "It's a really soft merino wool, finely ribbed for a sleek fit, and it comes in versatile shades like Bone, Black, or Espresso. It's the kind of piece you can easily dress up or down.",
+        "route": "fabric",
+        "quickReplies": [
+          "What about the skirt?",
+          "Show me the black one",
+          "How does it fit?"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1502,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "good. so does that make this my size or do i still need to size up",
+      "mira_voice": "We'll want to size this one properly, as it's a sleek fit. Let me get your measurements for it.",
+      "mira_route": "size_form",
+      "mira_chips": [
+        "Size me for it",
+        "Show me the colours"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We'll want to size this one properly, as it's a sleek fit. Let me get your measurements for it.",
+        "route": "size_form",
+        "quickReplies": [
+          "Size me for it",
+          "Show me the colours"
+        ],
+        "intent": "size"
+      },
+      "http_status": 200,
+      "latency_ms": 1788,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, then add it to bag",
+      "mira_voice": "I'll put the Merino Ribbed Turtleneck in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "merino-ribbed-turtleneck",
+      "mira_full_decision": {
+        "voice": "I'll put the Merino Ribbed Turtleneck in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1365,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "great. checkout",
+      "mira_voice": "Right, heading to checkout now!",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "View Bag",
+        "Keep browsing"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Right, heading to checkout now!",
+        "route": "add_to_cart",
+        "quickReplies": [
+          "View Bag",
+          "Keep browsing"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1327,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:16.593Z",
+  "total_latency_ms": 8692
+}

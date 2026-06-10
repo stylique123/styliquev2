@@ -1,0 +1,144 @@
+{
+  "persona_id": "abs-3",
+  "region": "abuse",
+  "age": 35,
+  "archetype": "off-topic",
+  "style": "off_topic",
+  "pdp": null,
+  "started_at": "2026-06-10T10:54:42.449Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "what's the weather like in london right now",
+      "mira_voice": "I can help with fashion, but I don't have weather updates for London. What are you looking for today?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Dresses",
+        "Outerwear",
+        "Just browsing"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "I can help with fashion, but I don't have weather updates for London. What are you looking for today?",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "Dresses",
+          "Outerwear",
+          "Just browsing"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 16406,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok fine, what do you sell",
+      "mira_voice": "We focus on quiet luxury, beautiful fabrics cut cleanly, designed to last. What are you after?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Just looking"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We focus on quiet luxury, beautiful fabrics cut cleanly, designed to last. What are you after?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Just looking"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 24320,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4097,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "We focus on quiet luxury, beautiful fabrics cut cleanly, designed to last. What are you after?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Just looking"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "We focus on quiet luxury, beautiful fabrics cut cleanly, designed to last. What are you after?",
+        "route": "talk_only",
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Just looking"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3904,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "This one is truly special, the kind of piece you keep forever. Let me show you the Leather Trench.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Tell me about it",
+        "Show me another",
+        "What's my size?"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "This one is truly special, the kind of piece you keep forever. Let me show you the Leather Trench.",
+        "route": "navigate",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "Tell me about it",
+          "Show me another",
+          "What's my size?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2241,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:55:33.417Z",
+  "total_latency_ms": 50968
+}

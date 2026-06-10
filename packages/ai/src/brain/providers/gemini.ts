@@ -71,14 +71,31 @@ export function createGeminiProvider(opts: {
       const res = await f(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Pass the caller's AbortSignal so a timed-out brain call actually cancels
+        // the in-flight Gemini HTTP request instead of leaking a dangling fetch.
+        ...(input.signal ? { signal: input.signal } : {}),
         body: JSON.stringify({
           systemInstruction: { role: "user", parts: [{ text: input.systemPrompt }] },
           contents,
           tools: [{ functionDeclarations: input.tools.map(toolToGemini) }],
+          // Force a tool call this turn when the Brain demands it (product-intent
+          // turns): mode ANY makes the model emit a function call instead of free
+          // text, scoped to the named tools so it pulls catalog, not some other tool.
+          ...(input.forceToolNames?.length
+            ? { toolConfig: { functionCallingConfig: { mode: "ANY", allowedFunctionNames: input.forceToolNames } } }
+            : {}),
           generationConfig: {
             temperature: input.temperature ?? 0.85,
             topP: 0.95,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 8192,
+            // Gemini 2.5 are THINKING models. With a long system prompt + 15+ tool
+            // declarations, flash would spend the whole turn "thinking" and return
+            // a finishReason=STOP candidate with EMPTY parts (thought parts are
+            // stripped by the REST API) — no text, no functionCall → brain.ts
+            // "One sec…" placeholder, EVERY turn. Disabling thinking on flash makes
+            // it reliably emit the search_catalog/propose_combo function call.
+            // Pro cannot run with budget 0 (min 128), so guard by model family.
+            thinkingConfig: { thinkingBudget: model.includes("pro") ? 128 : 0 },
           },
         }),
       });
@@ -86,8 +103,11 @@ export function createGeminiProvider(opts: {
         const text = await res.text().catch(() => "");
         throw new Error(`gemini_http_${res.status}: ${text.slice(0, 200)}`);
       }
-      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> };
-      const parts = data.candidates?.[0]?.content?.parts ?? [];
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: GeminiPart[] }; finishReason?: string }>;
+      };
+      const cand = data.candidates?.[0];
+      const parts = cand?.content?.parts ?? [];
 
       const toolCalls: ProviderToolCall[] = [];
       let text = "";
@@ -97,6 +117,13 @@ export function createGeminiProvider(opts: {
         } else if ("text" in p) {
           text += p.text;
         }
+      }
+      // An empty turn (no tool call, no text) is almost always MAX_TOKENS thinking
+      // truncation or a safety block — never silently swallow it; log the reason so
+      // it's debuggable from the server instead of surfacing as a dead "One sec…".
+      if (toolCalls.length === 0 && !text.trim()) {
+        // eslint-disable-next-line no-console
+        console.error(`[gemini] empty turn — finishReason=${cand?.finishReason ?? "unknown"} model=${model}`);
       }
       return { toolCalls, text };
     },

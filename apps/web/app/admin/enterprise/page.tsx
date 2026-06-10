@@ -7,7 +7,6 @@ export default function EnterprisePage() {
     domain: "",
     monthlyTryOnPersonal: "",
     monthlyTryOnBody: "",
-    monthlyCreatives: "",
     monthlyStyleRecs: "",
     monthlyFitRecs: "",
     supportLevel: "DEDICATED",
@@ -42,7 +41,6 @@ export default function EnterprisePage() {
       const numFields = [
         "monthlyTryOnPersonal",
         "monthlyTryOnBody",
-        "monthlyCreatives",
         "monthlyStyleRecs",
         "monthlyFitRecs",
       ] as const;
@@ -67,7 +65,6 @@ export default function EnterprisePage() {
           domain: "",
           monthlyTryOnPersonal: "",
           monthlyTryOnBody: "",
-          monthlyCreatives: "",
           monthlyStyleRecs: "",
           monthlyFitRecs: "",
           supportLevel: "DEDICATED",
@@ -202,7 +199,6 @@ export default function EnterprisePage() {
         >
           {fieldGroup("Try-on personal", "monthlyTryOnPersonal", "number", "e.g. 5000")}
           {fieldGroup("Try-on body model", "monthlyTryOnBody", "number", "e.g. 10000")}
-          {fieldGroup("Creatives", "monthlyCreatives", "number", "e.g. 500")}
           {fieldGroup("Style recs", "monthlyStyleRecs", "number", "e.g. 20000")}
           {fieldGroup("Fit recs", "monthlyFitRecs", "number", "e.g. 20000")}
         </div>

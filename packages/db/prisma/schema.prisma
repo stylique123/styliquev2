@@ -30,6 +30,10 @@ model Shop {
   shopifyDomain     String                @unique
   accessToken       String
   scopes            String
+  // The store's own currency (ISO 4217, e.g. "USD", "GBP", "PKR", "AED", "JPY").
+  // Fetched from Shopify on install/sync so Mira formats every price in the
+  // merchant's real currency — never a hardcoded $ or en-US locale.
+  currencyCode      String                @default("USD")
   installedAt       DateTime              @default(now())
   uninstalledAt     DateTime?
   events            AnalyticsEvent[]
@@ -39,8 +43,6 @@ model Shop {
   brandSnapshots    BrandTasteSnapshot[]
   cartIntents       CartIntent[]
   catalogGaps       CatalogGap[]
-  creatives         Creative[]
-  creativeSets      CreativeSet[]
   fitSessions       FitSession[]
   notifications     Notification[]
   outcomes          Outcome[]
@@ -156,8 +158,6 @@ model Product {
   sizeChartExtractedAt    DateTime?
   updatedAt               DateTime              @updatedAt
   brandRecs               BrandRecommendation[]
-  creatives               Creative[]
-  creativeSets            CreativeSet[]
   fitSessions             FitSession[]
   shop                    Shop                  @relation(fields: [shopId], references: [id], onDelete: Cascade)
   audits                  ProductAudit[]
@@ -224,49 +224,8 @@ model Asset {
   brandProfile   BrandProfile? @relation(fields: [brandProfileId], references: [id], onDelete: Cascade)
 }
 
-model CreativeSet {
-  id           String            @id @default(cuid())
-  shopId       String
-  productId    String?
-  status       CreativeSetStatus @default(PENDING)
-  brief        Json?
-  providerMeta Json?
-  qcState      QcState           @default(NONE)
-  retryCount   Int               @default(0)
-  error        String?
-  triggeredBy  String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  creatives    Creative[]
-  product      Product?          @relation(fields: [productId], references: [id])
-  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
-
-  @@index([shopId, productId])
-  @@index([shopId, status])
-}
-
-model Creative {
-  id              String       @id @default(cuid())
-  shopId          String
-  productId       String?
-  setId           String?
-  role            CreativeRole @default(STILL)
-  assetKind       AssetKind    @default(GENERATED)
-  sourceComboName String?
-  sourceComboIds  String[]     @default([])
-  prompt          String
-  imageUrl        String?
-  videoUrl        String?
-  status          JobStatus    @default(PENDING)
-  providerJob     String?
-  error           String?
-  createdAt       DateTime     @default(now())
-  product         Product?     @relation(fields: [productId], references: [id])
-  set             CreativeSet? @relation(fields: [setId], references: [id], onDelete: Cascade)
-  shop            Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
-
-  @@index([shopId, setId])
-}
+// Creative + CreativeSet models removed — Stylique is a sales + intelligence
+// layer, not a content generator. (DROP TABLE staged in the migration.)
 
 model ProductAudit {
   id                 String   @id @default(cuid())
@@ -684,27 +643,6 @@ enum AssetKind {
   USER_PHOTO
   GENERATED
   VIDEO
-}
-
-enum CreativeSetStatus {
-  PENDING
-  GENERATING
-  READY
-  PARTIAL
-  FAILED
-}
-
-enum QcState {
-  NONE
-  AUTO_PASSED
-  AUTO_FLAGGED
-  HUMAN_APPROVED
-  HUMAN_REJECTED
-}
-
-enum CreativeRole {
-  STILL
-  MOTION
 }
 
 enum JobStatus {

@@ -4,13 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import MiraDock from "../surfaces/MiraDock";
 import TryOnPanel from "../surfaces/TryOnPanel";
-import StudioModal from "../surfaces/StudioModal";
 
 // ----------------------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------------------
 
-type ChapterId = "mira" | "tryon" | "studio";
+type ChapterId = "mira" | "tryon";
 
 type Step =
   | {
@@ -30,7 +29,7 @@ type Step =
     }
   | {
       kind: "surface";
-      surface: "mira" | "tryon" | "studio";
+      surface: "mira" | "tryon";
       headline: string;
       body: string;
     }
@@ -136,44 +135,6 @@ const CHAPTERS: Chapter[] = [
         kind: "done",
         headline: "That's Try-On.",
         body: "Size + fit data flows back to Mira automatically. Next time she recommends something, she already knows what fits — and says it out loud.",
-      },
-    ],
-  },
-  {
-    id: "studio",
-    eyebrow: "Creative Studio",
-    name: "Studio",
-    line: "Editorial product imagery in your voice — without the shoot day.",
-    steps: [
-      {
-        kind: "intro",
-        metric: "$450",
-        metricUnit: "Saved per product vs. agency shoot",
-        headline: "Editorial imagery, on demand.",
-        body: "Studio generates PDP shots, campaign heroes, lifestyle edits, and motion clips — in your brand's visual voice. No shoot day. No art director. Brief in, set out.",
-      },
-      {
-        kind: "navigate",
-        path: "/product/onyx-silk-slip",
-        note: "Studio runs against your live catalog — let's see it on a real product.",
-      },
-      {
-        kind: "spotlight",
-        selector: "[data-pdp-gallery]",
-        headline: "Your catalog. Reimagined.",
-        body: "Every product gets a full creative set: PDP clean shot, lifestyle hero, alternate mood. Studio learns your house aesthetic from the catalog — not from a prompt.",
-        anchor: "top",
-      },
-      {
-        kind: "surface",
-        surface: "studio",
-        headline: "Brief in. Set out in 60 seconds.",
-        body: "Type the mood — golden-hour terrace, low-lit dining, downtown editorial. Studio renders four stills and a motion clip in your brand voice.",
-      },
-      {
-        kind: "done",
-        headline: "That's Studio.",
-        body: "The same brand DNA that informs Mira's recommendations drives Studio's visual output. One house, one voice — across chat, try-on, and imagery.",
       },
     ],
   },
@@ -393,11 +354,6 @@ export default function Tour() {
         // Skip to the surface step (index 3 in the tryon chapter script).
         window.setTimeout(() => {
           setView({ kind: "running", chapterId: "tryon", stepIdx: 3 });
-        }, 50);
-      } else if (action.kind === "open_studio") {
-        startChapter("studio");
-        window.setTimeout(() => {
-          setView({ kind: "running", chapterId: "studio", stepIdx: 3 });
         }, 50);
       }
     },
@@ -1143,10 +1099,9 @@ function SurfaceStep({
     <>
       {/* Mount the real surface — this is the star of the step.
           MiraLiveDemo replaces the empty MiraDock for demo context.
-          TryOnPanel and StudioModal mount as real interactive surfaces. */}
+          TryOnPanel mounts as a real interactive surface. */}
       {step.surface === "mira" && <MiraLiveDemo />}
       {step.surface === "tryon" && <TryOnPanel />}
-      {step.surface === "studio" && <StudioModal />}
 
       {/* Hint bar — describes what the user is looking at without blocking
           the surface itself. Position adapts per surface. */}

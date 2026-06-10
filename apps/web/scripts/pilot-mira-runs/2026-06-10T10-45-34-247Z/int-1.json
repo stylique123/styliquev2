@@ -1,0 +1,103 @@
+{
+  "persona_id": "int-1",
+  "region": "intent",
+  "age": 29,
+  "archetype": "leaving without buying",
+  "style": "exit_intent",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T10:53:26.364Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "actually i'm gonna think about it. closing this.",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3250,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok ok, one minute. what's actually good here",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 2543,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 5010,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 4507,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "say that again? lost you",
+      "mira_voice": "Apologies, it seems we had a momentary glitch. I was saying the Camel Wrap Coat is a truly versatile piece, structured enough for evening, relaxed enough for daily wear. Are you looking to size it, style it, or see it on you?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Size this one",
+        "Style it",
+        "See it on me"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Apologies, it seems we had a momentary glitch. I was saying the Camel Wrap Coat is a truly versatile piece, structured enough for evening, relaxed enough for daily wear. Are you looking to size it, style it, or see it on you?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Size this one",
+          "Style it",
+          "See it on me"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 23858,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:54:05.532Z",
+  "total_latency_ms": 39168
+}

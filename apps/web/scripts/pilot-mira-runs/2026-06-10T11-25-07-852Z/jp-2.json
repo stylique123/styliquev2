@@ -1,0 +1,156 @@
+{
+  "persona_id": "jp-2",
+  "region": "Japan · Osaka",
+  "age": 28,
+  "archetype": "very petite",
+  "style": "petite_precise",
+  "pdp": "tailored-blazer-double",
+  "started_at": "2026-06-10T11:25:48.999Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "I am 152cm 44kg. XS will still be loose on shoulders. what to do.",
+      "mira_voice": "Here's the strongest place to start, the Tailored Double-Breasted Blazer is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, the Tailored Double-Breasted Blazer is the piece in front of us. I'll help you size it, style it, or see it on before you decide.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1296,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "what size on me specifically",
+      "mira_voice": "Let's put the Tailored Double-Breasted Blazer in the fitting room.",
+      "mira_route": "try_on",
+      "mira_chips": [
+        "What's my size?",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Let's put the Tailored Double-Breasted Blazer in the fitting room.",
+        "route": "try_on",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "try_on"
+      },
+      "http_status": 200,
+      "latency_ms": 1358,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok do it",
+      "mira_voice": "I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1352,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "great. checkout",
+      "mira_voice": "OK — I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "OK — I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1179,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "great. checkout",
+      "mira_voice": "I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Build the look",
+        "Checkout"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "I'll put the Tailored Double-Breasted Blazer in your bag. Want the full look with it, or straight to checkout?",
+        "route": "add_to_cart",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Build the look",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 1441,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:55.626Z",
+  "total_latency_ms": 6626
+}

@@ -1,0 +1,170 @@
+{
+  "persona_id": "in-3",
+  "region": "India · Bangalore",
+  "age": 25,
+  "archetype": "tech worker, wfh casual",
+  "style": "casual_modern",
+  "pdp": null,
+  "started_at": "2026-06-10T11:25:40.549Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "looking for things i can wear on zoom that still look like im not in pajamas",
+      "mira_voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1472,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "Quick — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Quick — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1334,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1260,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "OK — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "OK — Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1222,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Show me another"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Here's the strongest place to start, I'd start with the Tailored Double-Breasted Blazer. I'll show you why it works, then we can size it or build the full look.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1267,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:47.104Z",
+  "total_latency_ms": 6555
+}

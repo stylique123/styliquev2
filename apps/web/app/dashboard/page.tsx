@@ -21,7 +21,6 @@ interface HeadlineKpis {
   cartConfirmed: number;
   tryOnSessions: number;
   fitSubmitted: number;
-  creativesGenerated: number;
   signupsClaimed: number;
   windowDays: number;
 }
@@ -1593,7 +1592,6 @@ export default function DashboardPage() {
     cartConfirmed: 0,
     tryOnSessions: 0,
     fitSubmitted: 0,
-    creativesGenerated: 0,
     signupsClaimed: 0,
     windowDays: 30,
   };
@@ -1808,12 +1806,6 @@ export default function DashboardPage() {
             accent="pink"
           />
           <KpiCard
-            label="Creatives generated"
-            value={kpiValue(h.creativesGenerated)}
-            sub={overviewSource === "live" ? "Creative Studio" : "overview unavailable"}
-            accent="electric"
-          />
-          <KpiCard
             label="Profiles saved"
             value={kpiValue(h.signupsClaimed)}
             sub={overviewSource === "live" ? "email captured" : "overview unavailable"}
@@ -1863,17 +1855,6 @@ export default function DashboardPage() {
               { label: "Avg. order value", value: overviewSource === "live" ? "$85 benchmark" : "benchmark unavailable" },
             ]}
           />
-          <ModuleCard
-            tag="Module 04"
-            name="Creative Studio"
-            accent="pink"
-            kpis={[
-              { label: "Creatives generated", value: kpiValue(h.creativesGenerated) },
-              { label: "Agency cost saved est.", value: overviewSource === "live" ? `$${fmt(h.creativesGenerated * 450)}` : "model unavailable" },
-              { label: "Avg. per shoot", value: overviewSource === "live" ? "$450 benchmark" : "benchmark unavailable" },
-              { label: "Production time", value: overviewSource === "live" ? "<2min measured" : "insufficient data" },
-            ]}
-          />
         </div>
 
         {/* ─── Fashion intelligence (the four pillars) ──────────────── */}
@@ -1898,7 +1879,6 @@ export default function DashboardPage() {
           {[
             { label: "Full analytics", href: "#" },
             { label: "Settings", href: "#" },
-            { label: "Creative Studio", href: "#" },
             { label: "Shopify admin", href: `https://${data?.shopDomain ?? shop}/admin/apps` },
           ].map((link) => (
             <Link

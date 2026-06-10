@@ -1,0 +1,114 @@
+{
+  "persona_id": "us-3",
+  "region": "US · Chicago",
+  "age": 45,
+  "archetype": "winter dressing, plus-size",
+  "style": "practical_plus",
+  "pdp": null,
+  "started_at": "2026-06-10T11:27:09.063Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "im size 16, need a coat that actually fits curvy in -10°F. what do you have.",
+      "mira_voice": "Right, a size 16 for serious cold, that's a specific ask and I hear you. Our Leather Trench is cut generously and handles extreme cold beautifully, it's the warmest piece we have. The largest we carry is an XL, which fits up to a size 14, so it might be a bit snug.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "What's my size?",
+        "See it on you",
+        "Build the look",
+        "Add to bag"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "Right, a size 16 for serious cold, that's a specific ask and I hear you. Our Leather Trench is cut generously and handles extreme cold beautifully, it's the warmest piece we have. The largest we carry is an XL, which fits up to a size 14, so it might be a bit snug.",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "disagree": true,
+        "quickReplies": [
+          "What's my size?",
+          "See it on you",
+          "Build the look",
+          "Add to bag"
+        ],
+        "intent": "size",
+        "unmet": true,
+        "unmetCategory": "plus sizing",
+        "unmetReason": "Shopper is size 16 and needs extreme cold coat; our largest is XL (size 14) and may not fit."
+      },
+      "http_status": 200,
+      "latency_ms": 2037,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "It's a proper leather trench, fully lined and weighty, so it really locks in the warmth. It's meant to last for years, a true investment piece. What are you thinking of wearing it for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Everyday wear",
+        "Dressy occasions",
+        "Show me the price"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "It's a proper leather trench, fully lined and weighty, so it really locks in the warmth. It's meant to last for years, a true investment piece. What are you thinking of wearing it for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Everyday wear",
+          "Dressy occasions",
+          "Show me the price"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1512,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "size 16, -10°F, curve-friendly cut",
+      "mira_voice": "I hear you on the size 16 and the cold, and the Leather Trench is indeed our warmest, cut for a generous fit. However, our XL is designed to fit up to a US size 14. For a true size 16 to handle -10°F, I'm afraid we don't have a coat that would be a reliable fit.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "What else is warm?",
+        "Show me something else",
+        "What about knitwear?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "I hear you on the size 16 and the cold, and the Leather Trench is indeed our warmest, cut for a generous fit. However, our XL is designed to fit up to a US size 14. For a true size 16 to handle -10°F, I'm afraid we don't have a coat that would be a reliable fit.",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "What else is warm?",
+          "Show me something else",
+          "What about knitwear?"
+        ],
+        "intent": "size",
+        "unmet": true,
+        "unmetCategory": "plus sizing",
+        "unmetReason": "Shopper wants size 16 coat for -10°F, our largest XL fits US 14."
+      },
+      "http_status": 200,
+      "latency_ms": 1891,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:27:14.503Z",
+  "total_latency_ms": 5440
+}

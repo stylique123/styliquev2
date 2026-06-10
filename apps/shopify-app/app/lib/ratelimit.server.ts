@@ -34,8 +34,13 @@ export async function checkRateLimit(
   const redis = await getRedis();
   if (redis) {
     try {
-      const count = await redis.incr(key);
-      if (count === 1) await redis.expire(key, 120);
+      // Atomic pipeline: INCR + EXPIRE in one round-trip, no race window
+      // where a key could persist forever if EXPIRE never fires (panel P1 #9).
+      const pipe = redis.pipeline();
+      pipe.incr(key);
+      pipe.expire(key, 120);
+      const res = await pipe.exec();
+      const count = (res?.[0]?.[1] ?? 0) as number;
       return count <= limitPerMin;
     } catch { /* fall through to memory */ }
   }
@@ -49,6 +54,42 @@ export async function checkRateLimit(
   }
   bucket.count++;
   return bucket.count <= limitPerMin;
+}
+
+// Idempotency guard — returns true if this key was ALREADY seen within ttlSec
+// (so the caller should no-op). Shopify retries webhooks and can deliver the same
+// X-Shopify-Webhook-Id more than once; without this, a single product edit can
+// enqueue duplicate sync jobs. Redis SET NX EX is atomic; in-memory fallback
+// covers single-instance dev. Fail-OPEN (treat as unseen) on any Redis error so
+// a Redis blip never drops a real webhook.
+const memSeen = new Map<string, number>();
+
+// Out-of-band cleanup so the in-memory fallbacks can't grow unbounded when Redis
+// is down or absent (panel P1 — memBuckets/memSeen OOM). Runs every 60s OFF the
+// request hot path; `.unref()` so it never keeps the process alive on shutdown.
+const _memPrune = setInterval(() => {
+  const now = Date.now();
+  for (const [k, b] of memBuckets) if (b.resetAt < now) memBuckets.delete(k);
+  for (const [k, exp] of memSeen) if (exp < now) memSeen.delete(k);
+}, 60000);
+if (typeof _memPrune?.unref === "function") _memPrune.unref();
+
+export async function seenRecently(key: string, ttlSec = 60): Promise<boolean> {
+  const k = `idemp:${key}`;
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      // SET k 1 NX EX ttl → "OK" if newly set (NOT seen), null if it already existed (seen).
+      const res = await redis.set(k, "1", "EX", ttlSec, "NX");
+      return res === null;
+    } catch { /* fall through to memory */ }
+  }
+  const now = Date.now();
+  // prune
+  for (const [mk, exp] of memSeen) if (exp < now) memSeen.delete(mk);
+  if (memSeen.has(k)) return true;
+  memSeen.set(k, now + ttlSec * 1000);
+  return false;
 }
 
 export async function rateOk(shopDomain: string, cookieId: string | null): Promise<boolean> {

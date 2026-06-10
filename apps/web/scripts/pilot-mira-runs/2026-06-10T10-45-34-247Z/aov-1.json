@@ -1,0 +1,156 @@
+{
+  "persona_id": "aov-1",
+  "region": "aov",
+  "age": 32,
+  "archetype": "wants a full outfit",
+  "style": "outfit_request",
+  "pdp": "atelier-wide-leg-trouser",
+  "started_at": "2026-06-10T10:54:21.791Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "build me a whole outfit from this trouser",
+      "mira_voice": "The Atelier Wide-Leg Trouser is a great base, let's build a clean look around it with the Merino Ribbed Turtleneck. The two together are $830.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add both to bag",
+        "Show me another top",
+        "What about a blazer?"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "The Atelier Wide-Leg Trouser is a great base, let's build a clean look around it with the Merino Ribbed Turtleneck. The two together are $830.",
+        "route": "look",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Add both to bag",
+          "Show me another top",
+          "What about a blazer?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2368,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "great. add all to bag at my size",
+      "mira_voice": "Consider it done, adding both to your bag now. Anything else to complete the look?",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Add the Merino Turtleneck",
+        "Show me another top",
+        "Checkout"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Consider it done, adding both to your bag now. Anything else to complete the look?",
+        "route": "add_to_cart",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Add the Merino Turtleneck",
+          "Show me another top",
+          "Checkout"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2847,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "great. checkout",
+      "mira_voice": "Perfect, heading to checkout now. It's been a pleasure helping you find these pieces.",
+      "mira_route": "add_to_cart",
+      "mira_chips": [
+        "Thanks, Mira!"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Perfect, heading to checkout now. It's been a pleasure helping you find these pieces.",
+        "route": "add_to_cart",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Thanks, Mira!"
+        ],
+        "intent": "specific"
+      },
+      "http_status": 200,
+      "latency_ms": 2648,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "great. checkout",
+      "mira_voice": "Perfect, heading to checkout now. It's been a pleasure helping you find these pieces.",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "For an occasion",
+        "Everyday",
+        "Show me something"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Perfect, heading to checkout now. It's been a pleasure helping you find these pieces.",
+        "route": "talk_only",
+        "searchQuery": "checkout",
+        "quickReplies": [
+          "For an occasion",
+          "Everyday",
+          "Show me something"
+        ],
+        "intent": "support"
+      },
+      "http_status": 200,
+      "latency_ms": 2658,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok. take me to your best one",
+      "mira_voice": "Okay, the Leather Trench is the one I'd pick, it's a serious piece that just gets better with time.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "Show me another",
+        "What goes with it?"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "Okay, the Leather Trench is the one I'd pick, it's a serious piece that just gets better with time.",
+        "route": "navigate",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "Size this one",
+          "Show me another",
+          "What goes with it?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 10135,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": true,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:54:42.447Z",
+  "total_latency_ms": 20656
+}

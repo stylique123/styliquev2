@@ -1,0 +1,77 @@
+{
+  "persona_id": "size-curve-1",
+  "archetype": "size anxious — curve",
+  "pdp": "linen-relaxed-shirt",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm a 14 usually but this brand i don't know — what size?",
+      "http_status": 200,
+      "latency_ms": 4538,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "This linen shirt is intentionally oversized, even at an XS it's roomy. If you usually wear a 14 and want a more fitted look, you might size down, but for the relaxed look, your usual size should work. Want me to confirm with your measurements?",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "This linen shirt is intentionally oversized, even at an XS it's roomy. If you usually wear a 14 and want a more fitted look, you might size down, but for the relaxed look, your usual size should work. Want me to confirm with your measurements?",
+        "route": "size_form",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Size me",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "size"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "5'6 175lb please size me",
+      "http_status": 200,
+      "latency_ms": 15781,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Got it, let me find the exact size for you in this shirt.",
+      "mira_route": "size_form",
+      "mira_decision": {
+        "voice": "Got it, let me find the exact size for you in this shirt.",
+        "route": "size_form",
+        "intent": "size"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "5'6 175lb please size me",
+      "http_status": 200,
+      "latency_ms": 2511,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "in this specific shirt?",
+      "http_status": 200,
+      "latency_ms": 3122,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    }
+  ],
+  "fall_to_fallback_count": 2,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 25952,
+  "started_at": "2026-06-10T10:30:44.945Z",
+  "ended_at": "2026-06-10T10:31:10.897Z"
+}

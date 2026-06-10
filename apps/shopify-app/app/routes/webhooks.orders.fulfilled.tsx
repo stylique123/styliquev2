@@ -14,11 +14,13 @@ import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { recomputeTasteVector } from "../lib/taste.server";
+import { seenRecently } from "../lib/ratelimit.server";
 
 interface LineItem {
   product_id: number | string | null;
   variant_id?: number | string | null;
   quantity?: number;
+  price?: string | number; // per-unit price (Shopify sends a string like "8500.00")
 }
 
 interface FulfilledOrderPayload {
@@ -32,7 +34,13 @@ interface FulfilledOrderPayload {
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
+    const webhookId = request.headers.get("x-shopify-webhook-id");
     const { shop, payload } = await authenticate.webhook(request);
+
+    // Idempotency (panel P1 #5): this webhook writes CART_CONFIRMED + lineValue
+    // (feeds AOV/attribution). Shopify delivers at-least-once, so without dedupe a
+    // retry double-counts revenue. Skip a delivery we've already processed.
+    if (webhookId && (await seenRecently(`wh:${webhookId}`, 600))) return new Response(null, { status: 200 });
 
     // 1. Resolve shop — must exist in our DB for any further action.
     const shopRecord = await prisma.shop.findUnique({
@@ -106,6 +114,12 @@ export async function action({ request }: ActionFunctionArgs) {
             source: "webhook_order",
             orderId,
             quantity: item.quantity ?? 1,
+            // Capture line value so insights can compute a REAL AOV instead of a
+            // hardcoded $85 (panel rec #14). lineValue = unit price × quantity.
+            lineValue: ((): number => {
+              const unit = typeof item.price === "string" ? parseFloat(item.price) : (item.price ?? 0);
+              return Number.isFinite(unit) ? Math.round(unit * (item.quantity ?? 1)) : 0;
+            })(),
           },
         },
       });

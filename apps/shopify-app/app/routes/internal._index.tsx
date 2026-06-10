@@ -73,18 +73,6 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ ok: true, message: `Tier updated to ${tier}` });
   }
 
-  if (intent === "requeue_failed_creatives") {
-    const failed = await prisma.creativeSet.findMany({
-      where: { shopId, status: "FAILED" },
-      select: { id: true },
-    });
-    await prisma.creativeSet.updateMany({
-      where: { shopId, status: "FAILED" },
-      data: { status: "PENDING", error: null, retryCount: 0 },
-    });
-    return json({ ok: true, message: `Re-queued ${failed.length} failed creative set(s)` });
-  }
-
   if (intent === "send_notification") {
     const message = formData.get("message") as string;
     if (!message?.trim()) return json({ ok: false, error: "message required" }, { status: 400 });
@@ -284,28 +272,7 @@ function QuickActionModal({
             </div>
           </div>
 
-          {/* Re-queue failed creative sets */}
-          {brand.failedCreativeSets > 0 && (
-            <fetcher.Form method="post">
-              <input type="hidden" name="intent" value="requeue_failed_creatives" />
-              <input type="hidden" name="shopId" value={brand.shopId} />
-              <button
-                type="submit"
-                style={{
-                  width: "100%",
-                  padding: "9px 12px",
-                  fontSize: 13,
-                  border: "1px solid #ddd",
-                  borderRadius: 5,
-                  cursor: "pointer",
-                  background: "#fff",
-                  textAlign: "left",
-                }}
-              >
-                🔄 Re-queue {brand.failedCreativeSets} failed creative set(s)
-              </button>
-            </fetcher.Form>
-          )}
+          {/* Creative Studio re-queue removed — module deleted per repositioning */}
 
           {/* Pause / resume generation */}
           <fetcher.Form method="post">
@@ -439,10 +406,6 @@ function BrandCard({
         <div style={{ background: "#f5f5f5", borderRadius: 4, padding: "6px 8px" }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: "#111" }}>{brand.sessionsLast7Days}</div>
           <div style={{ color: "#888" }}>sessions/7d</div>
-        </div>
-        <div style={{ background: "#f5f5f5", borderRadius: 4, padding: "6px 8px" }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: "#111" }}>{brand.totalCreativeSets}</div>
-          <div style={{ color: "#888" }}>creative sets</div>
         </div>
         <div style={{ background: "#f5f5f5", borderRadius: 4, padding: "6px 8px" }}>
           <div style={{ fontWeight: 700, fontSize: 16, color: "#111" }}>

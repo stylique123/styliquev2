@@ -1,0 +1,90 @@
+{
+  "persona_id": "warm-trouser-1",
+  "archetype": "warm lead — wide leg trouser",
+  "pdp": "atelier-wide-leg-trouser",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i'm 5'9, what top would actually balance these?",
+      "http_status": 200,
+      "latency_ms": 24549,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 1,
+      "shopper_said": "anything more cropped?",
+      "http_status": 200,
+      "latency_ms": 10100,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "We don't have a cropped top in that exact style, but the Merino Ribbed Turtleneck is a good balance for the wide-leg trouser.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "We don't have a cropped top in that exact style, but the Merino Ribbed Turtleneck is a good balance for the wide-leg trouser.",
+        "route": "reco_handle",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "Show me another",
+          "What about a camisole?"
+        ],
+        "intent": "specific",
+        "nearMiss": true,
+        "nearMissCategory": "tops",
+        "nearMissAttribute": "cropped",
+        "nearMissReason": "Shopper wanted a cropped top to balance the wide-leg trousers; closest option is the Merino Ribbed Turtleneck."
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. all in M?",
+      "http_status": 200,
+      "latency_ms": 2620,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    },
+    {
+      "i": 3,
+      "shopper_said": "anything more cropped?",
+      "http_status": 200,
+      "latency_ms": 5220,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "We don't have a cropped top in that exact style, but the Merino Ribbed Turtleneck is a good balance for the wide-leg trouser.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "We don't have a cropped top in that exact style, but the Merino Ribbed Turtleneck is a good balance for the wide-leg trouser.",
+        "route": "reco_handle",
+        "productHandle": "merino-ribbed-turtleneck",
+        "quickReplies": [
+          "What's the fit?",
+          "Show another top",
+          "Add the trousers"
+        ],
+        "intent": "specific",
+        "nearMiss": true,
+        "nearMissCategory": "tops for wide-leg trousers",
+        "nearMissAttribute": "cropped",
+        "nearMissReason": "Shopper wanted a cropped top for wide-leg trousers; closest is a regular-length turtleneck."
+      }
+    }
+  ],
+  "fall_to_fallback_count": 2,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 42489,
+  "started_at": "2026-06-10T10:30:02.129Z",
+  "ended_at": "2026-06-10T10:30:44.618Z"
+}

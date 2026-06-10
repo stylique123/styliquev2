@@ -6,7 +6,7 @@
 //   1. Brand Identity   — auto-computed palette + tone from catalog; refresh button
 //   2. Instagram        — ZIP upload to feed real campaign imagery into DNA
 //   3. Reference Assets — upload mood board / campaign photos directly
-//   4. Campaign Overrides — per-campaign DNA snapshots for Creative Studio
+//   4. Campaign Overrides — per-campaign DNA snapshots for Mira and recommendations
 
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect, unstable_parseMultipartFormData, unstable_createFileUploadHandler } from "@remix-run/node";
@@ -496,7 +496,7 @@ export default function BrandDNAPage() {
           <h2 className="sq-h2">Reference Assets</h2>
           <span className="sq-badge">{d.referenceAssets.length} / {d.referenceLimit === Infinity ? "∞" : d.referenceLimit}</span>
         </div>
-        <p className="sq-section-sub">Campaign photos, lookbook images, mood board shots. Used by Creative Studio as visual reference for generation.</p>
+        <p className="sq-section-sub">Campaign photos, lookbook images, and mood board shots used to understand the brand's visual language.</p>
 
         {d.referenceAssets.length > 0 && (
           <div className="sq-asset-grid">
@@ -529,10 +529,10 @@ export default function BrandDNAPage() {
       <section className="sq-section">
         <div className="sq-section-head">
           <h2 className="sq-h2">Campaign Overrides</h2>
-          <span className="sq-badge sq-badge--purple">Studio feature</span>
+          <span className="sq-badge sq-badge--purple">Brand intelligence</span>
         </div>
         <p className="sq-section-sub">
-          Override the base brand DNA for specific campaigns. Creative Studio uses the active override when generating sets tagged with the campaign name.
+          Override the base brand DNA for specific campaigns. Mira and the recommendation engine use the active campaign context when selecting products and explaining looks.
         </p>
 
         {d.campaignOverrides.length > 0 && (

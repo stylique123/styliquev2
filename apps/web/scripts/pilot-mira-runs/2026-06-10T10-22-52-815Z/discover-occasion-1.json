@@ -1,0 +1,104 @@
+{
+  "persona_id": "discover-occasion-1",
+  "archetype": "discovery — date night dressing",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "first date next saturday at a wine bar, what do i wear",
+      "http_status": 200,
+      "latency_ms": 7891,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "A first date at a wine bar, I love that. Are you looking for something that feels a little dressy, or more relaxed and easy?",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "A first date at a wine bar, I love that. Are you looking for something that feels a little dressy, or more relaxed and easy?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Dressy",
+          "Relaxed",
+          "Somewhere in between"
+        ],
+        "intent": "occasion"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 10793,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Of course. Here are the most accessible pieces we have.",
+      "mira_route": "reco_filter",
+      "mira_decision": {
+        "voice": "Of course. Here are the most accessible pieces we have.",
+        "route": "reco_filter",
+        "filter": "cheapest",
+        "quickReplies": [
+          "Size this one",
+          "What goes with this?",
+          "Show me another"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 4370,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Of course. Here are the most accessible pieces we have.",
+      "mira_route": "reco_filter",
+      "mira_decision": {
+        "voice": "Of course. Here are the most accessible pieces we have.",
+        "route": "reco_filter",
+        "filter": "cheapest",
+        "quickReplies": [
+          "What's the cheapest dress?",
+          "Show me tops",
+          "What's the absolute least?"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 4846,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "We've shown the most accessible pieces in the collection. Our brand focuses on quality over quantity, so prices reflect that.",
+      "mira_route": "talk_only",
+      "mira_decision": {
+        "voice": "We've shown the most accessible pieces in the collection. Our brand focuses on quality over quantity, so prices reflect that.",
+        "route": "talk_only",
+        "disagree": true,
+        "quickReplies": [
+          "Show me something for the date",
+          "What's your best seller?"
+        ],
+        "intent": "price",
+        "unmet": true,
+        "unmetCategory": "price<100",
+        "unmetReason": "Shopper repeatedly asked for 'anything cheaper' after being shown the cheapest items, indicating a budget below our floor."
+      }
+    }
+  ],
+  "fall_to_fallback_count": 0,
+  "invented_anything": false,
+  "asked_repeatedly": true,
+  "closed": false,
+  "qualified_before_show": true,
+  "total_latency_ms": 27900,
+  "started_at": "2026-06-10T10:22:52.871Z",
+  "ended_at": "2026-06-10T10:23:20.771Z"
+}

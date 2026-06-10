@@ -1,0 +1,133 @@
+{
+  "persona_id": "us-6",
+  "region": "US · Seattle",
+  "archetype": "rain-proof",
+  "style": "climate_practical",
+  "pdp": "leather-trench",
+  "started_at": "2026-06-10T12:38:03.381Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "real leather in seattle rain. does it ruin?",
+      "mira_voice": "The Leather Trench is real Italian nappa, it handles light rain well and will soften beautifully over time. You wouldn't want to drench it, but it's built to last. What else can I tell you about it?",
+      "mira_route": "fabric",
+      "mira_chips": [
+        "How do I care for it?",
+        "Show me the Cognac",
+        "What's my size?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "The Leather Trench is real Italian nappa, it handles light rain well and will soften beautifully over time. You wouldn't want to drench it, but it's built to last. What else can I tell you about it?",
+        "route": "fabric",
+        "quickReplies": [
+          "How do I care for it?",
+          "Show me the Cognac",
+          "What's my size?"
+        ],
+        "intent": "fabric"
+      },
+      "http_status": 200,
+      "latency_ms": 12688,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "ok, next",
+      "mira_voice": "Alright, let's look at another piece then. What are you looking for next?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Something for evening",
+        "Everyday wear",
+        "Surprise me"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Alright, let's look at another piece then. What are you looking for next?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Something for evening",
+          "Everyday wear",
+          "Surprise me"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 3461,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "yes — seattle rain every day",
+      "mira_voice": "Ah, every day in Seattle rain is a different story. For that, you'd want something that truly shrugs off water. We don't have a fully waterproof trench in leather, but I can show you our more weather-resistant outerwear.",
+      "mira_route": "reco_category",
+      "mira_chips": [
+        "Show me weather-resistant",
+        "What about a different material?",
+        "Something for light rain"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Ah, every day in Seattle rain is a different story. For that, you'd want something that truly shrugs off water. We don't have a fully waterproof trench in leather, but I can show you our more weather-resistant outerwear.",
+        "route": "reco_category",
+        "category": "outerwear",
+        "disagree": true,
+        "quickReplies": [
+          "Show me weather-resistant",
+          "What about a different material?",
+          "Something for light rain"
+        ],
+        "intent": "suitability",
+        "unmet": true,
+        "unmetCategory": "waterproof leather trench",
+        "unmetReason": "Shopper wanted a waterproof leather trench for daily heavy rain; we don't carry one."
+      },
+      "http_status": 200,
+      "latency_ms": 3693,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, next",
+      "mira_voice": "Okay, let's find that next piece for you. What are we looking for?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Something for rain",
+        "Show me coats",
+        "What's new?"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Okay, let's find that next piece for you. What are we looking for?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Something for rain",
+          "Show me coats",
+          "What's new?"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 4603,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": true,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T12:38:27.827Z",
+  "total_latency_ms": 24445
+}

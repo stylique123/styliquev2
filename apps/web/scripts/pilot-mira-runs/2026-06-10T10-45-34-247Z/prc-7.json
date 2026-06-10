@@ -1,0 +1,145 @@
+{
+  "persona_id": "prc-7",
+  "region": "proactive",
+  "age": 35,
+  "archetype": "asking-for-mood",
+  "style": "mood_unknown",
+  "pdp": null,
+  "started_at": "2026-06-10T10:51:33.571Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i don't even know what i'm in the mood for",
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_chips": [],
+      "mira_handle": null,
+      "mira_full_decision": null,
+      "http_status": 200,
+      "latency_ms": 3985,
+      "fell_to_fallback": true,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "i don't even know what i'm — try again",
+      "mira_voice": "Totally fair, let's narrow it down. What's the vibe you're leaning towards today, something sharp, soft, or a bit of both?",
+      "mira_route": "talk_only",
+      "mira_chips": [
+        "Sharp",
+        "Soft",
+        "Somewhere between"
+      ],
+      "mira_handle": null,
+      "mira_full_decision": {
+        "voice": "Totally fair, let's narrow it down. What's the vibe you're leaning towards today, something sharp, soft, or a bit of both?",
+        "route": "talk_only",
+        "quickReplies": [
+          "Sharp",
+          "Soft",
+          "Somewhere between"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 12221,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "i guess… something easy that still feels considered",
+      "mira_voice": "I hear you, easy but still polished. The Linen Relaxed Shirt is that piece, it’s effortless but always looks put together.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "See it on me",
+        "What goes with it?",
+        "Show me something else"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "I hear you, easy but still polished. The Linen Relaxed Shirt is that piece, it’s effortless but always looks put together.",
+        "route": "reco_handle",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "See it on me",
+          "What goes with it?",
+          "Show me something else"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 9031,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "If you want another easy piece that feels considered, the Pleated Satin Midi Skirt is a good one, it has that soft drape.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "What goes with it?",
+        "Show me another"
+      ],
+      "mira_handle": "pleated-midi-skirt",
+      "mira_full_decision": {
+        "voice": "If you want another easy piece that feels considered, the Pleated Satin Midi Skirt is a good one, it has that soft drape.",
+        "route": "reco_handle",
+        "productHandle": "pleated-midi-skirt",
+        "quickReplies": [
+          "Size this one",
+          "What goes with it?",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 8311,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Okay, for another easy and considered option, the Atelier Wide-Leg Trouser is a fantastic choice, comfortable but very chic.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "Show me another"
+      ],
+      "mira_handle": "atelier-wide-leg-trouser",
+      "mira_full_decision": {
+        "voice": "Okay, for another easy and considered option, the Atelier Wide-Leg Trouser is a fantastic choice, comfortable but very chic.",
+        "route": "reco_handle",
+        "productHandle": "atelier-wide-leg-trouser",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "Show me another"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 5540,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": false,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": false,
+    "fell_to_fallback_any": true,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T10:52:12.659Z",
+  "total_latency_ms": 39088
+}

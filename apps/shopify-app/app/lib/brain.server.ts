@@ -17,7 +17,7 @@ import {
   createGeminiProvider, createAnthropicProvider, createOpenAIProvider,
   searchCatalogToolSchema, proposeComboToolSchema, navigateToolSchema,
   addToCartToolSchema, addOutfitToCartToolSchema, offerSignupToolSchema,
-  seeOnModelToolSchema, seeOnMeToolSchema, requestCreativeSetToolSchema,
+  seeOnModelToolSchema, seeOnMeToolSchema,
   applyColorRuleToolSchema, suggestOccasionDressingToolSchema,
   compareTwoItemsToolSchema, // Fix 12 — explainWhyComboWorksToolSchema removed
   recallPastPreferenceToolSchema, interpretFitLanguageToolSchema,
@@ -30,7 +30,7 @@ import {
   type BrainContext, type BrainCombo, type BrainProduct, type BrainClientAction,
   type BrainCurrentProduct,
   type ToolDef, type ModelProvider,
-  type BrainSignal,
+  type BrainSignal, type ClassificationResult,
 } from "@stylique/ai";
 
 import { prisma } from "../db.server";
@@ -38,7 +38,6 @@ import { toShopperProduct } from "./serialize";
 import { logCatalogGap, readTasteVector } from "./taste.server";
 import { markSignupOffered } from "./session.server";
 import { getEffectivePlan } from "./entitlement.server";
-import { enqueueCreativeSet } from "../queue.server";
 import { vectorSearchProducts } from "./embeddings.server";
 import { matchByReferenceImage } from "./image-match.server";
 import { detectLocale, recommendFit, analyzeColorHarmony, scoreCombo } from "@stylique/core";
@@ -178,6 +177,72 @@ const brainLog = createLogger({ component: "brain" });
 
 // ─── Singleton ───────────────────────────────────────────────────────────
 
+// Deterministic, zero-latency intent classifier — replaces the per-turn LLM
+// classifier round-trip. Maps the shopper's words to the same ClassificationResult
+// the router + force-gate consume. Greetings/support → no forced catalog pull;
+// everything product-ish → a product intent so the brain pulls + proposes.
+function heuristicClassify(message: string, pageContext: unknown): ClassificationResult {
+  const m = (message ?? "").toLowerCase().trim();
+  const hasImage = !!(pageContext as { hasImage?: boolean } | null)?.hasImage;
+  const has = (...words: string[]) => words.some((w) => m.includes(w));
+
+  let intent: ClassificationResult["intent"];
+  let stage: ClassificationResult["estimatedStage"] = 3;
+  if (!m || (/^(hi|hey|hello|yo|sup|thanks|thank you|ok|okay|cool|great|bye|lol)\b/.test(m) && m.length < 25)) {
+    intent = "casual"; stage = 1;
+  } else if (has("return", "refund", "exchange", "shipping", "deliver", "warranty", "broken", "complaint", "cancel my order")) {
+    intent = "support"; stage = 1;
+  } else if (has("try on", "try it on", "see it on", "on me", "on a model", "on the model")) {
+    intent = "tryon"; stage = 7;
+  } else if (has("what size", "my size", "size up", "size down", "run small", "run large", "true to size", "fit me", "measurement", "between sizes")) {
+    intent = "size"; stage = 6;
+  } else if (has("in stock", "available", "sold out", "do you have", "left in", "back in stock")) {
+    intent = "stock"; stage = 8;
+  } else if (has(" vs ", "compare", "difference between", "or the", "which is better", "better one")) {
+    intent = "compare"; stage = 5;
+  } else if (has("goes with", "go with", "pair with", "pair it", "complete the", "complete my", "style this", "style it", "match with", "build a look", "full look", "outfit")) {
+    intent = "outfit"; stage = 5;
+  } else if (has("wedding", "dinner", "date", "party", "work", "office", "interview", "brunch", "vacation", "holiday", "beach", "gym", "funeral", "formal", "casual friday", "night out", "occasion", "event")) {
+    intent = "occasion"; stage = 3;
+  } else if (has("show me", "looking for", "need", "want", "recommend", "suggest", "find me", "something", "dress", "coat", "shirt", "trouser", "skirt", "knit", "cashmere", "wool", "silk", "linen", "leather", "blazer", "sweater", "top", "jacket")) {
+    intent = "discover"; stage = 2;
+  } else {
+    // Unknown but non-trivial → treat as a product turn so the brain still pulls
+    // catalog (the force-gate includes "complex").
+    intent = "complex"; stage = 3;
+  }
+
+  const complexity: ClassificationResult["complexity"] =
+    intent === "casual" || intent === "support" ? "low"
+      : intent === "outfit" || intent === "occasion" || intent === "compare" || intent === "complex" ? "high"
+        : "medium";
+
+  return { intent, complexity, confidence: 0.7, needsVision: hasImage, estimatedStage: stage, keyEntities: [] };
+}
+
+// Embeddings coverage guard (panel rec #13): vector catalog search silently
+// degrades to ILIKE keyword matching when a shop has products but ZERO
+// ProductEmbedding rows — which makes occasion/vibe queries miss in the brain.
+// Warn ONCE per shop per process so the gap is visible in logs (run the
+// embeddings backfill to fix). Fire-and-forget; never blocks or throws.
+const _embeddingWarned = new Set<string>();
+function warnIfNoEmbeddings(shopId: string): void {
+  if (_embeddingWarned.has(shopId)) return;
+  _embeddingWarned.add(shopId);
+  void (async () => {
+    try {
+      const [products, embeddings] = await Promise.all([
+        prisma.product.count({ where: { shopId } }),
+        prisma.productEmbedding.count({ where: { shopId } }),
+      ]);
+      if (products > 0 && embeddings === 0) {
+        // eslint-disable-next-line no-console
+        console.warn(`[brain] EMBEDDINGS GAP shop=${shopId}: ${products} products, 0 embeddings — vector search is OFF (ILIKE only). Run the embeddings backfill.`);
+      }
+    } catch { /* guard must never break a turn */ }
+  })();
+}
+
 let _brain: Brain | null = null;
 
 export function getBrain(): Brain {
@@ -246,17 +311,21 @@ export function getBrain(): Brain {
   // against hydrated catalog facts before they reach the shopper. Pure + sync.
   const rules = new RulesEngine();
 
-  // Cheap pre-flight classifier — only wired when GEMINI_API_KEY is present
-  // (it makes its own direct Flash call). Never throws (safe fallback inside).
+  // Pre-flight classifier. The LLM classifier (`classifyShopperIntent`) made a
+  // SEPARATE Flash round-trip on EVERY turn (~3-4s) purely to pick a provider —
+  // but only `gemini` is registered (anthropic/openai are stubs), so the routed
+  // provider was ALWAYS gemini. That round-trip was pure latency for a foregone
+  // decision. We replace it with an instant, deterministic keyword heuristic that
+  // yields the same `ClassificationResult` shape the router + force-gate need.
+  // (The LLM classifier remains available in @stylique/ai for a future multi-model
+  // setup; flip `USE_LLM_CLASSIFIER=1` to restore it.)
   const geminiKey = process.env.GEMINI_API_KEY;
-  const classify = geminiKey
-    ? (message: string, pageContext: unknown) =>
-        classifyShopperIntent(
-          message,
-          pageContext as Parameters<typeof classifyShopperIntent>[1],
-          geminiKey,
-        )
-    : undefined;
+  const classify = !geminiKey
+    ? undefined
+    : process.env.USE_LLM_CLASSIFIER === "1"
+      ? (message: string, pageContext: unknown) =>
+          classifyShopperIntent(message, pageContext as Parameters<typeof classifyShopperIntent>[1], geminiKey)
+      : (message: string, pageContext: unknown) => Promise.resolve(heuristicClassify(message, pageContext));
 
   _brain = new Brain({
     providers,
@@ -317,10 +386,6 @@ function toolsWithHandlers(): ToolDef[] {
     // widget listens for (cross-surface coordination already wired).
     { ...seeOnModelToolSchema, handler: handleSeeOnModel },
     { ...seeOnMeToolSchema,    handler: handleSeeOnMe },
-    // Sprint 2 — Stylist can now trigger Studio creative generation directly.
-    // Real handler below: creates a CreativeSet row + enqueues a job. The
-    // worker actually calls the upstream image/video providers asynchronously.
-    { ...requestCreativeSetToolSchema, handler: handleRequestCreativeSet },
     // Sprint 3 — Skills layer. Domain reasoning the model can call to ground
     // confident decisions without hallucinating.
     { ...applyColorRuleToolSchema,           handler: handleApplyColorRule },
@@ -522,7 +587,17 @@ async function handleSearchCatalog(args: Record<string, unknown>, ctx: BrainCont
     });
   }
 
-  return { kind: "data", data: { products } };
+  // Day-0 guardrail (panel P1): distinguish "no match for THIS query" from "the
+  // store has NO catalog yet" (just installed, sync still running). If the whole
+  // shop has zero products, flag it so Mira says "still syncing" instead of
+  // hallucinating a recommendation from an empty catalog.
+  let catalogNotReady = false;
+  if (products.length === 0) {
+    const total = await prisma.product.count({ where: { shopId: ctx.shopId } }).catch(() => 1);
+    catalogNotReady = total === 0;
+  }
+
+  return { kind: "data", data: { products, ...(catalogNotReady ? { catalogNotReady: true } : {}) } };
 }
 
 // ─── propose_combo ───────────────────────────────────────────────────────
@@ -704,56 +779,6 @@ async function handleSeeOnMe(args: Record<string, unknown>, ctx: BrainContext): 
   };
 }
 
-// ─── request_creative_set — Stylist → Studio cross-call ────────────────
-
-async function handleRequestCreativeSet(args: Record<string, unknown>, ctx: BrainContext): Promise<{ kind: "action"; action: BrainClientAction } | { kind: "data"; data: { error: string } }> {
-  const productId = String(args.productId ?? "");
-  const sourceComboName = args.sourceComboName ? String(args.sourceComboName).slice(0, 80) : undefined;
-  const brief = args.brief ? String(args.brief).slice(0, 400) : undefined;
-
-  // Validate the product belongs to this shop.
-  const product = await prisma.product.findFirst({
-    where: { shopId: ctx.shopId, id: productId },
-    select: { id: true, title: true },
-  });
-  if (!product) return { kind: "data", data: { error: "product_not_found" } };
-
-  // Create the CreativeSet row first so we have an id to enqueue + trace.
-  const set = await prisma.creativeSet.create({
-    data: {
-      shopId: ctx.shopId,
-      productId: product.id,
-      status: "PENDING",
-      brief: brief ? { brief, sourceComboName } : { sourceComboName },
-      triggeredBy: sourceComboName
-        ? `stylist_combo:${sourceComboName}`
-        : `stylist:${ctx.shopperSessionId.slice(0, 8)}`,
-    },
-    select: { id: true },
-  });
-
-  // Best-effort enqueue. Failure here means the worker won't pick it up; we
-  // still keep the PENDING row so the brand-side dashboard can see the intent
-  // and an admin can re-enqueue later.
-  void enqueueCreativeSet({
-    shopId: ctx.shopId,
-    setId: set.id,
-    productId: product.id,
-    triggeredBy: sourceComboName ? `stylist_combo:${sourceComboName}` : "stylist",
-    brief,
-  }).catch(() => undefined);
-
-  ctx.log({
-    name: "CREATIVE_SET_GENERATED",
-    productId: product.id,
-    payload: { setId: set.id, assetCount: 5 }, // 4 stills + 1 motion is our v1 pattern
-  });
-
-  return {
-    kind: "action",
-    action: { kind: "open_studio", sourceComboName: sourceComboName ?? product.title, productIds: [product.id] },
-  };
-}
 
 // ─── Skills layer handlers (Sprint 3) ──────────────────────────────────
 // These don't hit the catalog. They return structured guidance the model
@@ -2044,12 +2069,23 @@ async function handleCaptureUnmetDemand(
   try {
     const query = String(args.query ?? "").slice(0, 200);
     const resultCount = Number.isFinite(Number(args.resultCount)) ? Number(args.resultCount) : 0;
-    const nearMissProductId = args.nearMissProductId ? String(args.nearMissProductId) : undefined;
+    const rawNearMissProductId = args.nearMissProductId ? String(args.nearMissProductId) : undefined;
     const nearMissAttribute = args.nearMissAttribute ? String(args.nearMissAttribute) : undefined;
     const canonicalCategory = args.canonicalCategory ? String(args.canonicalCategory).slice(0, 80) : undefined;
 
     if (!query) {
       return { kind: "data", data: { recorded: false, reason: "no_query" } };
+    }
+
+    // Shop-scope the near-miss product id before it touches the gap pipeline or
+    // analytics — never associate another shop's product id with this shop's
+    // demand signal (§3 invariant #1). Drop it if it isn't in this catalog.
+    let nearMissProductId: string | undefined = undefined;
+    if (rawNearMissProductId) {
+      const owned = await prisma.product
+        .findFirst({ where: { id: rawNearMissProductId, shopId: ctx.shopId }, select: { id: true } })
+        .catch(() => null);
+      if (owned) nearMissProductId = owned.id;
     }
 
     // Persist to the catalog-gap pipeline (same store that feeds the
@@ -2130,6 +2166,9 @@ export async function buildBrainContext(args: {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // ─── Resolve current product from handle or id ───────────────────────────
+  // One-time-per-shop guard: log if vector search is silently off (no embeddings).
+  warnIfNoEmbeddings(args.shopId);
+
   // Scoped to shopId — no cross-tenant access possible.
   let currentProduct: BrainContext["currentProduct"] = null;
   if (args.currentProductHandle || args.currentProductId) {

@@ -1,0 +1,93 @@
+{
+  "persona_id": "budget-look-1",
+  "archetype": "budget objector — affordable look",
+  "pdp": null,
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "i need an outfit for $400 max",
+      "http_status": 200,
+      "latency_ms": 5832,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, here's a great everyday look that lands right at your budget, the Wide-Leg Heritage Denim with the Ivory Silk Camisole. It's a really versatile pairing.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, here's a great everyday look that lands right at your budget, the Wide-Leg Heritage Denim with the Ivory Silk Camisole. It's a really versatile pairing.",
+        "route": "reco_handle",
+        "productHandle": "wide-leg-denim",
+        "quickReplies": [
+          "What's the total?",
+          "Show me another",
+          "Add both"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 1,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 23626,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "If we swap the camisole for the Oversized White Graphic Tee, the whole look comes in at $207. How does that sound?",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "If we swap the camisole for the Oversized White Graphic Tee, the whole look comes in at $207. How does that sound?",
+        "route": "reco_handle",
+        "productHandle": "oversized-white-tee",
+        "quickReplies": [
+          "Show me the tee",
+          "What else is cheaper?",
+          "Show me the full look"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 2,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 10490,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": false,
+      "mira_voice": "Okay, the Navy Blue Shalwar Kameez is our most affordable full outfit at $85. It's an easy, comfortable choice.",
+      "mira_route": "reco_handle",
+      "mira_decision": {
+        "voice": "Okay, the Navy Blue Shalwar Kameez is our most affordable full outfit at $85. It's an easy, comfortable choice.",
+        "route": "reco_handle",
+        "productHandle": "navy-shalwar-kameez",
+        "quickReplies": [
+          "What's the fabric?",
+          "Show me another",
+          "Anything for evening?"
+        ],
+        "intent": "price"
+      }
+    },
+    {
+      "i": 3,
+      "shopper_said": "anything cheaper?",
+      "http_status": 200,
+      "latency_ms": 2209,
+      "transport_error": "",
+      "parse_error": null,
+      "fell_to_fallback": true,
+      "mira_voice": "",
+      "mira_route": "fallback",
+      "mira_decision": null
+    }
+  ],
+  "fall_to_fallback_count": 1,
+  "invented_anything": false,
+  "asked_repeatedly": false,
+  "closed": false,
+  "qualified_before_show": false,
+  "total_latency_ms": 42157,
+  "started_at": "2026-06-10T10:31:25.314Z",
+  "ended_at": "2026-06-10T10:32:07.471Z"
+}

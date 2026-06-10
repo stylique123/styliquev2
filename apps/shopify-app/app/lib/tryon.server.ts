@@ -218,8 +218,13 @@ export async function renderComboTryOn(args: {
       personImageDataUrl: currentPersonImageDataUrl,
     });
     if (!result.ok) return { ok: false, error: result.error };
-    lastImageUrl = result.data.imageUrl;
-    if (!lastImageUrl) break; // PENDING (async) — give up on the chain, return what we have
+    const stepUrl = result.data.imageUrl;
+    // PENDING (async) — KEEP the last SUCCESSFUL render; don't overwrite it with
+    // the empty PENDING url, else a 2-piece combo where piece 1 rendered but
+    // piece 2 is async would fail the whole combo instead of returning piece 1
+    // (panel P2 — combo partial-result).
+    if (!stepUrl) break;
+    lastImageUrl = stepUrl;
     if (i < args.productIds.length - 1) {
       if (lastImageUrl.startsWith("data:")) {
         currentPersonImageDataUrl = lastImageUrl;
@@ -351,6 +356,7 @@ export async function renderTryOn(args: {
   //    SECURITY: personImageBase64 lives in Redis only for job duration;
   //    BullMQ removes it via removeOnComplete. Never written to DB.
   if (asyncRenderAvailable) {
+    try {
     await enqueueTryonRender({
       renderId: row.id,
       shopId: args.shopId,
@@ -375,6 +381,11 @@ export async function renderTryOn(args: {
       ok: true,
       data: { renderId: row.id, imageUrl: "", providerKey, latencyMs: 0, status: "PENDING" },
     };
+    } catch (err) {
+      // Redis/BullMQ unreachable — don't 500 the shopper. Fall through to the
+      // synchronous render path below (panel P1 — unhandled async enqueue failure).
+      console.error("[tryon] async enqueue failed, falling back to sync render:", (err as Error).message);
+    }
   }
 
   // 7. Synchronous fallback — runs when Redis is not configured (local dev

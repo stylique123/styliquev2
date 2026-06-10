@@ -1,0 +1,170 @@
+{
+  "persona_id": "uk-2",
+  "region": "UK · Edinburgh",
+  "age": 52,
+  "archetype": "winter-warm needs",
+  "style": "practical",
+  "pdp": "wrap-coat-camel",
+  "started_at": "2026-06-10T11:25:07.900Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "I need something that'll actually keep me warm walking the dog in scotland. is this it?",
+      "mira_voice": "Right, Scotland in winter, that's serious. This Camel Wrap Coat is a beautiful wool blend, so it'll handle most of the season, but for really biting cold, I'd reach for the Leather Trench instead.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Tell me about the trench",
+        "What about the wrap coat?",
+        "Show me something else",
+        "What's my size?"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "Right, Scotland in winter, that's serious. This Camel Wrap Coat is a beautiful wool blend, so it'll handle most of the season, but for really biting cold, I'd reach for the Leather Trench instead.",
+        "route": "reco_handle",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "Tell me about the trench",
+          "What about the wrap coat?",
+          "Show me something else",
+          "What's my size?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1946,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "tell me more",
+      "mira_voice": "The Leather Trench is a proper winter piece, heavy leather, fully lined, it'll cut the wind and keep you warm on those walks. It's a statement piece, but built for function.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "What's the price?",
+        "Show me the camel coat again",
+        "See it on me",
+        "What's my size?"
+      ],
+      "mira_handle": "leather-trench",
+      "mira_full_decision": {
+        "voice": "The Leather Trench is a proper winter piece, heavy leather, fully lined, it'll cut the wind and keep you warm on those walks. It's a statement piece, but built for function.",
+        "route": "navigate",
+        "productHandle": "leather-trench",
+        "quickReplies": [
+          "What's the price?",
+          "Show me the camel coat again",
+          "See it on me",
+          "What's my size?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1839,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Compare the three",
+        "Size this one",
+        "What goes with it?",
+        "See it on you"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Compare the three",
+          "Size this one",
+          "What goes with it?",
+          "See it on you"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 1498,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "OK — Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.",
+      "mira_route": "reco_handle",
+      "mira_chips": [
+        "Compare the three",
+        "Which is warmest?",
+        "Show me something else",
+        "What's my size?"
+      ],
+      "mira_handle": "tailored-blazer-double",
+      "mira_full_decision": {
+        "voice": "OK — Alright, for serious warmth, the Tailored Double-Breasted Blazer is a strong wool, fully lined. It's more structured than the trench, but still very warm.",
+        "route": "reco_handle",
+        "productHandle": "tailored-blazer-double",
+        "quickReplies": [
+          "Compare the three",
+          "Which is warmest?",
+          "Show me something else",
+          "What's my size?"
+        ],
+        "intent": "suitability"
+      },
+      "http_status": 200,
+      "latency_ms": 1473,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 4,
+      "shopper_said": "ok, show me one more option",
+      "mira_voice": "The Camel Wrap Coat is a beautiful piece, it's a wool blend that drapes beautifully and layers over anything for warmth, and you can belt it for shape.",
+      "mira_route": "navigate",
+      "mira_chips": [
+        "Size this one",
+        "See it on me",
+        "What goes with it?",
+        "Build the look"
+      ],
+      "mira_handle": "wrap-coat-camel",
+      "mira_full_decision": {
+        "voice": "The Camel Wrap Coat is a beautiful piece, it's a wool blend that drapes beautifully and layers over anything for warmth, and you can belt it for shape.",
+        "route": "navigate",
+        "productHandle": "wrap-coat-camel",
+        "quickReplies": [
+          "Size this one",
+          "See it on me",
+          "What goes with it?",
+          "Build the look"
+        ],
+        "intent": "discover"
+      },
+      "http_status": 200,
+      "latency_ms": 2085,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": true,
+    "offered_size": true,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": false,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:25:16.741Z",
+  "total_latency_ms": 8841
+}

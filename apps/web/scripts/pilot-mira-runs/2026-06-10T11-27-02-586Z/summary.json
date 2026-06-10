@@ -1,0 +1,32 @@
+{
+  "endpoint": "http://localhost:3001/api/mira",
+  "ran_at": "2026-06-10T11-27-02-586Z",
+  "personas": 20,
+  "total_turns": 60,
+  "avg_latency_ms": 2092,
+  "fallback_pct": 0,
+  "transport_error_count": 0,
+  "routes": {
+    "suitability": 3,
+    "talk_only": 11,
+    "navigate": 4,
+    "reco_handle": 18,
+    "fabric": 6,
+    "size_form": 6,
+    "add_to_cart": 9,
+    "look": 2,
+    "try_on": 1
+  },
+  "behaviors_pct": {
+    "asked_proactive_question": "10/20 (50%)",
+    "offered_try_on": "19/20 (95%)",
+    "offered_size": "18/20 (90%)",
+    "proposed_close": "19/20 (95%)",
+    "built_full_look": "20/20 (100%)",
+    "handled_objection": "0/20 (0%)",
+    "acknowledged_region_or_climate": "9/20 (45%)",
+    "fell_to_fallback_any": "0/20 (0%)",
+    "voice_repeated": "0/20 (0%)",
+    "invented_promo_or_price": "0/20 (0%)"
+  }
+}

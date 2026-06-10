@@ -1,0 +1,132 @@
+{
+  "persona_id": "in-2",
+  "region": "India · Delhi",
+  "archetype": "summer-only",
+  "style": "climate_extreme",
+  "pdp": "linen-relaxed-shirt",
+  "started_at": "2026-06-10T11:16:58.363Z",
+  "turns": [
+    {
+      "i": 0,
+      "shopper_said": "delhi summer is 45°C. will linen actually breathe or marketing",
+      "mira_voice": "This linen shirt is designed for extreme heat, offering maximum breathability and a relaxed fit.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "linen-relaxed-shirt",
+      "mira_full_decision": {
+        "voice": "This linen shirt is designed for extreme heat, offering maximum breathability and a relaxed fit.",
+        "route": "look",
+        "productHandle": "linen-relaxed-shirt",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 7703,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 1,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 7219,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 2,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "The Forest Green Anarkali Suit (PKR 18,000) is the one I'd reach for here. Want me to size it to you, or show it on?",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 5267,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    },
+    {
+      "i": 3,
+      "shopper_said": "love it. how much for all three",
+      "mira_voice": "This combination offers a lightweight and breathable ensemble perfect for a hot summer day, with a touch of elegance.",
+      "mira_route": "look",
+      "mira_chips": [
+        "Add the look",
+        "Swap a piece",
+        "Show me another"
+      ],
+      "mira_handle": "forest-green-anarkali-suit",
+      "mira_full_decision": {
+        "voice": "This combination offers a lightweight and breathable ensemble perfect for a hot summer day, with a touch of elegance.",
+        "route": "look",
+        "productHandle": "forest-green-anarkali-suit",
+        "quickReplies": [
+          "Add the look",
+          "Swap a piece",
+          "Show me another"
+        ],
+        "intent": "other"
+      },
+      "http_status": 200,
+      "latency_ms": 5775,
+      "fell_to_fallback": false,
+      "transport_error": ""
+    }
+  ],
+  "behaviors": {
+    "asked_proactive_question": false,
+    "offered_try_on": false,
+    "offered_size": false,
+    "proposed_close": false,
+    "built_full_look": true,
+    "handled_objection": false,
+    "acknowledged_region_or_climate": true,
+    "fell_to_fallback_any": false,
+    "voice_repeated": true,
+    "invented_promo_or_price": false
+  },
+  "ended_at": "2026-06-10T11:17:43.828Z",
+  "total_latency_ms": 25964
+}

@@ -34,8 +34,9 @@ export default function LoginPage() {
       return;
     }
     setError("");
-    // Redirect to Shopify app auth with the dashboard callback URL
-    const redirectUrl = `${SHOPIFY_APP_URL}/auth?shop=${shopDomain}&dashboard_url=${encodeURIComponent(DASHBOARD_URL)}`;
+    // Enter through the external-auth route. authenticate.admin starts Shopify
+    // OAuth when needed, then resumes here to issue the dashboard token.
+    const redirectUrl = `${SHOPIFY_APP_URL}/api/external-auth?shop=${shopDomain}&dashboard_url=${encodeURIComponent(DASHBOARD_URL)}`;
     window.location.href = redirectUrl;
   }
 

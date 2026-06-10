@@ -1,4 +1,23 @@
-// Stylique Brain — public surface.
+// ═══════════════════════════════════════════════════════════════════════════
+// Stylique Brain — LEGACY multi-tool stylist surface.
+//
+// ⚠️  DEPRECATED FOR MIRA. As of the ONE-BRAIN-1 consolidation, the unified
+// brain at apps/web/app/api/mira/route.ts is the single truth for Mira; the
+// production Mira path forwards through apps/shopify-app/app/lib/
+// mira-adapter.server.ts which loads the merchant catalog + BrandProfile DNA
+// then calls the unified brain. This package's multi-tool brain (5246 lines
+// across 13 files) is NO LONGER on the Mira request path.
+//
+// Still consumed by the legacy `/api/chat` App Proxy path (apps/shopify-app/
+// app/lib/chat.server.ts → apps/shopify-app/app/lib/brain.server.ts →
+// `@stylique/ai`) for the production stylist conversation. The /api/chat path
+// is scheduled for unification with /api/mira; until that lands, this stays.
+//
+// DO NOT add new tools or prompt rules here — they will not reach Mira. Land
+// any prompt or sales-rule improvements in apps/web/app/api/mira/route.ts so
+// they flow through the unified brain to all callers (demo + every Shopify
+// merchant simultaneously).
+// ═══════════════════════════════════════════════════════════════════════════
 
 export * from "./types.js";
 export { ToolRegistry } from "./registry.js";
@@ -37,7 +56,7 @@ export { createOpenAIProvider } from "./providers/openai.js";
 export {
   searchCatalogToolSchema, proposeComboToolSchema,
   navigateToolSchema, addToCartToolSchema, addOutfitToCartToolSchema, offerSignupToolSchema,
-  seeOnModelToolSchema, seeOnMeToolSchema, requestCreativeSetToolSchema,
+  seeOnModelToolSchema, seeOnMeToolSchema,
   applyColorRuleToolSchema, suggestOccasionDressingToolSchema,
   compareTwoItemsToolSchema, explainWhyComboWorksToolSchema,
   recallPastPreferenceToolSchema, interpretFitLanguageToolSchema,

@@ -41,6 +41,11 @@ const MUSE_CACHE_DIR = path.join(PUBLIC_DIR, "tryon");
 // In-memory cache for photo composites (never written to disk).
 const photoCache = new Map<string, string>(); // key → data URL
 const PHOTO_CACHE_CAP = 200;
+// Render-in-flight dedup (panel P1 — cache stampede). When N shoppers hit the
+// SAME cold muse key at once, they all miss photoCache and would each fire a
+// 4-8s Gemini render. This map holds the single in-flight render promise per key
+// so the other N-1 await it instead of spawning duplicates.
+const museInFlight = new Map<string, Promise<string>>();
 
 export type TryOnMode = "muse" | "photo";
 
@@ -114,7 +119,11 @@ async function readAssetB64(publicPath: string): Promise<string> {
   // are REMOTE https URLs — fetch them. Only fall back to local for relative
   // /products//muses/ paths (dev). https only; block other schemes.
   if (/^https:\/\//i.test(publicPath)) {
-    const res = await fetch(publicPath);
+    // Bound the fetch (panel P1 — regression in EXPERT-PANEL-5's in-flight dedup):
+    // the museInFlight promise only clears its key on settle, so a hung CDN fetch
+    // here would leave the key forever and grow the map unboundedly. A 15s timeout
+    // guarantees the promise always settles → finally() always fires.
+    const res = await fetch(publicPath, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) throw new Error(`asset_fetch_${res.status}`);
     const buf = Buffer.from(await res.arrayBuffer());
     return buf.toString("base64");
@@ -402,6 +411,7 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
   // ── Muse mode: disk cache (public, static URL). ──
   if (req.mode === "muse") {
     if (!req.museImage || !req.museId || !req.handle) throw new Error("muse_args");
+    const museImage = req.museImage; // narrowed to string here — capture so the in-flight closure keeps the narrowing
     const lookHandles = garmentImages
       .slice(1)
       .map((g) => g.split("/").pop()?.replace(/-\d+\.png$|-[a-z]+\.png$/i, "") ?? "");
@@ -410,16 +420,27 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
     const key = museCacheKey(req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
     const memHit = photoCache.get(key);
     if (memHit) return { imageUrl: memHit, cached: true, ms: Date.now() - t0 };
-    const personB64 = await readAssetB64(req.museImage);
-    const garmentB64s = await Promise.all(garmentImages.map(readAssetB64));
-    const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits);
-    const out = await renderImage(prompt, personB64, "image/png", garmentB64s);
-    const dataUrl = `data:${out.mime};base64,${out.b64}`;
-    if (photoCache.size >= PHOTO_CACHE_CAP) {
-      const first = photoCache.keys().next().value;
-      if (first) photoCache.delete(first);
+    // Collapse a cache stampede: if a render for this exact key is already in
+    // flight, await it instead of firing a duplicate Gemini call (panel P1).
+    let flight = museInFlight.get(key);
+    if (!flight) {
+      flight = (async () => {
+        const personB64 = await readAssetB64(museImage);
+        const garmentB64s = await Promise.all(garmentImages.map(readAssetB64));
+        const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits);
+        const out = await renderImage(prompt, personB64, "image/png", garmentB64s);
+        const url = `data:${out.mime};base64,${out.b64}`;
+        if (photoCache.size >= PHOTO_CACHE_CAP) {
+          const first = photoCache.keys().next().value;
+          if (first) photoCache.delete(first);
+        }
+        photoCache.set(key, url);
+        return url;
+      })();
+      museInFlight.set(key, flight);
+      void flight.catch(() => undefined).finally(() => museInFlight.delete(key));
     }
-    photoCache.set(key, dataUrl);
+    const dataUrl = await flight;
     return { imageUrl: dataUrl, cached: false, ms: Date.now() - t0 };
   }
 
