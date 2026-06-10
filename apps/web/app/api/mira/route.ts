@@ -649,7 +649,7 @@ function budgetFactsBlock(message: string, activeCatalog: Product[]): string | n
 // prompt rule alone didn't hold, so we FORCE the route + handle when the shopper
 // clearly asks to act on the product they're already viewing. The model's voice is
 // kept unless it asked the dead-ending question, in which case we replace it.
-function enforceExecution(decision: MiraDecision, message: string, curHandle: string | null | undefined, hasBody = false, activeCatalog: Product[] = catalog): MiraDecision {
+function enforceExecution(decision: MiraDecision, message: string, curHandle: string | null | undefined, hasBody = false, activeCatalog: Product[] = catalog, historyLen = 0): MiraDecision {
   const mlow = message.toLowerCase();
   if (!curHandle && decision.route === "talk_only" && /^\s*(just )?(looking|browsing|nothing|idk|i dont know|i don'?t know|surprise me|not sure|hmm+|hi+|hey+|hello)\b/i.test(mlow)) {
     // Cold-open heroes: pick from injected catalog (top 5 by keepRate desc) so
@@ -657,23 +657,29 @@ function enforceExecution(decision: MiraDecision, message: string, curHandle: st
     const heroes = activeCatalog.length
       ? [...activeCatalog].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0)).slice(0, 5).map((p) => p.handle)
       : ["wrap-coat-camel", "onyx-silk-slip", "tailored-blazer-double", "atelier-wide-leg-trouser", "leather-trench"];
-    // Live panel (round 2) caught the brain repeating "the piece most people
-    // don't expect to love" across personas — a template tell that breaks
-    // the friend-in-store illusion. Rotate the lead-in by message-length AND
-    // strip the banned filler. Hero pick still varies by message length so
-    // two cold opens in a row rarely share a piece.
-    const pick = heroes[message.length % heroes.length]!;
+    // Live cycle-3 panel caught the brain emitting IDENTICAL T1 and T2
+    // voices on the cold-opener persona (different messages, same hero +
+    // same lead-in) because both `pick` and `voice` rotated by
+    // `message.length % N`. Two consecutive messages whose lengths share
+    // an index mod N collide. Two-line fix: seed the rotation with the
+    // conversation turn count (so consecutive turns can NEVER share an
+    // index regardless of message length) AND use co-prime offsets so
+    // pick + voice don't lock-step.
+    const turn = historyLen;
+    const pick = heroes[(message.length + turn) % heroes.length]!;
     const hp = activeCatalog.find((p) => p.handle === pick);
     if (hp) {
       // Rotate four lead-ins instead of the single template Mira parroted —
-      // catalog-grounded, no banned filler, each under 22 words.
+      // catalog-grounded, no banned filler, each under 22 words. The +1
+      // co-prime offset against the hero rotation guarantees pick and
+      // voice never collide together.
       const leadIns = [
         `Quick one for you: the ${hp.name}. What's the occasion, or just having a look?`,
         `If you trust me on one piece, it's the ${hp.name}. What are we dressing for?`,
         `Start here: the ${hp.name}. Where would you wear it?`,
         `The one I'd pull off the rack for you, the ${hp.name}. What's it for?`,
       ];
-      const voice = leadIns[message.length % leadIns.length]!;
+      const voice = leadIns[(message.length + turn + 1) % leadIns.length]!;
       return { ...decision, route: "reco_handle", productHandle: pick, voice, quickReplies: ["For an occasion", "Everyday", "Show me more"] };
     }
   }
@@ -1250,7 +1256,7 @@ export async function POST(req: Request) {
     // Deterministic navigation execution, force the route+handle when the shopper
     // clearly asked to act on the product they're viewing but the model dead-ended.
     let decision = rawDecision
-      ? enforceExecution(rawDecision, parsed.data.message, parsed.data.currentProductHandle, !!parsed.data.bodyOnFile || !!parsed.data.knownSize, activeCatalog)
+      ? enforceExecution(rawDecision, parsed.data.message, parsed.data.currentProductHandle, !!parsed.data.bodyOnFile || !!parsed.data.knownSize, activeCatalog, parsed.data.history?.length ?? 0)
       : buildResilientFallback(parsed.data, activeCatalog);
     decision = applySalesPolicy(decision, parsed.data, activeCatalog);
 
