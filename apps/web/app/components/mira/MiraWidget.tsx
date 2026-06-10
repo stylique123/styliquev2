@@ -1427,7 +1427,14 @@ function ExpressCheckout() {
         ApplePaySession?: { canMakePayments?: () => boolean };
         PaymentRequest?: unknown;
       };
-      if (w.Shopify?.shop) detected.push("shop");
+      // Verification-panel cycle-9 finding: previously we detected
+      // window.PaymentRequest unconditionally, which is TRUE in every
+      // modern Chrome — so the demo (non-Shopify) was rendering a Google
+      // Pay pill that routed to /checkout (404 on demo). Now: gate the
+      // ENTIRE detection on Shopify storefront presence. Non-Shopify =
+      // no wallets surfaced. Honest.
+      if (!w.Shopify?.shop) return;
+      detected.push("shop");
       if (typeof w.ApplePaySession?.canMakePayments === "function") {
         try { if (w.ApplePaySession.canMakePayments()) detected.push("apple"); } catch { /* ignore */ }
       }

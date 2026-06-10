@@ -762,6 +762,62 @@ export async function runMiraAdapter(args: {
     // a timeout is still cost; downgrade to a precise "succeeded" counter
     // later if billing requires it.
     if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
+
+    // ── ANALYTICS EVENT EMISSION (P0 — audit cycle 9) ─────────────────────
+    // BEFORE this fix: storefront Mira via /api/mira → runMiraAdapter wrote
+    // ZERO analytics events. Dashboard chat KPIs (chatSessions, chatTurns,
+    // CHAT_CART_REQUESTED, topCombos CTR), the monthly report, and the
+    // sentiment-extract job all received structurally-zero signal on every
+    // production install — the §1 thesis ("brands buy the learning loop")
+    // broke silently. Now: every turn fires the right event(s) so the
+    // existing dashboard machinery starts seeing real numbers. All writes
+    // are fire-and-forget — a Prisma blip never blocks the shopper.
+    if (shopId && args.shopperCookieId) {
+      void (async () => {
+        try {
+          const { analytics } = await import("./shopper-helpers.server");
+          const shopper = await prisma.shopperSession.findFirst({
+            where: { shopifyDomain: args.shopDomain, sessionId: args.shopperCookieId! },
+            select: { id: true },
+          });
+          if (!shopper) return;
+          const isFirstTurn = (b.history?.length ?? 0) === 0;
+          if (isFirstTurn) {
+            await analytics.track({ shopId, shopperId: shopper.id, name: "CHAT_OPENED", payload: { source: "mira_proxy" } });
+          }
+          await analytics.track({
+            shopId, shopperId: shopper.id, name: "CHAT_MESSAGE_SENT",
+            payload: { route: payload.decision?.route ?? "talk_only" },
+          });
+          const route = payload.decision?.route;
+          const handle = payload.decision?.productHandle;
+          // Resolve handle → product.id (shop-scoped, §3 #1).
+          if (handle && (route === "reco_handle" || route === "navigate" || route === "look" || route === "try_on")) {
+            const prod = await prisma.product.findFirst({
+              where: { shopId, handle }, select: { id: true },
+            });
+            if (prod) {
+              await analytics.track({
+                shopId, shopperId: shopper.id, name: "CHAT_PRODUCT_CLICKED",
+                productId: prod.id, payload: { handle, route },
+              });
+            }
+          }
+          if (route === "add_to_cart") {
+            const prod = handle ? await prisma.product.findFirst({
+              where: { shopId, handle }, select: { id: true },
+            }) : null;
+            await analytics.track({
+              shopId, shopperId: shopper.id, name: "CHAT_CART_REQUESTED",
+              productId: prod?.id, payload: { handle: handle ?? null },
+            });
+          }
+        } catch (err) {
+          console.error("[mira-adapter] analytics emission failed", err);
+        }
+      })();
+    }
+
     // Project the injected (rich demo-brain) catalog into AdaptedProduct shape
     // so the adapter's compare-resolution can find the named handles. The
     // projection is a thin field-rename — same data, smaller surface.

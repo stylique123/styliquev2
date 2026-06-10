@@ -213,6 +213,19 @@ function auditPlacement(): { score: number; checks: AuditCheck[]; themeHint: str
  * blocks on it. The proxy persists it as a WIDGET_PLACEMENT_AUDIT event.
  */
 function postAuditFireAndForget(): void {
+  // Verification-panel cycle-9 finding: previously the audit fired on every
+  // full page-load — non-SPA Shopify themes (Dawn etc.) reload every PDP
+  // nav, so a single shopper visiting 12 PDPs polluted one shop's sample
+  // with 12 near-identical audits. With the 200-event window cap, heavy
+  // PDP browsers dominated the score. Now: stash a sessionStorage flag so
+  // we audit ONCE per session — the placement score reflects unique
+  // surfaces, not unique pageviews.
+  try {
+    if (sessionStorage.getItem("sq-audit-fired") === "1") return;
+    sessionStorage.setItem("sq-audit-fired", "1");
+  } catch {
+    /* sessionStorage blocked — proceed without dedupe rather than skip */
+  }
   setTimeout(() => {
     try {
       const audit = auditPlacement();
@@ -232,7 +245,11 @@ function postAuditFireAndForget(): void {
           },
         }),
         keepalive: true,
-      }).catch(() => {});
+      }).catch((e) => {
+        // Surface delivery failures in devtools so a misconfigured proxy
+        // doesn't go silent.
+        if (typeof console !== "undefined") console.warn("[stylique-audit]", e);
+      });
     } catch {
       /* ignore */
     }

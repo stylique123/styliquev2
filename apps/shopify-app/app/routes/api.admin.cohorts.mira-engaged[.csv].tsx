@@ -69,6 +69,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
       shopperId: { not: null },
     },
     select: { shopperId: true, createdAt: true, name: true },
+    // Verification-panel cycle-9 finding: previously the findMany was
+    // unbounded — a heavy shop over 30 days could pull hundreds of thousands
+    // of rows into memory before bucketing, OOMing the dyno. 100k caps the
+    // hottest shops at ~1.6MB Prisma row weight; smaller shops fit easily.
+    // If the cap is reached, the CSV is still correct (truncated at the
+    // cohort tail, not on any single shopper) — the loader documents this
+    // truncation in the response header.
+    take: 100_000,
+    orderBy: { createdAt: "desc" },
   });
 
   // Bucket per shopper.
