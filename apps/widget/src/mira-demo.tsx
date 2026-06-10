@@ -137,6 +137,108 @@ function injectTryOnButton() {
   return true;
 }
 
+/**
+ * Theme audit — scores how cleanly Stylique placed itself on the host theme.
+ * Runs once, ~3 seconds after mount, so lazy-loaded selectors have time to
+ * appear. Results power the dashboard's "Placement confidence" tile + the
+ * internal ops view that lists low-confidence stores for the team to
+ * optimize as a paid service (Growth / Scale tier upsell).
+ *
+ * Each check is binary and earns a fixed weight. Total = 100. The merchant
+ * only sees the final score and the human-readable label; the per-check
+ * breakdown is shipped along for the ops team.
+ *
+ * Bias: weight the checks that most directly predict conversion. Mira's
+ * launcher visibility (24) + PDP try-on button (22) + a real product
+ * surface for it to anchor to (20) carry the bulk of the score.
+ */
+type AuditCheck = { id: string; label: string; weight: number; passed: boolean };
+
+function auditPlacement(): { score: number; checks: AuditCheck[]; themeHint: string | null } {
+  const isPdp = /\/products?\//.test(location.pathname);
+  const launcher = document.querySelector("#sq-mira-root, [data-stylique-open]");
+  const tryonBtn = document.getElementById("sq-tryon-pdp-btn");
+  const productImg = isPdp ? findProductImage() : null;
+  const hasCartForm = !!document.querySelector(
+    'form[action*="/cart/add"], form[action*="/cart/change"], [data-cart-form]'
+  );
+  const hasShopifyGlobal = !!(window as unknown as { Shopify?: { shop?: string } }).Shopify;
+  // Theme hint — read from the storefront so the ops team can group reports.
+  const themeHint =
+    document.querySelector('meta[name="theme-name"]')?.getAttribute("content") ??
+    (window as unknown as { Shopify?: { theme?: { name?: string } } }).Shopify?.theme?.name ??
+    null;
+
+  const checks: AuditCheck[] = [
+    { id: "launcher_present", label: "Mira launcher mounted", weight: 24, passed: !!launcher },
+    {
+      id: "pdp_tryon_visible",
+      label: "Try-on overlay sits on product image (PDP only)",
+      weight: 22,
+      passed: !isPdp || (!!tryonBtn && !!tryonBtn.offsetParent),
+    },
+    {
+      id: "product_image_anchored",
+      label: "Found a real product hero image to anchor",
+      weight: 20,
+      passed: !isPdp || (!!productImg && productImg.naturalWidth > 200),
+    },
+    { id: "cart_form_detected", label: "Cart form selector matched (add-to-bag wiring)", weight: 10, passed: hasCartForm },
+    { id: "shopify_runtime", label: "Shopify storefront globals present", weight: 8, passed: hasShopifyGlobal },
+    {
+      id: "viewport_meta",
+      label: "Mobile viewport meta present (no scaling lock)",
+      weight: 6,
+      passed: !!document.querySelector('meta[name="viewport"]'),
+    },
+    {
+      id: "fonts_loaded",
+      label: "Mira brand fonts loaded (no FOUT on the dock)",
+      weight: 5,
+      passed: typeof document.fonts !== "undefined" && document.fonts.status === "loaded",
+    },
+    {
+      id: "no_overlapping_widget",
+      label: "No competing chat widget overlapping the dock corner",
+      weight: 5,
+      passed: !document.querySelector("[data-tidio-key], #intercom-container, .drift-frame-controller"),
+    },
+  ];
+  const score = checks.reduce((s, c) => s + (c.passed ? c.weight : 0), 0);
+  return { score, checks, themeHint };
+}
+
+/**
+ * Post the audit to the App Proxy. Fire-and-forget; widget lifecycle never
+ * blocks on it. The proxy persists it as a WIDGET_PLACEMENT_AUDIT event.
+ */
+function postAuditFireAndForget(): void {
+  setTimeout(() => {
+    try {
+      const audit = auditPlacement();
+      const apiBase = (window as unknown as { __sqApi?: string }).__sqApi ?? "/apps/stylique";
+      fetch(`${apiBase}/api/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: "WIDGET_PLACEMENT_AUDIT",
+          payload: {
+            score: audit.score,
+            themeHint: audit.themeHint,
+            url: location.pathname,
+            isPdp: /\/products?\//.test(location.pathname),
+            checks: audit.checks.map((c) => ({ id: c.id, passed: c.passed })),
+          },
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  }, 3000);
+}
+
 function mount() {
   if (document.getElementById("sq-mira-root")) return;
   // Keep the PDP try-on button alive: themes lazy-load the hero image and image
@@ -150,6 +252,10 @@ function mount() {
     if (ticks++ < 40) setTimeout(tryInject, 500);
   };
   tryInject();
+  // Fire the placement audit once per page load, ~3s after mount so lazy
+  // theme selectors have settled. Powers the dashboard tile + low-confidence
+  // ops view.
+  postAuditFireAndForget();
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap";

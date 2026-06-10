@@ -25,6 +25,79 @@ import type { PlanTier } from "@stylique/types";
 
 const DAY = 86_400_000;
 
+/**
+ * Placement-confidence summary from WIDGET_PLACEMENT_AUDIT events.
+ *
+ * - score = rolling mean of `score` across all audits in the window
+ * - sampleCount = how many audits we averaged
+ * - themeHint = most-recent theme name (if any audit included one)
+ * - recentLowChecks = the 3 check ids with the worst pass-rate over the
+ *   same window — name what to fix, don't just show a score
+ * - label = bucket the score for the merchant-facing tile copy
+ * - upsellTriggered = true when score < 70 (Growth/Scale theme-optimization
+ *   service surface), the upsell tile renders on the dashboard
+ */
+async function buildPlacementSummary(shopId: string, since: Date) {
+  const rows = await prisma.analyticsEvent.findMany({
+    where: { shopId, name: "WIDGET_PLACEMENT_AUDIT", createdAt: { gte: since } },
+    select: { payload: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  }).catch(() => [] as Array<{ payload: unknown; createdAt: Date }>);
+
+  if (rows.length === 0) {
+    return {
+      score: null, sampleCount: 0, themeHint: null,
+      recentLowChecks: [], label: "unknown" as const, upsellTriggered: false,
+    };
+  }
+
+  let scoreSum = 0;
+  let scoreN = 0;
+  let themeHint: string | null = null;
+  const checkCounts = new Map<string, { passed: number; total: number }>();
+
+  for (const r of rows) {
+    const p = r.payload as {
+      score?: number;
+      themeHint?: string | null;
+      checks?: Array<{ id?: string; passed?: boolean }>;
+    } | null;
+    if (typeof p?.score === "number") { scoreSum += p.score; scoreN++; }
+    if (!themeHint && p?.themeHint) themeHint = p.themeHint.slice(0, 120);
+    if (Array.isArray(p?.checks)) {
+      for (const c of p!.checks) {
+        if (!c?.id) continue;
+        const cur = checkCounts.get(c.id) ?? { passed: 0, total: 0 };
+        cur.total++;
+        if (c.passed) cur.passed++;
+        checkCounts.set(c.id, cur);
+      }
+    }
+  }
+
+  const score = scoreN > 0 ? Math.round(scoreSum / scoreN) : null;
+  const recentLowChecks = Array.from(checkCounts.entries())
+    .map(([id, v]) => ({ id, passedRate: v.total > 0 ? v.passed / v.total : 1 }))
+    .sort((a, b) => a.passedRate - b.passedRate)
+    .slice(0, 3);
+
+  const label: "excellent" | "good" | "fair" | "needs_help" | "unknown" =
+    score == null ? "unknown" :
+    score >= 90 ? "excellent" :
+    score >= 75 ? "good" :
+    score >= 60 ? "fair" : "needs_help";
+
+  return {
+    score,
+    sampleCount: scoreN,
+    themeHint,
+    recentLowChecks,
+    label,
+    upsellTriggered: score != null && score < 70,
+  };
+}
+
 export async function buildOverview(args: {
   shopId: string;
   windowDays?: number;
@@ -74,6 +147,20 @@ export async function buildOverview(args: {
       successRate: number | null;            // % of (completed + failed)
       p50LatencyMs: number | null;
       providerKey: "gemini-image" | "replicate-idm-vton" | "replicate-catvton" | "vertex-vto-001" | "vertex-nano-banana" | string;
+    };
+    // Theme placement confidence (cycle 7 — Session 2). Score is the rolling
+    // mean of WIDGET_PLACEMENT_AUDIT events over the window; null when no
+    // audits yet. recentLow lists the 3 most-failed checks so the dashboard
+    // tile + the internal ops view can name what to fix.
+    placement: {
+      score: number | null;            // 0-100, null = no data
+      sampleCount: number;             // how many audits we averaged
+      themeHint: string | null;        // most-recent theme name detected
+      recentLowChecks: Array<{ id: string; passedRate: number }>; // worst 3
+      label: "excellent" | "good" | "fair" | "needs_help" | "unknown";
+      // True when score < 70: surfaces a "Want us to optimize? (Growth+/Scale)"
+      // upsell tile. Below 50 we flag the store internally as a hot lead.
+      upsellTriggered: boolean;
     };
   };
   studio: {
@@ -473,6 +560,7 @@ export async function buildOverview(args: {
         p50LatencyMs: tryonP50,
         providerKey: tryonProvider,
       },
+      placement: await buildPlacementSummary(args.shopId, since),
     },
     studio,
     catalog,

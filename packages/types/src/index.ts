@@ -188,6 +188,10 @@ export const EventNameSchema = z.enum([
   // Request B — Mira surfaced the brand's real size chart. Signals shoppers
   // who need measurement reassurance before buying.
   "CHAT_SIZE_CHART_VIEWED",
+  // Theme-audit score, posted ~3s after widget mount per page load. Powers the
+  // dashboard's "Placement confidence" tile + the internal low-confidence
+  // ops view that drives the Growth/Scale theme-optimization upsell.
+  "WIDGET_PLACEMENT_AUDIT",
   // ─── Beauty extension ────────────────────────────────────────────────────
   // Shopper skin profile was collected (via widget intake or Mira chat).
   "BEAUTY_SKIN_PROFILE_CAPTURED",
@@ -479,6 +483,19 @@ export const EventPayloadSchemas = {
     hasChart: z.boolean(),
     source: z.string().optional(),             // where the chart came from (audit)
     sizeCount: z.number().int().optional(),
+  }),
+  // Theme-audit score fired once per page load from the widget. Score 0-100;
+  // checks[] carries per-rule pass/fail for the ops drill-in. themeHint is
+  // read from `<meta theme-name>` or `Shopify.theme.name` when available.
+  WIDGET_PLACEMENT_AUDIT: z.object({
+    score: z.number().int().min(0).max(100),
+    themeHint: z.string().max(120).nullable(),
+    url: z.string().max(2000).optional(),
+    isPdp: z.boolean().optional(),
+    checks: z.array(z.object({
+      id: z.string().max(60),
+      passed: z.boolean(),
+    })).max(20),
   }),
 
   // ─── Beauty extension ────────────────────────────────────────────────────
