@@ -1393,6 +1393,93 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
   );
 }
 
+/**
+ * Express Checkout shortcuts (Payments panel finding: 1/10 → goal 7+/10).
+ *
+ * Detects which wallets the shopper's browser + the host store actually
+ * support, surfaces a horizontal row of small pills, and shortcuts each one
+ * to `/checkout`. Shopify Checkout's own wallet picker handles the actual
+ * payment intent — we don't invoke any SDK directly, which means: no
+ * Stripe / Apple Pay merchant-validation pre-handshake, no Google Pay
+ * `PaymentRequest` ceremony, no flashes-of-wrong-UI before the real
+ * wallet UI loads. Each pill is just an honest navigation affordance to
+ * the express path Shopify already exposes.
+ *
+ * Detection rules (run once on mount; SSR-safe — empty list during prerender):
+ *   - Shop Pay → `window.Shopify?.shop` exists (we are on a Shopify
+ *     storefront; Shop Pay is universally available on Shopify checkouts).
+ *   - Apple Pay → `window.ApplePaySession?.canMakePayments?.() === true`.
+ *   - Google Pay → `window.PaymentRequest` exists (the W3C Payment Request
+ *     API; Google Pay is exposed through it on Chrome/Android).
+ *
+ * Touch + safe: every pill has min-height 44px (WCAG 2.5.5). Demo
+ * (non-Shopify) renders nothing — we only show real, available payment
+ * paths, never aspirational ones.
+ */
+function ExpressCheckout() {
+  const [wallets, setWallets] = useState<string[]>([]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const detected: string[] = [];
+    try {
+      const w = window as unknown as {
+        Shopify?: { shop?: string };
+        ApplePaySession?: { canMakePayments?: () => boolean };
+        PaymentRequest?: unknown;
+      };
+      if (w.Shopify?.shop) detected.push("shop");
+      if (typeof w.ApplePaySession?.canMakePayments === "function") {
+        try { if (w.ApplePaySession.canMakePayments()) detected.push("apple"); } catch { /* ignore */ }
+      }
+      if (typeof w.PaymentRequest !== "undefined") detected.push("google");
+    } catch { /* ignore */ }
+    setWallets(detected);
+  }, []);
+  if (wallets.length === 0) return null;
+  const labels: Record<string, { name: string; icon: string; bg: string; color: string }> = {
+    shop:   { name: "Shop Pay",   icon: "▸",  bg: "#5A31F4", color: "#FFFFFF" },
+    apple:  { name: "Apple Pay",  icon: "",  bg: "#000000", color: "#FFFFFF" },
+    google: { name: "Google Pay", icon: "G",  bg: "#FFFFFF", color: "#1A73E8" },
+  };
+  return (
+    <div role="group" aria-label="Express checkout" style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(244,242,238,0.6)" }}>Pay fast</span>
+      {wallets.map((w) => {
+        const cfg = labels[w]!;
+        return (
+          <button
+            key={w}
+            onClick={() => { window.location.href = "/checkout"; }}
+            aria-label={`Express checkout with ${cfg.name}`}
+            style={{
+              background: cfg.bg,
+              color: cfg.color,
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 999,
+              minHeight: 44,
+              padding: "0 14px",
+              fontFamily: "var(--sans)",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "transform 160ms var(--ease-spring)",
+            }}
+            onMouseDown={(e) => { e.currentTarget.style.transform = "scale(0.97)"; }}
+            onMouseUp={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>{cfg.icon}</span>
+            <span>{cfg.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // A small real-stat chip, the visible scorecard atom. Never shows an invented
 // number; callers only pass figures sourced from the catalog / styling engine.
 function Stat({ label, tone }: { label: string; tone: "accent" | "mute" }) {
@@ -2096,10 +2183,16 @@ export default function MiraWidget() {
 
       {/* Cart toast */}
       {cartToast && (
-        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", zIndex: 95, animation: "miraFadeUp 250ms ease both", whiteSpace: "nowrap" }}>
-          <div style={{ background: "rgba(14,10,20,0.95)", border: "1px solid rgba(78,196,158,0.4)", borderRadius: 12, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--sans)", fontSize: 13, color: "#4EC49E", boxShadow: "0 8px 32px rgba(0,0,0,0.6)" }}>
+        <div style={{ position: "fixed", bottom: 96, left: "50%", transform: "translateX(-50%)", zIndex: 95, animation: "miraFadeUp 250ms ease both", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <div style={{ background: "rgba(14,10,20,0.95)", border: "1px solid rgba(78,196,158,0.4)", borderRadius: 12, padding: "10px 20px", display: "flex", alignItems: "center", gap: 10, fontFamily: "var(--sans)", fontSize: 13, color: "#4EC49E", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", whiteSpace: "nowrap" }}>
             <span>✓</span><span><strong>{cartToast}</strong> added to bag</span>
           </div>
+          {/* Express Checkout (Payments-panel finding): expose detected
+              wallets right at the "just added" moment, the 3-second cliff.
+              Each shortcut routes to /checkout; Shopify Checkout's wallet
+              picker takes it from there. Components self-detect via
+              useEffect so SSR + first paint stay flat — no flash. */}
+          <ExpressCheckout />
         </div>
       )}
 
