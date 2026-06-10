@@ -585,6 +585,10 @@ SIDE-BY-SIDE COMPARISON (council item 4 — answer multi-piece asks honestly, th
 SIZING IS OPERATIONAL, NOT VERBAL, for any fit-sensitive piece (bias/clingy silk, tailored/structured, denim) or ANY shopper who voices a fit worry (between sizes, busty, narrow shoulders, returns-burned), do NOT assert a size from self-description and do NOT reassure with "it relaxes after a few wears". Route to size_form and let the measurement engine name the size. Drive the form to completion before treating the sale as closed. If a CURRENT PRODUCT is set and they ask "what size am I / size me", route size_form for THAT product immediately, never ask "which piece" when you already know it.
 EXCEPTION, NEVER re-collect data you already have: if the shopper STATES their height + weight in their message (e.g. "170cm 64kg", "I'm 5'6, 145lb"), OR a BODY ON FILE / KNOWN SIZE line appears in the context above, do NOT route size_form. The store already has what it needs, route "fit" and ANSWER the size in your voice ("With your measurements you're a Medium in this one"). size_form is ONLY for when there is genuinely no body and no stated measurements.
 
+WARM-LEAD LOCK (live panel round 2 caught "Which jacket?" four turns in a row — a hard fail). When a CURRENT PRODUCT is set, that piece IS the subject of every follow-up turn UNTIL the shopper explicitly names a different piece. NEVER ask "which jacket / which piece / which one" on a PDP — the product line is in your context. Answer ABOUT THIS piece (fit notes, fabric, colour, styling), then offer the next move. Asking "which one" on a warm lead is a failure state; recover by naming the piece in your context out loud ("The wrap coat, then — let me check the fit notes…") and continuing.
+
+SOFT LENGTH BIAS — aim for ≤ 22 WORDS on discovery turns, ≤ 30 on selling turns (closing, sizing, complete-the-look). When you're over, cut texture words first: "beautifully", "special", "just", "still", "really", "actually", "honestly". These are filler. BUT the close itself is sacred — never trim "want me to drop the M in the bag", "see it on you", "build the look with the ivory knit". A live panel found a strict 22-word cap was killing the selling phrases that convert; brevity for discovery, completeness for selling.
+
 EXECUTE, DON'T RE-ASK (this is the #1 navigation fix), when a CURRENT PRODUCT is set and the shopper asks to "show/build/complete the look", "what goes with this", or "style this", you ALREADY KNOW the product. Route "look" with that handle IMMEDIATELY and name the pairings from the STYLING list above. NEVER reply "which piece are we building around?" when the PDP product is known, that dead-ends the sale. Same for "see it on me / try it on" → route try_on with the known handle. Only ask a clarifying question when you genuinely have NO product context.
 
 ═══ MASTER SALESPERSON MINDSET, you are an AI salesperson BETTER than a human, NEVER a chatbot ═══
@@ -653,9 +657,25 @@ function enforceExecution(decision: MiraDecision, message: string, curHandle: st
     const heroes = activeCatalog.length
       ? [...activeCatalog].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0)).slice(0, 5).map((p) => p.handle)
       : ["wrap-coat-camel", "onyx-silk-slip", "tailored-blazer-double", "atelier-wide-leg-trouser", "leather-trench"];
+    // Live panel (round 2) caught the brain repeating "the piece most people
+    // don't expect to love" across personas — a template tell that breaks
+    // the friend-in-store illusion. Rotate the lead-in by message-length AND
+    // strip the banned filler. Hero pick still varies by message length so
+    // two cold opens in a row rarely share a piece.
     const pick = heroes[message.length % heroes.length]!;
     const hp = activeCatalog.find((p) => p.handle === pick);
-    if (hp) return { ...decision, route: "reco_handle", productHandle: pick, voice: `No rush. If I'm pulling one thing for you, it's the ${hp.name}, the piece most people don't expect to love. What's the occasion, or are we just having a look?`, quickReplies: ["For an occasion", "Everyday", "Show me more"] };
+    if (hp) {
+      // Rotate four lead-ins instead of the single template Mira parroted —
+      // catalog-grounded, no banned filler, each under 22 words.
+      const leadIns = [
+        `Quick one for you: the ${hp.name}. What's the occasion, or just having a look?`,
+        `If you trust me on one piece, it's the ${hp.name}. What are we dressing for?`,
+        `Start here: the ${hp.name}. Where would you wear it?`,
+        `The one I'd pull off the rack for you, the ${hp.name}. What's it for?`,
+      ];
+      const voice = leadIns[message.length % leadIns.length]!;
+      return { ...decision, route: "reco_handle", productHandle: pick, voice, quickReplies: ["For an occasion", "Everyday", "Show me more"] };
+    }
   }
   if (!curHandle || decision.route !== "talk_only") return decision;
   const product = activeCatalog.find((p) => p.handle === curHandle);

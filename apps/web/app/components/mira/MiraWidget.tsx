@@ -188,7 +188,13 @@ const SIZE_FORM_TRIGGER  = "__size_form__";
 const NAV_TRIGGER        = "__navigate__:"; // followed by a product handle
 const TRYON_TRIGGER      = "__try_on__:";   // followed by a product handle, opens the fitting room
 
+// Payments-panel finding: free-shipping nudge was firing on every store
+// regardless of currency, telling a PKR shopper they're "Rs 250 from free
+// shipping" when the threshold was actually 500 USD. Gate the nudge to
+// USD-only stores for now; international free-shipping thresholds require
+// per-shop config.
 const FREE_SHIPPING_THRESHOLD = 500;
+const FREE_SHIPPING_CURRENCY = "USD";
 
 // ── Per-product size memory ─────────────────────────────────────────────────
 // Every piece here is cut differently, so a size is remembered PER PRODUCT, 
@@ -1908,7 +1914,12 @@ export default function MiraWidget() {
     if (typeof window === "undefined") return;
     const w = window as unknown as Record<string, unknown>;
     const onStore = !!w.Shopify || !!w.__sqAssetBase;
-    if (onStore) { window.location.href = "/cart"; return; }
+    // Payments-panel finding: was going to /cart not /checkout, so the
+    // 3-second wallet-cliff (Shop Pay / Apple Pay / Google Pay) was never
+    // exposed. Shopify accepts a direct GET on /checkout that preserves
+    // the cart token; this is the express path. Fallback to /cart if the
+    // theme intercepts /checkout.
+    if (onStore) { window.location.href = "/checkout"; return; }
     setMessages((prev) => [...prev, { from: "mira", kind: "say", text: cartCount > 0 ? "Your bag's locked in, on your live store this takes you straight to checkout." : "Add a piece first and I'll walk you to checkout." }]);
   }, [cartCount]);
 
@@ -2095,7 +2106,7 @@ export default function MiraWidget() {
                 <span>✦</span> Teach
               </button>
             )}
-            <button onClick={() => setOpen(false)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--mute)", width: 30, height: 30, borderRadius: "50%", fontSize: 14, cursor: "pointer", display: "grid", placeItems: "center" }}>×</button>
+            <button onClick={() => setOpen(false)} aria-label="Close Mira" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", color: "var(--mute)", width: 44, height: 44, borderRadius: "50%", fontSize: 18, cursor: "pointer", display: "grid", placeItems: "center" }}>×</button>
           </div>
 
           {/* Admin knowledge drawer, visible only in admin sessions */}
@@ -2222,7 +2233,7 @@ export default function MiraWidget() {
           <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 8 }}>
             {/* fontSize:16 prevents iOS Safari auto-zoom on focus (panel P1) */}
             <input ref={inputRef} className="sq-mira-field" aria-label="Message Mira" data-stylique-input="1" inputMode="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tell Mira what you're after…" style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "10px 16px", color: "#F4F2EE", fontFamily: "var(--sans)", fontSize: 16, outline: "none" }} />
-            <button type="submit" aria-label="Send message" data-stylique-send="1" disabled={!input.trim()} style={{ width: 38, height: 38, borderRadius: "50%", background: input.trim() ? "var(--grad)" : "rgba(255,255,255,0.08)", border: "none", cursor: input.trim() ? "pointer" : "default", color: input.trim() ? "#0E0A14" : "var(--mute)", fontSize: 16, display: "grid", placeItems: "center", transition: "all 200ms", flexShrink: 0 }}>↑</button>
+            <button type="submit" aria-label="Send message" data-stylique-send="1" disabled={!input.trim()} style={{ width: 44, height: 44, borderRadius: "50%", background: input.trim() ? "var(--grad)" : "rgba(255,255,255,0.08)", border: "none", cursor: input.trim() ? "pointer" : "default", color: input.trim() ? "#0E0A14" : "var(--mute)", fontSize: 18, display: "grid", placeItems: "center", transition: "all 200ms", flexShrink: 0 }}>↑</button>
           </form>
         </div>
       )}

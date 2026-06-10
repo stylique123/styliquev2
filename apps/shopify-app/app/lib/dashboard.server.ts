@@ -43,6 +43,13 @@ export async function buildOverview(args: {
     cartFromMira: number;
     cartFromTryon: number;
     cartFromWidgetStyle: number;
+    // Perf-marketer panel finding: assistedRevenueCents was being WRITTEN per
+    // MIRA_ASSISTED_ORDER (orders.fulfilled webhook) but never AGGREGATED into
+    // the headline — so a CMO had no "$X from Mira" number to put on a deck.
+    // This is the renewal-conversation KPI; surface it as cents (the rest of
+    // the UI knows how to format).
+    miraAssistedRevenueCents: number;
+    miraAssistedOrders: number;
     tryOnSessions: number;
     fitSubmitted: number;
     signupsClaimed: number;
@@ -155,6 +162,22 @@ export async function buildOverview(args: {
   });
   const evt = (name: string) => grouped.find((g) => g.name === name)?._count._all ?? 0;
 
+  // ─── Mira-assisted revenue rollup (perf-marketer panel finding) ─────
+  // Sum MIRA_ASSISTED_ORDER.payload.assistedRevenueCents over the window so
+  // the dashboard can show "$X from Mira" — the renewal-conversation KPI.
+  // One findMany (no aggregation needed; counts are tiny) reading just the
+  // payload Json column. Returns 0/0 when the event has never fired (day-0).
+  const assistedRows = await prisma.analyticsEvent.findMany({
+    where: { shopId: args.shopId, name: "MIRA_ASSISTED_ORDER", createdAt: { gte: since } },
+    select: { payload: true },
+  }).catch(() => []);
+  let miraAssistedRevenueCents = 0;
+  for (const r of assistedRows) {
+    const p = r.payload as { assistedRevenueCents?: number } | null;
+    const n = typeof p?.assistedRevenueCents === "number" ? p.assistedRevenueCents : 0;
+    if (Number.isFinite(n) && n > 0) miraAssistedRevenueCents += n;
+  }
+
   // ─── headline ────────────────────────────────────────────────────────
   const headline = {
     chatSessions:        evt("CHAT_OPENED"),
@@ -164,6 +187,8 @@ export async function buildOverview(args: {
     cartFromMira:        evt("CART_FROM_MIRA"),
     cartFromTryon:       evt("CART_FROM_TRYON"),
     cartFromWidgetStyle: evt("CART_FROM_WIDGET_STYLE"),
+    miraAssistedRevenueCents,
+    miraAssistedOrders:  assistedRows.length,
     tryOnSessions:       evt("WIDGET_OPENED"),
     fitSubmitted:        evt("WIDGET_FIT_SUBMITTED"),
     signupsClaimed:      evt("SIGNUP_CLAIMED"),

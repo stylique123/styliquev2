@@ -1,0 +1,826 @@
+{
+  "url": "http://localhost:3001/api/mira",
+  "ranAt": "2026-06-10T20:06:47.623Z",
+  "out": [
+    {
+      "persona": "cold-opener",
+      "label": "Cold opener (browsing, no context)",
+      "turns": [
+        {
+          "shopper": "hey",
+          "status": 200,
+          "latencyMs": 1675,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"greeting\",\"productHandle\":\"ivory-silk-camisole\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "greeting",
+              "productHandle": "ivory-silk-camisole"
+            }
+          }
+        },
+        {
+          "shopper": "just looking honestly, not sure what I need",
+          "status": 200,
+          "latencyMs": 1540,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"discover\",\"productHandle\":\"ivory-silk-camisole\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The one I'd pull off the rack for you, the Ivory Silk Camisole. What's it for?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "discover",
+              "productHandle": "ivory-silk-camisole"
+            }
+          }
+        },
+        {
+          "shopper": "I guess something for date nights",
+          "status": 200,
+          "latencyMs": 1590,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, a date night. Then the Onyx Silk Slip is the one I'd put you in, it's elegant and understated. Want me to add it, or see it on you?\",\"route\":\"reco_handle\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, a date night. Then the Onyx Silk Slip is the one I'd put you in, it's elegant and understated. Want me to add it, or see it on you?",
+              "route": "reco_handle",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "what would you actually recommend",
+          "status": 200,
+          "latencyMs": 1670,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Onyx Silk Slip is still my pick for a date night, it's understated and elegant. Should I add it in your size, or would you like to see it on?\",\"route\":\"add_to_cart\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"Add it\",\"See it on me\",\"Show me another\"],\"intent\":\"suitability\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Onyx Silk Slip is still my pick for a date night, it's understated and elegant. Should I add it in your size, or would you like to see it on?",
+              "route": "add_to_cart",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "Add it",
+                "See it on me",
+                "Show me another"
+              ],
+              "intent": "suitability"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "warm-pdp",
+      "label": "Warm PDP (on a product, leaning in)",
+      "turns": [
+        {
+          "shopper": "I'm looking at this jacket, does it run small?",
+          "status": 200,
+          "latencyMs": 1651,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The jacket you're looking at, which one is that? I can pull the exact fit notes.\",\"route\":\"talk_only\",\"quickReplies\":[\"The leather trench\",\"The tailored blazer\",\"The camel wrap coat\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The jacket you're looking at, which one is that? I can pull the exact fit notes.",
+              "route": "talk_only",
+              "quickReplies": [
+                "The leather trench",
+                "The tailored blazer",
+                "The camel wrap coat"
+              ],
+              "intent": "size"
+            }
+          }
+        },
+        {
+          "shopper": "I'm 5'9, usually a M",
+          "status": 200,
+          "latencyMs": 1486,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, 5'9 and usually a M. Which jacket were you looking at, so I can check the specific fit notes for you?\",\"route\":\"talk_only\",\"quickReplies\":[\"The leather trench\",\"The tailored blazer\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, 5'9 and usually a M. Which jacket were you looking at, so I can check the specific fit notes for you?",
+              "route": "talk_only",
+              "quickReplies": [
+                "The leather trench",
+                "The tailored blazer"
+              ],
+              "intent": "size"
+            }
+          }
+        },
+        {
+          "shopper": "ok how does it fit in the shoulders",
+          "status": 200,
+          "latencyMs": 1495,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, 5'9 and usually a M. Which jacket were you looking at, so I can check the specific fit notes for you?\",\"route\":\"talk_only\",\"quickReplies\":[\"The leather trench\",\"The tailored blazer\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, 5'9 and usually a M. Which jacket were you looking at, so I can check the specific fit notes for you?",
+              "route": "talk_only",
+              "quickReplies": [
+                "The leather trench",
+                "The tailored blazer"
+              ],
+              "intent": "size"
+            }
+          }
+        },
+        {
+          "shopper": "alright add the M",
+          "status": 200,
+          "latencyMs": 1396,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, dropping the M in your bag. Anything else to complete the look?\",\"route\":\"add_to_cart\",\"quickReplies\":[\"Complete the look\",\"Checkout\"],\"intent\":\"specific\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, dropping the M in your bag. Anything else to complete the look?",
+              "route": "add_to_cart",
+              "quickReplies": [
+                "Complete the look",
+                "Checkout"
+              ],
+              "intent": "specific"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "price-objection",
+      "label": "Price objection",
+      "turns": [
+        {
+          "shopper": "I like it but this is way too expensive",
+          "status": 200,
+          "latencyMs": 2079,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"That's fair. What were you hoping to spend today?\",\"route\":\"talk_only\",\"quickReplies\":[\"Under $300\",\"Under $500\",\"Open\"],\"intent\":\"price\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "That's fair. What were you hoping to spend today?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Under $300",
+                "Under $500",
+                "Open"
+              ],
+              "intent": "price"
+            }
+          }
+        },
+        {
+          "shopper": "I was hoping more like $200",
+          "status": 200,
+          "latencyMs": 1905,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"I want to be straight with you: nothing here is inside that ceiling. The closest piece is the Linen Relaxed Shirt at 280 in the store's currency.\",\"route\":\"talk_only\",\"disagree\":true,\"quickReplies\":[\"Show the closest\",\"Change the budget\",\"Keep browsing\"],\"intent\":\"price\",\"unmet\":true,\"unmetCategory\":\"price<200\",\"unmetReason\":\"Shopp",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "I want to be straight with you: nothing here is inside that ceiling. The closest piece is the Linen Relaxed Shirt at 280 in the store's currency.",
+              "route": "talk_only",
+              "disagree": true,
+              "quickReplies": [
+                "Show the closest",
+                "Change the budget",
+                "Keep browsing"
+              ],
+              "intent": "price",
+              "unmet": true,
+              "unmetCategory": "price<200",
+              "unmetReason": "Shopper wanted under $200; catalog floor is $280."
+            }
+          }
+        },
+        {
+          "shopper": "is there anything in that range that looks similar",
+          "status": 200,
+          "latencyMs": 1803,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, so you're looking for something that has a similar feel to the Linen Relaxed Shirt, but closer to the $200 range.\",\"route\":\"talk_only\",\"disagree\":true,\"quickReplies\":[\"What's the closest look?\",\"Show me something else\",\"What about the shirt?\"],\"intent\":\"price\",\"unmet\":true,\"unmetCategory\":\"price<280\",\"unmetReason\":\"Shopper w",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, so you're looking for something that has a similar feel to the Linen Relaxed Shirt, but closer to the $200 range.",
+              "route": "talk_only",
+              "disagree": true,
+              "quickReplies": [
+                "What's the closest look?",
+                "Show me something else",
+                "What about the shirt?"
+              ],
+              "intent": "price",
+              "unmet": true,
+              "unmetCategory": "price<280",
+              "unmetReason": "Shopper wants a similar look to the Linen Relaxed Shirt but under $280, which is currently the lowest priced item."
+            }
+          }
+        },
+        {
+          "shopper": "hmm not sure, let me think",
+          "status": 200,
+          "latencyMs": 1611,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Start here: the Linen Relaxed Shirt. Where would you wear it?\",\"route\":\"reco_handle\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"discover\",\"productHandle\":\"linen-relaxed-shirt\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Start here: the Linen Relaxed Shirt. Where would you wear it?",
+              "route": "reco_handle",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "discover",
+              "productHandle": "linen-relaxed-shirt"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "wedding-occasion",
+      "label": "Wedding occasion",
+      "turns": [
+        {
+          "shopper": "I need an outfit for a wedding in Lake Como in July",
+          "status": 200,
+          "latencyMs": 1498,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, Lake Como in July, that's beautiful. Are we thinking something quite formal, or a bit more relaxed and chic for the setting?\",\"route\":\"talk_only\",\"quickReplies\":[\"Quite formal\",\"Relaxed chic\",\"A bit of both\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, Lake Como in July, that's beautiful. Are we thinking something quite formal, or a bit more relaxed and chic for the setting?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Quite formal",
+                "Relaxed chic",
+                "A bit of both"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "outdoor, late afternoon ceremony",
+          "status": 200,
+          "latencyMs": 2602,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Outdoor, late afternoon ceremony, I can picture it. This Onyx Silk Slip is what I'd reach for, it's elegant without being too heavy. Want to see it on?\",\"route\":\"reco_handle\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Outdoor, late afternoon ceremony, I can picture it. This Onyx Silk Slip is what I'd reach for, it's elegant without being too heavy. Want to see it on?",
+              "route": "reco_handle",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "I'd want something tailored but breathable",
+          "status": 200,
+          "latencyMs": 2943,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Tailored and breathable, I hear you. The Onyx Silk Slip is a bias cut, so it drapes beautifully without clinging, and the silk is naturally breathable. Would you like to try it on?\",\"route\":\"try_on\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"Build the look\",\"Add to bag\",\"Show another\"],\"intent\":\"suitability",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Tailored and breathable, I hear you. The Onyx Silk Slip is a bias cut, so it drapes beautifully without clinging, and the silk is naturally breathable. Would you like to try it on?",
+              "route": "try_on",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "Build the look",
+                "Add to bag",
+                "Show another"
+              ],
+              "intent": "suitability"
+            }
+          }
+        },
+        {
+          "shopper": "can I see the look on me",
+          "status": 200,
+          "latencyMs": 1661,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Let's see the Onyx Silk Slip on you before you decide.\",\"route\":\"try_on\",\"productHandle\":\"onyx-silk-slip\",\"quickReplies\":[\"What's my size?\",\"Build the look\",\"Add to bag\",\"Show another\"],\"intent\":\"try_on\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Let's see the Onyx Silk Slip on you before you decide.",
+              "route": "try_on",
+              "productHandle": "onyx-silk-slip",
+              "quickReplies": [
+                "What's my size?",
+                "Build the look",
+                "Add to bag",
+                "Show another"
+              ],
+              "intent": "try_on"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "climate",
+      "label": "Climate (Mumbai monsoon)",
+      "turns": [
+        {
+          "shopper": "I'm in Mumbai and it's monsoon, what works",
+          "status": 200,
+          "latencyMs": 1530,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, Mumbai in monsoon. For that humidity, I'd put you in the Linen Relaxed Shirt, it's breathable and looks great. What do you think?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"occasion\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, Mumbai in monsoon. For that humidity, I'd put you in the Linen Relaxed Shirt, it's breathable and looks great. What do you think?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "occasion"
+            }
+          }
+        },
+        {
+          "shopper": "I sweat a lot, nothing clingy",
+          "status": 200,
+          "latencyMs": 1655,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, nothing clingy. The Linen Relaxed Shirt is cut for airflow, it won't stick. Want to see it on you?\",\"route\":\"try_on\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"Build the look\",\"Add to bag\",\"Show another\"],\"intent\":\"suitability\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, nothing clingy. The Linen Relaxed Shirt is cut for airflow, it won't stick. Want to see it on you?",
+              "route": "try_on",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "Build the look",
+                "Add to bag",
+                "Show another"
+              ],
+              "intent": "suitability"
+            }
+          }
+        },
+        {
+          "shopper": "do you have linen?",
+          "status": 200,
+          "latencyMs": 1685,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Yes, we do. The Linen Relaxed Shirt is exactly that, a breathable linen cut for comfort. Still thinking about that one?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Yes, we do. The Linen Relaxed Shirt is exactly that, a breathable linen cut for comfort. Still thinking about that one?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "ok show me the best one",
+          "status": 200,
+          "latencyMs": 1405,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Okay, the Linen Relaxed Shirt is the one I'd pick for you. Want me to size it, or see it on you first?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"specific\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Okay, the Linen Relaxed Shirt is the one I'd pick for you. Want me to size it, or see it on you first?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "specific"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "fabric-question",
+      "label": "Fabric question (informed shopper)",
+      "turns": [
+        {
+          "shopper": "is this wool or wool-blend",
+          "status": 200,
+          "latencyMs": 1502,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"We carry both, depending on the piece. Are you looking for something specific, or a general category like a coat or a knit?\",\"route\":\"talk_only\",\"quickReplies\":[\"A coat\",\"A knit\",\"Surprise me\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "We carry both, depending on the piece. Are you looking for something specific, or a general category like a coat or a knit?",
+              "route": "talk_only",
+              "quickReplies": [
+                "A coat",
+                "A knit",
+                "Surprise me"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "how does it handle rain",
+          "status": 200,
+          "latencyMs": 1743,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, for rain. Neither wool nor wool-blend pieces are fully waterproof, but a denser weave will handle a light shower better than a fine knit. What kind of piece were you thinking of?\",\"route\":\"talk_only\",\"quickReplies\":[\"A coat\",\"A knit\",\"Something else\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, for rain. Neither wool nor wool-blend pieces are fully waterproof, but a denser weave will handle a light shower better than a fine knit. What kind of piece were you thinking of?",
+              "route": "talk_only",
+              "quickReplies": [
+                "A coat",
+                "A knit",
+                "Something else"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "and dry-clean only?",
+          "status": 200,
+          "latencyMs": 1626,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"For care, nearly all our wool and wool-blend pieces are dry-clean only to maintain their shape and finish. Is that a concern for you?\",\"route\":\"fabric\",\"quickReplies\":[\"It is a concern\",\"Show me a coat\",\"Show me a knit\"],\"intent\":\"fabric\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "For care, nearly all our wool and wool-blend pieces are dry-clean only to maintain their shape and finish. Is that a concern for you?",
+              "route": "fabric",
+              "quickReplies": [
+                "It is a concern",
+                "Show me a coat",
+                "Show me a knit"
+              ],
+              "intent": "fabric"
+            }
+          }
+        },
+        {
+          "shopper": "fine, I'll take the L",
+          "status": 200,
+          "latencyMs": 1446,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Right, I can size you for that. Which piece are you thinking of for the L?\",\"route\":\"talk_only\",\"quickReplies\":[\"A coat\",\"A knit\",\"A dress\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Right, I can size you for that. Which piece are you thinking of for the L?",
+              "route": "talk_only",
+              "quickReplies": [
+                "A coat",
+                "A knit",
+                "A dress"
+              ],
+              "intent": "size"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "complete-look",
+      "label": "Complete-the-look (AOV)",
+      "turns": [
+        {
+          "shopper": "I added the trousers, what goes with them",
+          "status": 200,
+          "latencyMs": 1578,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Atelier Wide-Leg Trouser. For a polished look, I'd pair them with the Ivory Silk Camisole and the Tailored Double-Breasted Blazer. The three together are $1750.\",\"route\":\"look\",\"productHandle\":\"atelier-wide-leg-trouser\",\"quickReplies\":[\"Size the pieces\",\"See whole look\",\"Add full look\",\"Show another look\"],\"intent\":\"look\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Atelier Wide-Leg Trouser. For a polished look, I'd pair them with the Ivory Silk Camisole and the Tailored Double-Breasted Blazer. The three together are $1750.",
+              "route": "look",
+              "productHandle": "atelier-wide-leg-trouser",
+              "quickReplies": [
+                "Size the pieces",
+                "See whole look",
+                "Add full look",
+                "Show another look"
+              ],
+              "intent": "look"
+            }
+          }
+        },
+        {
+          "shopper": "I like the white shirt option",
+          "status": 200,
+          "latencyMs": 1598,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"The Linen Relaxed Shirt in Bone is a great choice with those trousers, it has that easy, relaxed feel. Want me to size the shirt for you, or show it on?\",\"route\":\"reco_handle\",\"productHandle\":\"linen-relaxed-shirt\",\"quickReplies\":[\"What's my size?\",\"See it on you\",\"Build the look\",\"Add to bag\"],\"intent\":\"look\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "The Linen Relaxed Shirt in Bone is a great choice with those trousers, it has that easy, relaxed feel. Want me to size the shirt for you, or show it on?",
+              "route": "reco_handle",
+              "productHandle": "linen-relaxed-shirt",
+              "quickReplies": [
+                "What's my size?",
+                "See it on you",
+                "Build the look",
+                "Add to bag"
+              ],
+              "intent": "look"
+            }
+          }
+        },
+        {
+          "shopper": "what about shoes",
+          "status": 200,
+          "latencyMs": 1605,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Not yet, we're clothing only right now, no footwear. If you tell me the outfit, I'll pull the piece it's built around.\",\"route\":\"talk_only\",\"disagree\":true,\"quickReplies\":[\"What's the occasion?\",\"Show me dresses\"],\"intent\":\"discover\",\"unmet\":true,\"unmetCategory\":\"footwear\",\"unmetReason\":\"Shopper wanted shoes; we carry no footwear.\"",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Not yet, we're clothing only right now, no footwear. If you tell me the outfit, I'll pull the piece it's built around.",
+              "route": "talk_only",
+              "disagree": true,
+              "quickReplies": [
+                "What's the occasion?",
+                "Show me dresses"
+              ],
+              "intent": "discover",
+              "unmet": true,
+              "unmetCategory": "footwear",
+              "unmetReason": "Shopper wanted shoes; we carry no footwear."
+            }
+          }
+        },
+        {
+          "shopper": "add the shirt and the loafers",
+          "status": 200,
+          "latencyMs": 1980,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"We can add the Linen Relaxed Shirt for you. I don't have loafers, as we're clothing only. Should I add the shirt?\",\"route\":\"add_to_cart\",\"productHandle\":\"linen-relaxed-shirt\",\"disagree\":true,\"quickReplies\":[\"Yes, add the shirt\",\"Show me another top\"],\"intent\":\"specific\",\"unmet\":true,\"unmetCategory\":\"footwear\",\"unmetReason\":\"Shopper",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "We can add the Linen Relaxed Shirt for you. I don't have loafers, as we're clothing only. Should I add the shirt?",
+              "route": "add_to_cart",
+              "productHandle": "linen-relaxed-shirt",
+              "disagree": true,
+              "quickReplies": [
+                "Yes, add the shirt",
+                "Show me another top"
+              ],
+              "intent": "specific",
+              "unmet": true,
+              "unmetCategory": "footwear",
+              "unmetReason": "Shopper wanted shoes; we carry no footwear."
+            }
+          }
+        }
+      ]
+    },
+    {
+      "persona": "size-question",
+      "label": "Size question (post-baby)",
+      "turns": [
+        {
+          "shopper": "I'm post-baby and not sure what size to get",
+          "status": 200,
+          "latencyMs": 2564,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Post-baby and looking for ease, I hear you. What kind of pieces are you usually drawn to, or what are you shopping for today?\",\"route\":\"talk_only\",\"quickReplies\":[\"Dresses\",\"Trousers\",\"Knitwear\"],\"intent\":\"discover\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Post-baby and looking for ease, I hear you. What kind of pieces are you usually drawn to, or what are you shopping for today?",
+              "route": "talk_only",
+              "quickReplies": [
+                "Dresses",
+                "Trousers",
+                "Knitwear"
+              ],
+              "intent": "discover"
+            }
+          }
+        },
+        {
+          "shopper": "I was a M before, probably L now, ribcage wider",
+          "status": 200,
+          "latencyMs": 1584,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Got it, a wider ribcage is common. Let me get you sized properly, and we can find pieces with the right ease.\",\"route\":\"size_form\",\"quickReplies\":[\"Size me for a dress\",\"Size me for a top\",\"Size me for trousers\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Got it, a wider ribcage is common. Let me get you sized properly, and we can find pieces with the right ease.",
+              "route": "size_form",
+              "quickReplies": [
+                "Size me for a dress",
+                "Size me for a top",
+                "Size me for trousers"
+              ],
+              "intent": "size"
+            }
+          }
+        },
+        {
+          "shopper": "will this be forgiving around the waist",
+          "status": 200,
+          "latencyMs": 1313,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"This one is cut with a little ease, so it should be quite forgiving around the waist. Want me to add it in your size, or see it on you first?\",\"route\":\"add_to_cart\",\"quickReplies\":[\"Add to bag\",\"See it on me\"],\"intent\":\"suitability\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "This one is cut with a little ease, so it should be quite forgiving around the waist. Want me to add it in your size, or see it on you first?",
+              "route": "add_to_cart",
+              "quickReplies": [
+                "Add to bag",
+                "See it on me"
+              ],
+              "intent": "suitability"
+            }
+          }
+        },
+        {
+          "shopper": "ok size me",
+          "status": 200,
+          "latencyMs": 1314,
+          "voice": "{\"source\":\"gemini\",\"model\":\"gemini-2.5-flash\",\"decision\":{\"voice\":\"Okay, let's get you sized for this one, so we know it will fit just right.\",\"route\":\"size_form\",\"quickReplies\":[\"Size me\"],\"intent\":\"size\"}}",
+          "route": null,
+          "intent": null,
+          "quickReplies": null,
+          "raw": {
+            "source": "gemini",
+            "model": "gemini-2.5-flash",
+            "decision": {
+              "voice": "Okay, let's get you sized for this one, so we know it will fit just right.",
+              "route": "size_form",
+              "quickReplies": [
+                "Size me"
+              ],
+              "intent": "size"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
