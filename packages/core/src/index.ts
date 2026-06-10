@@ -1,6 +1,8 @@
 export * from "./plans/index.js";
 export * from "./plans/service.js";
 export * from "./plans/features.js";
+// P2 — Provider cost catalog + computeCost + per-shop rollup (super-admin).
+export * from "./billing/costs.js";
 export * from "./usage/service.js";
 export * from "./analytics/index.js";
 export * from "./analytics/service.js";

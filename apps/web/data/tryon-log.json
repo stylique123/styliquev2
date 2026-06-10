@@ -1,5 +1,35 @@
 [
   {
+    "id": "b2a72f5b-9ae8-4d82-937d-5f3b13ea8c89",
+    "ts": "2026-06-10T13:59:10.062Z",
+    "mode": "muse",
+    "status": "ok",
+    "errorCode": "ok",
+    "handle": "midnight-silk-gown",
+    "size": "L",
+    "easeCm": 19,
+    "bindLabel": "Bust",
+    "garmentCount": 1,
+    "cached": false,
+    "ms": 12660,
+    "remediation": null
+  },
+  {
+    "id": "82f6e23f-6ee6-4bc1-8a71-e1af938019af",
+    "ts": "2026-06-10T13:58:44.682Z",
+    "mode": "muse",
+    "status": "ok",
+    "errorCode": "ok",
+    "handle": "midnight-silk-gown",
+    "size": "XS",
+    "easeCm": -3,
+    "bindLabel": "Waist",
+    "garmentCount": 1,
+    "cached": false,
+    "ms": 11272,
+    "remediation": null
+  },
+  {
     "id": "2b844503-d620-4142-98ce-e9cb821fc79e",
     "ts": "2026-06-10T02:04:52.294Z",
     "mode": "muse",

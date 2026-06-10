@@ -152,7 +152,7 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
 
 type MiraRoute =
   | "reco_handle" | "navigate" | "look" | "size_form" | "try_on"
-  | "add_to_cart" | "studio" | "talk_only";
+  | "add_to_cart" | "studio" | "compare" | "talk_only";
 
 export type AdaptedProduct = {
   handle: string;
@@ -266,9 +266,13 @@ export type MiraAdapterResult = {
     productHandle: string | null;
     quickReplies: string[];
     intent: string;
+    // P4-comparison: up to 3 handles to render side-by-side cards.
+    compareHandles?: string[];
   };
   // Real per-shop products surfaced this turn (from the brain's combo). The UI
-  // renders these instead of looking a handle up in a hardcoded catalog.
+  // renders these instead of looking a handle up in a hardcoded catalog. On a
+  // compare turn this carries the 2-3 compared pieces resolved against the
+  // shop's catalog (in the order the brain named them).
   products: AdaptedProduct[];
   look: { title: string; reasoning: string; pieces: AdaptedProduct[] } | null;
 };
@@ -567,13 +571,18 @@ async function loadMerchantBrand(shopDomain: string): Promise<Record<string, str
   }
 }
 
-function decisionToAdapter(decision: {
-  voice?: string;
-  route?: string;
-  productHandle?: string;
-  quickReplies?: string[];
-  intent?: string;
-} | null, fallbackVoice: string): MiraAdapterResult {
+function decisionToAdapter(
+  decision: {
+    voice?: string;
+    route?: string;
+    productHandle?: string;
+    quickReplies?: string[];
+    intent?: string;
+    compareHandles?: string[];
+  } | null,
+  fallbackVoice: string,
+  activeCatalog: AdaptedProduct[] = [],
+): MiraAdapterResult {
   if (!decision) {
     return {
       source: "brain",
@@ -582,16 +591,29 @@ function decisionToAdapter(decision: {
       look: null,
     };
   }
+  // P4-comparison resolution: when the brain emitted route=compare with
+  // compareHandles, resolve each against the merchant's catalog (already loaded
+  // for THIS turn) in the named order, dropping handles we can't verify so we
+  // never show a phantom card.
+  let products: AdaptedProduct[] = [];
+  const route = (decision.route as MiraRoute) ?? "talk_only";
+  if (route === "compare" && decision.compareHandles?.length && activeCatalog.length) {
+    products = decision.compareHandles
+      .map((h) => activeCatalog.find((p) => p.handle === h))
+      .filter((p): p is AdaptedProduct => p != null)
+      .slice(0, 3);
+  }
   return {
     source: "brain",
     decision: {
       voice: decision.voice ?? fallbackVoice,
-      route: (decision.route as MiraRoute) ?? "talk_only",
+      route,
       productHandle: decision.productHandle ?? null,
       quickReplies: decision.quickReplies ?? [],
       intent: decision.intent ?? "other",
+      compareHandles: decision.compareHandles,
     },
-    products: [],
+    products,
     look: null,
   };
 }
@@ -720,7 +742,26 @@ export async function runMiraAdapter(args: {
     // a timeout is still cost; downgrade to a precise "succeeded" counter
     // later if billing requires it.
     if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
-    return { result: decisionToAdapter(payload.decision ?? null, "Tell me what you're after and I'll pull one piece, not a wall."), setCookie: null };
+    // Project the injected (rich demo-brain) catalog into AdaptedProduct shape
+    // so the adapter's compare-resolution can find the named handles. The
+    // projection is a thin field-rename — same data, smaller surface.
+    const cat = injectedCatalog as Array<{
+      handle?: string; name?: string; category?: string | null;
+      priceUsd?: number | null;
+      images?: string[]; sizes?: string[]; colors?: string[];
+    }>;
+    const compareCatalog: AdaptedProduct[] = cat
+      .filter((p) => typeof p?.handle === "string")
+      .map((p) => ({
+        handle: p.handle!,
+        name: p.name ?? p.handle!,
+        category: p.category ?? null,
+        priceUsd: p.priceUsd ?? null,
+        image: Array.isArray(p.images) && p.images[0] ? p.images[0] : null,
+        sizes: Array.isArray(p.sizes) ? p.sizes : [],
+        colors: Array.isArray(p.colors) ? p.colors : [],
+      }));
+    return { result: decisionToAdapter(payload.decision ?? null, "Tell me what you're after and I'll pull one piece, not a wall.", compareCatalog), setCookie: null };
   } catch (err) {
     console.error("[mira-adapter] unified brain forward failed", err);
     if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
