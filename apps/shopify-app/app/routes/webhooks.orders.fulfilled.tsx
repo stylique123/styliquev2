@@ -72,7 +72,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // 3. For each line item, emit a CART_CONFIRMED analytics event.
     // Collect resolved products so we can do attribution afterwards.
-    const resolvedLineItems: { productId: string }[] = [];
+    const resolvedLineItems: { productId: string; lineValueCents: number; quantity: number }[] = [];
 
     for (const item of lineItems) {
       if (item.product_id == null) continue;
@@ -102,7 +102,16 @@ export async function action({ request }: ActionFunctionArgs) {
       const resolvedProduct = product ?? productByNumericId;
       if (!resolvedProduct) continue;
 
-      resolvedLineItems.push({ productId: resolvedProduct.id });
+      // lineValue in CENTS (Shopify price is in currency units / dollars;
+      // multiply by 100). Founder panel finding: was being written in DOLLARS
+      // but every downstream consumer (insights AOV, pilot-measure) divides by
+      // 100 expecting cents → 100× revenue understatement. Capture the real
+      // line-item totals here once, in cents, so every reader is correct.
+      const qty = item.quantity ?? 1;
+      const unitDollars = typeof item.price === "string" ? parseFloat(item.price) : (item.price ?? 0);
+      const lineValueCents = Number.isFinite(unitDollars) ? Math.round(unitDollars * 100 * qty) : 0;
+
+      resolvedLineItems.push({ productId: resolvedProduct.id, lineValueCents, quantity: qty });
 
       await prisma.analyticsEvent.create({
         data: {
@@ -113,13 +122,9 @@ export async function action({ request }: ActionFunctionArgs) {
           payload: {
             source: "webhook_order",
             orderId,
-            quantity: item.quantity ?? 1,
-            // Capture line value so insights can compute a REAL AOV instead of a
-            // hardcoded $85 (panel rec #14). lineValue = unit price × quantity.
-            lineValue: ((): number => {
-              const unit = typeof item.price === "string" ? parseFloat(item.price) : (item.price ?? 0);
-              return Number.isFinite(unit) ? Math.round(unit * (item.quantity ?? 1)) : 0;
-            })(),
+            quantity: qty,
+            // lineValue = unit price × quantity, in CENTS.
+            lineValue: lineValueCents,
           },
         },
       });
@@ -149,20 +154,19 @@ export async function action({ request }: ActionFunctionArgs) {
           ...new Set(assistEvents.map(e => e.productId).filter(Boolean) as string[]),
         ];
 
-        // Calculate revenue for assisted items using the variant price.
-        // Average price per product × 1 unit as a conservative estimate.
-        const assistedVariants = await prisma.productVariant.findMany({
-          where: { productId: { in: assistedProductIds } },
-          select: { productId: true, priceCents: true },
-        });
-
-        const priceByProduct = new Map<string, number>();
-        for (const v of assistedVariants) {
-          if (v.priceCents) priceByProduct.set(v.productId, v.priceCents);
-        }
-        const assistedRevenueCents = assistedProductIds.reduce(
-          (sum, pid) => sum + (priceByProduct.get(pid) ?? 0), 0
-        );
+        // Founder panel finding: assistedRevenue was computed as
+        // (avg variant price × 1 unit) per assisted product — ignored the
+        // shopper's actual purchased variant, the quantity, and the real line
+        // value. Now we sum the REAL lineValueCents of every order line that
+        // matches an assisted product (multiple lines/qty per product count
+        // correctly). This is the same source-of-truth as CART_CONFIRMED.
+        const assistedSet = new Set(assistedProductIds);
+        const assistedRevenueCents = resolvedLineItems
+          .filter((li) => assistedSet.has(li.productId))
+          .reduce((sum, li) => sum + li.lineValueCents, 0);
+        const assistedUnits = resolvedLineItems
+          .filter((li) => assistedSet.has(li.productId))
+          .reduce((sum, li) => sum + li.quantity, 0);
 
         await prisma.analyticsEvent.create({
           data: {
@@ -173,6 +177,7 @@ export async function action({ request }: ActionFunctionArgs) {
               orderId,
               assistedProductIds,
               assistedRevenueCents,
+              assistedUnits,
               totalLineItems: lineItems.length,
             },
           },

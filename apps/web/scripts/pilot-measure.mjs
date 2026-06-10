@@ -77,11 +77,30 @@ async function windowMetrics(shopifyDomain, from, to) {
     });
     if (recentChat) assistedIds.add(c.shopperRowId);
   }
+  // AOV / total-revenue source of truth: CART_CONFIRMED.payload.lineValue is
+  // written in CENTS (orders.fulfilled.tsx), not currency units. Each row is
+  // unit price × actual quantity for ONE line item — so summing across all
+  // CART_CONFIRMED rows of an order gives the real order total, and grouping
+  // by orderId gives a per-order AOV that respects multi-line orders +
+  // real quantities (founder panel finding fixed at the write side).
   const lineTotals = confirmed
     .map((c) => Number(c.payload?.lineValue ?? 0))
     .filter((n) => Number.isFinite(n) && n > 0);
+  // Per-order AOV: group line totals by orderId so a 3-line order doesn't
+  // count as 3 orders in the AOV mean.
+  const totalByOrder = new Map();
+  for (const c of confirmed) {
+    const p = c.payload || {};
+    const lv = Number(p.lineValue ?? 0);
+    const oid = p.orderId;
+    if (!oid || !(lv > 0)) continue;
+    totalByOrder.set(oid, (totalByOrder.get(oid) ?? 0) + lv);
+  }
+  const orderTotalsCents = [...totalByOrder.values()];
   const totalRevCents = lineTotals.reduce((a, b) => a + b, 0);
-  const aov = lineTotals.length ? Math.round(totalRevCents / lineTotals.length / 100) : 0;
+  const aov = orderTotalsCents.length
+    ? Math.round(orderTotalsCents.reduce((a, b) => a + b, 0) / orderTotalsCents.length / 100)
+    : 0;
   return {
     currency: shop.currencyCode || "USD",
     chatSessions,

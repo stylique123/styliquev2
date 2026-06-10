@@ -221,6 +221,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
       if (setCookie) res.headers.append("Set-Cookie", setCookie);
       return res;
     }
+    case "api/mira/conversion": {
+      // Forward conversion writes to the apps/web brain's learning-loop store
+      // (D60). Founder panel finding: the widget POSTs here on every real bag
+      // add but the proxy was missing the case → 404 → conversion rate broken
+      // on every shop. Fire-and-forget on the proxy side; never fail the
+      // storefront on a learning-loop write blip.
+      const upstreamBase = (process.env.MIRA_DEMO_BRAIN_URL ?? "https://stylique-web.up.railway.app").replace(/\/$/, "");
+      try {
+        const upstream = await fetch(`${upstreamBase}/api/mira/conversion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body ?? {}),
+          signal: AbortSignal.timeout(5_000),
+        });
+        return cors(json(await upstream.json().catch(() => ({ ok: upstream.ok }))));
+      } catch (err) {
+        console.error("[proxy] api/mira/conversion forward failed", err);
+        return cors(json({ ok: false, error: "forward_failed" }));
+      }
+    }
     case "api/chat/stream": {
       // postChatStream runs runChatTurn eagerly so setCookie is available before
       // the stream body starts — the cookie MUST be a real HTTP response header

@@ -74,8 +74,29 @@ case "$SERVICE" in
 esac
 echo
 echo "✓ Deploy(s) queued. Watch in the Railway dashboard."
-echo "  Verify the brain after rollout completes with:"
-echo "  curl -s https://stylique-web.up.railway.app/api/mira -X POST \\"
-echo "    -H 'content-type: application/json' \\"
-echo "    -d '{\"message\":\"can I see it on me before I buy?\"}' | jq '.decision.route'"
-echo "  expected: \"try_on\"  (Mira bug A regression check)"
+echo
+echo "── POST-DEPLOY CHECKLIST ──"
+echo "1. Verify model env on Railway:"
+echo "     railway variables --service stylique-web | grep MIRA_MODEL"
+echo "   Founder pilot finding: production was running gemini-2.5-pro and reading"
+echo "   materially worse than local Flash+fallback (6.36s latency, weak climate"
+echo "   recognition). Code defaults are gemini-2.5-flash; if MIRA_MODEL is set to"
+echo "   gemini-2.5-pro on Railway, UNSET it (or set it to gemini-2.5-flash):"
+echo "     railway variables --service stylique-web --remove MIRA_MODEL"
+echo
+echo "2. Smoke the brain (try-on regression — Mira bug A):"
+echo "     curl -s https://stylique-web.up.railway.app/api/mira -X POST \\"
+echo "       -H 'content-type: application/json' \\"
+echo "       -d '{\"message\":\"can I see it on me before I buy?\"}' | jq '.decision.route'"
+echo "   expected: \"try_on\""
+echo
+echo "3. Smoke the conversion proxy (founder panel finding — was 404):"
+echo "     curl -s https://stylique-web.up.railway.app/api/mira/conversion -X POST \\"
+echo "       -H 'content-type: application/json' \\"
+echo "       -d '{\"productHandle\":\"wrap-coat-camel\"}' | jq '.ok'"
+echo "   expected: true (independent verify that the upstream endpoint exists;"
+echo "   the App-Proxy case is now wired in proxy.shopper.\$.tsx for the storefront)."
+echo
+echo "4. Watch Gemini 429 quota for ~15 min — founder panel showed local 429 spikes."
+echo "   If you see them in production logs, raise the Gemini project quota or"
+echo "   route to a second project via MIRA_FALLBACK_MODEL."

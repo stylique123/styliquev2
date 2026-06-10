@@ -126,6 +126,7 @@ function MiraLauncher({ nudging, onOpen }: { nudging: boolean; onOpen: () => voi
     <button
       onClick={onOpen}
       aria-label="Chat with Mira, your stylist"
+      data-stylique-open="1"
       className="sq-mira-launch"
       style={{
         position: "relative", width: D, height: D, padding: 0, border: "none",
@@ -1774,16 +1775,22 @@ export default function MiraWidget() {
       setCartValue((v) => Math.max(0, v - p.priceUsd));
       setCartToast(`Couldn't add ${p.name}, tap to try again.`);
     };
+    // Record the REAL conversion (the learning loop's honest bag-rate, D60),
+    // a genuine SUCCESSFUL add, NOT Mira's offer and NOT a failed add. Founder
+    // panel finding: previously we recorded BEFORE Shopify confirmed → failed
+    // adds inflated conversion data. Now: only fire on real:true + ok:true.
+    // The demo (real:false) records on success too because the demo cart is
+    // simulated-success-by-design — there's no failure mode to lie about.
     void addToCart(p.handle, recalledSize(p.handle))
-      .then((r) => { if (r && r.real && !r.ok) rollback(); })
+      .then((r) => {
+        if (r && r.real && !r.ok) { rollback(); return; }
+        void fetch(`${sqApi()}/api/mira/conversion`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productHandle: p.handle }),
+        }).catch(() => {});
+      })
       .catch(rollback);
-    // Record the REAL conversion (the learning loop's honest bag-rate, D60), 
-    // a genuine add, NOT Mira's offer. Fire-and-forget; never blocks the UI.
-    void fetch(`${sqApi()}/api/mira/conversion`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productHandle: p.handle }),
-    }).catch(() => {});
     const newValue = cartValue + p.priceUsd;
     const gap = FREE_SHIPPING_THRESHOLD - newValue;
     const size = recalledSize(p.handle);
@@ -2079,7 +2086,7 @@ export default function MiraWidget() {
             {cartCount > 0 && (
               // Persistent register door (conversion panel #1): the bag count IS the
               // checkout button, always one tap from paying, never a dead-end.
-              <button onClick={goToCheckout} className="sq-mira-field" aria-label={`Checkout, ${cartCount} in bag`} style={{ background: "var(--grad)", border: "none", borderRadius: 999, padding: "6px 13px", fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#0E0A14", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+              <button onClick={goToCheckout} className="sq-mira-field" aria-label={`Checkout, ${cartCount} in bag`} data-stylique-checkout="1" style={{ background: "var(--grad)", border: "none", borderRadius: 999, padding: "6px 13px", fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#0E0A14", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
                 Checkout · {cartCount}
               </button>
             )}
@@ -2132,7 +2139,7 @@ export default function MiraWidget() {
 
           {/* Editorial feed */}
           {/* aria-live='polite' + role='log' ensures screen readers announce new Mira messages (WCAG SC 4.1.3) */}
-          <div role="log" aria-live="polite" aria-label="Mira conversation" style={{ flex: 1, overflowY: "auto", padding: "18px 14px", display: "flex", flexDirection: "column", gap: 18, scrollbarWidth: "none" }}>
+          <div role="log" aria-live="polite" aria-label="Mira conversation" data-stylique-widget="1" style={{ flex: 1, overflowY: "auto", padding: "18px 14px", display: "flex", flexDirection: "column", gap: 18, scrollbarWidth: "none" }}>
             {messages.map((msg, i) => {
               if (msg.from === "user") {
                 return (
@@ -2214,8 +2221,8 @@ export default function MiraWidget() {
           {/* Input */}
           <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} style={{ padding: "10px 14px 14px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 8 }}>
             {/* fontSize:16 prevents iOS Safari auto-zoom on focus (panel P1) */}
-            <input ref={inputRef} className="sq-mira-field" aria-label="Message Mira" inputMode="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tell Mira what you're after…" style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "10px 16px", color: "#F4F2EE", fontFamily: "var(--sans)", fontSize: 16, outline: "none" }} />
-            <button type="submit" aria-label="Send message" disabled={!input.trim()} style={{ width: 38, height: 38, borderRadius: "50%", background: input.trim() ? "var(--grad)" : "rgba(255,255,255,0.08)", border: "none", cursor: input.trim() ? "pointer" : "default", color: input.trim() ? "#0E0A14" : "var(--mute)", fontSize: 16, display: "grid", placeItems: "center", transition: "all 200ms", flexShrink: 0 }}>↑</button>
+            <input ref={inputRef} className="sq-mira-field" aria-label="Message Mira" data-stylique-input="1" inputMode="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tell Mira what you're after…" style={{ flex: 1, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 999, padding: "10px 16px", color: "#F4F2EE", fontFamily: "var(--sans)", fontSize: 16, outline: "none" }} />
+            <button type="submit" aria-label="Send message" data-stylique-send="1" disabled={!input.trim()} style={{ width: 38, height: 38, borderRadius: "50%", background: input.trim() ? "var(--grad)" : "rgba(255,255,255,0.08)", border: "none", cursor: input.trim() ? "pointer" : "default", color: input.trim() ? "#0E0A14" : "var(--mute)", fontSize: 16, display: "grid", placeItems: "center", transition: "all 200ms", flexShrink: 0 }}>↑</button>
           </form>
         </div>
       )}
