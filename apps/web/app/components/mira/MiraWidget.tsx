@@ -1591,6 +1591,14 @@ export default function MiraWidget() {
   const sizeAsked       = useRef(false);
   const memorySurfaced  = useRef(false);
   const lastLookPieces  = useRef<Product[]>([]);
+  // ACTIVE PRODUCT — the single piece Mira most recently SHOWED or the shopper
+  // landed on (PDP open, reco card, look anchor). This, NOT the PDP URL alone,
+  // is what "it" means when the shopper types "add it" / "see it on me" /
+  // "size it". Fixes the founder-reported bug: typed add-to-cart was grabbing
+  // the landing product (or any) instead of the piece Mira just recommended,
+  // because every route fell back to currentProduct() (the PDP) and never to
+  // the conversation's actual subject.
+  const activeProductHandle = useRef<string | null>(null);
   const [turnCount, setTurnCount] = useState(0);
 
   // Active look memory, tracks outfit context for bundle add and closing intelligence
@@ -1827,11 +1835,15 @@ export default function MiraWidget() {
   const remember = useCallback((msg: ChatMsg) => {
     if (msg.from === "mira" && msg.kind === "reco") {
       shownHandles.current.add(msg.reco.product.handle);
+      // This is now the conversation's subject — "it" resolves here.
+      activeProductHandle.current = msg.reco.product.handle;
       // Feed reco into active look memory
       activeLook.current = updateFromReco(activeLook.current, msg.reco.product.handle, null);
     }
     if (msg.from === "mira" && msg.kind === "look") {
       shownHandles.current.add(msg.look.anchor.handle);
+      // The look's anchor becomes the active subject for "add it" / "size it".
+      activeProductHandle.current = msg.look.anchor.handle;
       msg.look.pieces.forEach((p) => shownHandles.current.add(p.handle));
       // Keep the most recent look pieces so legacy bundle add-to-cart can grab them.
       lastLookPieces.current = msg.look.pieces;
@@ -1896,7 +1908,12 @@ export default function MiraWidget() {
         { from: "mira", kind: "say", text: "What are you after today?", quickReplies: ["For an occasion", "Everyday", "Just looking"] },
       ];
     }
-    if (cp) sessionStorage.setItem("mira_last_product", cp.handle);
+    if (cp) {
+      sessionStorage.setItem("mira_last_product", cp.handle);
+      // Landing on a PDP makes that piece the active subject until Mira shows
+      // another — so "add it" on a fresh PDP adds THIS piece, not a stale reco.
+      activeProductHandle.current = cp.handle;
+    }
     greeting.forEach((msg, i) => setTimeout(() => { remember(msg); setMessages((prev) => [...prev, msg]); }, i * 1100));
   }, [messages.length, currentProduct, remember]);
 
@@ -2081,7 +2098,12 @@ export default function MiraWidget() {
     }
 
     const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: lastTopic.current, turnCount, sizeAsked: sizeAsked.current, cartValue, lastLookPieces: lastLookPieces.current };
-    const cp = currentProduct();
+    // "it" = the conversation's active subject (last piece Mira showed / the PDP
+    // landed on), falling back to the PDP only when nothing's been shown yet.
+    // This is the single resolution that fixes add-to-cart / try-on / sizing all
+    // pointing at the wrong (or any) product — cp now flows into the brain
+    // request (currentProductHandle), the size compute, and applyDecision.
+    const cp = byHandle(activeProductHandle.current ?? undefined) ?? currentProduct();
     setTyping(true);
     // Instant grounded interstitial + skeletons (panel rec #7), appears the same
     // frame the shopper sends, turning the long brain wait into anticipation.
