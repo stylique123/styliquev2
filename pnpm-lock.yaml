@@ -295,6 +295,16 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
+  packages/mira-brain:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/types:
     dependencies:
       zod:
