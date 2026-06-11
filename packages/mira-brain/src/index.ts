@@ -10,3 +10,4 @@ export * from "./schemas.js";
 export * from "./text.js";
 export * from "./products.js";
 export * from "./system.js";
+export * from "./gemini.js";
