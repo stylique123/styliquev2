@@ -203,6 +203,7 @@ export const EventNameSchema = z.enum([
   // the analytics ingest contract validates it.
   "CART_FROM_MIRA",
   "CART_FROM_TRYON",
+  "CART_FROM_WIDGET_STYLE",
   // A creative-set surfaced on a PDP / in a campaign was clicked.
   "CREATIVE_CLICKED",
   "CREATIVE_APPROVED",
@@ -498,6 +499,10 @@ export const EventPayloadSchemas = {
   CART_FROM_TRYON: z.object({
     productId: z.string().optional(),
     renderId: z.string().optional(),
+    comboName: z.string().optional(),
+  }),
+  CART_FROM_WIDGET_STYLE: z.object({
+    productIds: z.array(z.string()).optional(),
     comboName: z.string().optional(),
   }),
   CART_FROM_MIRA: z.object({

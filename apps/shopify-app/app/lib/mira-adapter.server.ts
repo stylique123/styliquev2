@@ -928,6 +928,7 @@ export async function runMiraAdapter(args: {
             }
           }
 
+
           // ── CATALOG-GAP / NEAR-MISS CAPTURE (P1 #5) ───────────────────────
           // The unified brain flags unmet demand (shopper asked for something
           // the store genuinely does NOT carry) and near-misses (served the
@@ -1000,6 +1001,51 @@ export async function runMiraAdapter(args: {
       { role: "user", text: lastUserMsg },
       { role: "model", text: result.decision.voice },
     ]).catch((err) => console.error("[mira-adapter] chat persistence failed", err));
+
+    // CHAT_COMBO_PROPOSED + CHAT_SEARCH_RUN — emitted here (after `result` is
+    // built) because they derive from the resolved look/products. The dashboard
+    // reads both (combosProposed / topCombos / search coverage); before this
+    // they fired ONLY on the demo, so the production tiles were permanently
+    // zero. Fire-and-forget, shop-scoped (§3 #1).
+    if (shopId) {
+      const route = result.decision.route;
+      void (async () => {
+        try {
+          const { analytics } = await import("./shopper-helpers.server");
+          if (route === "look" && result.look && result.look.pieces.length) {
+            const lookHandles = result.look.pieces.map((p) => p.handle).filter(Boolean);
+            const lookProds = lookHandles.length
+              ? await prisma.product.findMany({
+                  where: { shopId, handle: { in: lookHandles } }, select: { id: true },
+                })
+              : [];
+            if (lookProds.length) {
+              await analytics.track({
+                shopId, shopperId: shopperSession.row.id, name: "CHAT_COMBO_PROPOSED",
+                payload: {
+                  comboName: result.look.title || "Complete the look",
+                  productIds: lookProds.map((p) => p.id),
+                  reasoning: result.look.reasoning || undefined,
+                },
+              });
+            }
+          }
+          if (route === "search" || route === "reco_filter") {
+            const resultCount = result.products?.length ?? 0;
+            await analytics.track({
+              shopId, shopperId: shopperSession.row.id, name: "CHAT_SEARCH_RUN",
+              payload: {
+                query: (lastUserMsg || "").slice(0, 200).trim() || "(filter)",
+                resultCount,
+                gap: resultCount < 2,
+              },
+            });
+          }
+        } catch (err) {
+          console.error("[mira-adapter] combo/search event emission failed", err);
+        }
+      })();
+    }
     return { result, setCookie: shopperSession.setCookie };
   } catch (err) {
     console.error("[mira-adapter] unified brain forward failed", err);

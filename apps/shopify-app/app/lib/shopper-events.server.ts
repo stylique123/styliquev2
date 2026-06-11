@@ -216,5 +216,14 @@ export async function postComboAddAll(args: {
     console.error("[cartIntent] tracking insert failed (cart-add still proceeds):", (err as Error).message);
   }
 
+  // CART_FROM_WIDGET_STYLE — an "Add all to bag" from a complete-the-look combo
+  // is a cart originating on the style/look surface. The dashboard reads this
+  // tile; before this it was never emitted in production (permanent zero).
+  // Fire-and-forget — never block the cart-add.
+  void analytics.track({
+    shopId, shopperId: session.row.id, name: "CART_FROM_WIDGET_STYLE",
+    payload: { productIds: validIds, comboName: comboName || undefined },
+  }).catch((err) => console.error("[cartFromWidgetStyle] emit failed:", (err as Error).message));
+
   return { ok: true, data: { intentId, shopifyVariantIds } };
 }
