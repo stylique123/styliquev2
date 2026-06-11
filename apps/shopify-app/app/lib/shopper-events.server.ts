@@ -18,6 +18,19 @@ const EventSchema = z.object({
   payload: z.unknown(),
 }).strict();
 
+// Events a STOREFRONT CLIENT is allowed to POST via /api/events. Without this
+// gate, EventNameSchema accepts the FULL enum, so a malicious shopper could POST
+// server-authoritative events (CART_CONFIRMED from the orders webhook, etc.) and
+// inflate the merchant's purchase / revenue / repeat-rate metrics. This is the
+// EXHAUSTIVE set of names the client actually emits (TryOnPanel + mira-demo).
+// New client events MUST be added here — server-emitted events never belong.
+const CLIENT_POSTABLE_EVENTS: ReadonlySet<string> = new Set([
+  "PDP_TRYON_CLICKED",
+  "TRYON_ABANDONED",
+  "CART_FROM_TRYON",
+  "WIDGET_PLACEMENT_AUDIT",
+]);
+
 export async function postEvent(args: { shopDomain: string; body: unknown; shopperCookieId?: string | null }): Promise<ApiResponse<{ accepted: true }>> {
   if (!await rateOk(args.shopDomain, args.shopperCookieId)) return { ok: false, error: "rate_limited" };
   const shopId = await shopIdFromDomain(args.shopDomain);
@@ -25,6 +38,9 @@ export async function postEvent(args: { shopDomain: string; body: unknown; shopp
 
   const parsed = EventSchema.safeParse(args.body);
   if (!parsed.success) return { ok: false, error: "invalid_input" };
+  // Reject server-authoritative event names a client must never be able to forge
+  // (CART_CONFIRMED etc.) — only the storefront-emitted set is accepted here.
+  if (!CLIENT_POSTABLE_EVENTS.has(parsed.data.name)) return { ok: false, error: "unauthorized" };
   const payload = safeParseEventPayload(parsed.data.name, parsed.data.payload);
   if (!payload.success) return { ok: false, error: "invalid_payload" };
 
