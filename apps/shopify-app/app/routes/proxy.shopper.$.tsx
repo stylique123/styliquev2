@@ -19,7 +19,7 @@ import {
   // Stylist (separate surface from the 3-step widget) lives on its own dock
   // site-wide. Both surfaces share a ShopperSession identified by the
   // sq_shopper_id cookie — see lib/session.server.ts.
-  postChat, postChatStream, postShopperSignal, postShopperAccount, postShopperAccountVerify, postShopperAuthSocial, getShopperMe, getShopperOpener, getShopperSocialProof,
+  postShopperSignal, postShopperAccount, postShopperAccountVerify, postShopperAuthSocial, getShopperMe, getShopperOpener, getShopperSocialProof,
   postTryOnRender, postComboFeedback, postComboAddAll,
   type ApiResponse,
 } from "../lib/shopper.server";
@@ -197,8 +197,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     case "api/fit":    return respond(await postFit({ shopDomain, body, shopperCookieId }));
     case "api/style":  return respond(await postStyle({ shopDomain, body, shopperCookieId }));
     case "api/events": return respond(await postEvent({ shopDomain, body, shopperCookieId }));
-    case "api/chat":
-      return respondWithMaybeCookie(await postChat({ shopDomain, body, shopperCookieId, acceptLanguage: request.headers.get("accept-language") }));
+    // ONE-BRAIN consolidation: the legacy "api/chat" + "api/chat/stream" cases
+    // (the old multi-tool packages/ai brain) were removed — the widget speaks
+    // only "api/mira" below, the single unified brain.
     case "api/mira": {
       // SaaS migration Stage 1 — adapter: runs the REAL per-tenant brain and
       // returns the MiraDecision shape the storefront UI speaks, with real
@@ -256,22 +257,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
         console.error("[proxy] api/mira/conversion write failed", err);
         return cors(json({ ok: false, error: "write_failed" }));
       }
-    }
-    case "api/chat/stream": {
-      // postChatStream runs runChatTurn eagerly so setCookie is available before
-      // the stream body starts — the cookie MUST be a real HTTP response header
-      // (not embedded in the SSE body) for the browser to honour it.
-      const { stream, setCookie: streamCookie } = await postChatStream({
-        shopDomain, body, shopperCookieId, acceptLanguage: request.headers.get("accept-language"),
-      });
-      const headers = new Headers({
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "X-Content-Type-Options": "nosniff",
-      });
-      if (streamCookie) headers.append("Set-Cookie", streamCookie);
-      return cors(new Response(stream, { headers }));
     }
     case "api/shopper/signal":
       return respondWithMaybeCookie(await postShopperSignal({ shopDomain, body, shopperCookieId }));

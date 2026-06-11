@@ -16,7 +16,6 @@
 //
 // This file is now a barrel + the few handlers that didn't move to sub-modules.
 // Sub-modules:
-//   chat.server.ts           — runChatTurn, postChat, postChatStream
 //   account.server.ts        — getMe/getShopperMe, postShopperAccount, postShopperAccountVerify, postShopperSignal
 //   shopper-events.server.ts — postEvent, getSocialProof/getShopperSocialProof, postComboFeedback
 
@@ -43,7 +42,6 @@ import type { ShopperOutfitItem } from "./shopper-types.server";
 // Consumers that import from "./shopper.server" continue to work unchanged.
 export type { ApiResponse, ShopperOutfitItem, ShopperEntitlement, ShopperFit } from "./shopper-types.server";
 export type { ShopperProduct } from "./serialize";
-export * from "./chat.server";
 export * from "./account.server";
 export * from "./shopper-events.server";
 

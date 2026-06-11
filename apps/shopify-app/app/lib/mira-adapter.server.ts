@@ -10,7 +10,6 @@
 // at the App Proxy (Stage 2) and consumes `products`/`look` (Stage 3), the
 // storefront runs entirely on per-tenant data with zero hardcoded catalog.
 
-import { postChat } from "./chat.server";
 import { prisma } from "../db.server";
 import type { BrainClientAction, BrainCombo, BrainProduct } from "@stylique/ai";
 import { canConsume, recordConsume } from "./entitlement.server";
