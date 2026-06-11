@@ -98,6 +98,42 @@ async function buildPlacementSummary(shopId: string, since: Date) {
   };
 }
 
+// ── Analytics revenue + demand-intelligence helpers (brand-leader panel) ──
+// Plan list price in cents per tier — a KNOWN CONSTANT divisor (not a model),
+// so miraRoiMultiple stays a MEASURED figure (panel: founder/CFO #1 ask).
+const PLAN_PRICE_CENTS: Record<string, number> = {
+  STARTER: 19900, GROWTH: 44900, ULTIMATE: 84900, SCALE: 84900,
+};
+function planPriceCents(tier: string): number {
+  return PLAN_PRICE_CENTS[tier] ?? 44900;
+}
+
+// 7-day half-life recency weight (port of demo D60) — "what's hot NOW" beats
+// raw lifetime count for reorder urgency.
+function recencyWeight(d: Date | null | undefined): number {
+  if (!d) return 0;
+  const ageDays = (Date.now() - d.getTime()) / 86_400_000;
+  return Math.pow(0.5, Math.max(0, ageDays) / 7);
+}
+
+// Fold model-freeform gap text into stable buckets so "sneakers"+"shoes" merge
+// into one reorder line (port of demo D60 canonicalCategory).
+function canonicalGapCategory(raw: string | null | undefined): string {
+  const s = (raw ?? "").toLowerCase().trim();
+  if (!s) return "other";
+  if (/(shoe|sneaker|boot|heel|loafer|sandal|footwear|trainer)/.test(s)) return "footwear";
+  if (/(bag|tote|clutch|purse|backpack|handbag)/.test(s)) return "bags";
+  if (/(belt|sunglass|scarf|hat|jewel|necklace|earring|accessor)/.test(s)) return "accessories";
+  if (/(plus|\bxl\b|extended|petite|tall size|size range)/.test(s)) return "extended/petite sizing";
+  if (/(under \$?\d|below \$?\d|cheap|budget|affordable|<\s*\d|price point)/.test(s)) return "price point (budget)";
+  if (/(denim|jean)/.test(s)) return "denim";
+  if (/(knit|sweater|cashmere|wool|jumper|cardigan)/.test(s)) return "knitwear";
+  if (/(coat|jacket|outerwear|trench|blazer|parka)/.test(s)) return "outerwear";
+  if (/(dress|gown|midi|maxi)/.test(s)) return "dresses";
+  if (/(leather|suede)/.test(s)) return "leather pieces";
+  return s.length <= 28 ? s : s.slice(0, 28);
+}
+
 export async function buildOverview(args: {
   shopId: string;
   windowDays?: number;
@@ -123,6 +159,12 @@ export async function buildOverview(args: {
     // the UI knows how to format).
     miraAssistedRevenueCents: number;
     miraAssistedOrders: number;
+    // Brand-leader panel (founder + CFO #1 ask): the renewal-proof revenue
+    // numbers. Both MEASURED — ROI is assisted revenue ÷ a constant plan price,
+    // AOV is assisted revenue ÷ assisted orders. The 20-second "does it pay for
+    // itself" answer. miraRoiMultiple e.g. 31 = $14,200 assisted ÷ $449 plan.
+    miraRoiMultiple: number;
+    assistedAovCents: number;
     tryOnSessions: number;
     fitSubmitted: number;
     signupsClaimed: number;
@@ -171,7 +213,23 @@ export async function buildOverview(args: {
   } | null;
   catalog: {
     topQueries: Array<{ query: string; count: number }>;
-    gaps: Array<{ query: string; count: number; lastSeen: Date }>;
+    // Reorder intelligence (brand-leader panel — merch-buyer #1 ask). Gaps now
+    // carry recency-weighted intensity + a canonical bucket (so "sneakers"+
+    // "shoes" merge) + a revenue-at-risk RANGE (modeled, labeled Est. in UI).
+    gaps: Array<{
+      query: string; count: number; lastSeen: Date;
+      intensity: number; canonicalCategory: string;
+      revenueLeakRange: { low: number; high: number };
+    }>;
+    // Near-miss — we carry the category, the shopper wanted ONE attribute we
+    // don't stock ("has linen shirts, none cropped"). The CHEAPEST gap to
+    // close (a one-attribute range extension, not a net-new buy). Aggregated
+    // from CHAT_NEAR_MISS events — no migration. recoverableRevenueEst modeled.
+    nearMisses: Array<{
+      category: string; missingAttribute: string;
+      askCount: number; intensity: number; lastSeen: Date;
+      recoverableRevenueEst: number;
+    }>;
   } | null;
   taste: {
     topColorFamilies: Array<{ key: string; share: number }>;
@@ -276,6 +334,12 @@ export async function buildOverview(args: {
     cartFromWidgetStyle: evt("CART_FROM_WIDGET_STYLE"),
     miraAssistedRevenueCents,
     miraAssistedOrders:  assistedRows.length,
+    miraRoiMultiple:     miraAssistedRevenueCents > 0
+      ? Math.round((miraAssistedRevenueCents / planPriceCents(plan.tier)) * 10) / 10
+      : 0,
+    assistedAovCents:    assistedRows.length > 0
+      ? Math.round(miraAssistedRevenueCents / assistedRows.length)
+      : 0,
     tryOnSessions:       evt("WIDGET_OPENED"),
     fitSubmitted:        evt("WIDGET_FIT_SUBMITTED"),
     signupsClaimed:      evt("SIGNUP_CLAIMED"),
@@ -412,11 +476,60 @@ export async function buildOverview(args: {
       _count: { _all: true },
       _max: { createdAt: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
-      take: 10,
+      take: 12,
     });
+
+    // Near-miss aggregation from CHAT_NEAR_MISS events (no migration — the
+    // event already fires from logCatalogGap on a one-attribute miss). Group by
+    // canonical category + missing attribute; rank by recency-weighted demand.
+    const nmRows = await prisma.analyticsEvent.findMany({
+      where: { shopId: args.shopId, name: "CHAT_NEAR_MISS", createdAt: { gte: since } },
+      select: { payload: true, createdAt: true }, take: 1000,
+    }).catch(() => [] as Array<{ payload: unknown; createdAt: Date }>);
+
+    // AOV (cents) for revenue-at-risk: measured assisted AOV when known, else
+    // an $85 industry floor. Used ONLY for the labeled-Est. modeled figures.
+    const aovCents = assistedRows.length > 0 && miraAssistedRevenueCents > 0
+      ? Math.round(miraAssistedRevenueCents / assistedRows.length)
+      : 8500;
+
+    const nmAgg = new Map<string, { category: string; attr: string; count: number; intensity: number; lastSeen: Date }>();
+    for (const r of nmRows) {
+      const p = r.payload as { category?: string; nearMissAttribute?: string } | null;
+      const category = canonicalGapCategory(p?.category);
+      const attr = ((p?.nearMissAttribute ?? "").toLowerCase().trim()) || "—";
+      const key = `${category}|${attr}`;
+      const w = recencyWeight(r.createdAt);
+      const cur = nmAgg.get(key);
+      if (cur) { cur.count++; cur.intensity += w; if (r.createdAt > cur.lastSeen) cur.lastSeen = r.createdAt; }
+      else nmAgg.set(key, { category, attr, count: 1, intensity: w, lastSeen: r.createdAt });
+    }
+    const nearMisses = [...nmAgg.values()]
+      .sort((a, b) => b.intensity - a.intensity).slice(0, 8)
+      .map((n) => ({
+        category: n.category, missingAttribute: n.attr,
+        askCount: n.count, intensity: Math.round(n.intensity * 100) / 100, lastSeen: n.lastSeen,
+        recoverableRevenueEst: Math.round((n.count * aovCents * 0.5) / 100), // dollars, modeled
+      }));
+
     catalog = {
       topQueries: qCount.slice(0, 10).map(([k, v]) => ({ query: k, count: v })),
-      gaps: gapRows.map((g) => ({ query: g.normalizedQuery, count: g._count._all, lastSeen: g._max.createdAt ?? new Date(0) })),
+      gaps: gapRows
+        .map((g) => {
+          const count = g._count._all;
+          const lastSeen = g._max.createdAt ?? new Date(0);
+          return {
+            query: g.normalizedQuery, count, lastSeen,
+            intensity: Math.round(count * recencyWeight(lastSeen) * 100) / 100,
+            canonicalCategory: canonicalGapCategory(g.normalizedQuery),
+            revenueLeakRange: {
+              low: Math.round((count * aovCents * 0.2) / 100),
+              high: Math.round((count * aovCents * 0.4) / 100),
+            },
+          };
+        })
+        .sort((a, b) => b.intensity - a.intensity),
+      nearMisses,
     };
   }
 
