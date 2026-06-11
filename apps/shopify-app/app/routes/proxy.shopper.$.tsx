@@ -222,25 +222,51 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return res;
     }
     case "api/mira/conversion": {
-      // Forward conversion writes to the apps/web brain's learning-loop store
-      // (D60). Founder panel finding: the widget POSTs here on every real bag
-      // add but the proxy was missing the case → 404 → conversion rate broken
-      // on every shop. Fire-and-forget on the proxy side; never fail the
-      // storefront on a learning-loop write blip.
-      // Audit P0: read from the SAME shared resolver as mira-adapter so we
-      // can never split-default into two hosts again.
-      const { MIRA_BRAIN_ORIGIN } = await import("../lib/mira-adapter.server");
+      // Cycle-9 audit P0 #3: previously this case FORWARDED to the apps/web
+      // demo brain (MIRA_BRAIN_ORIGIN), where conversions were appended to a
+      // SHARED flat-file (mira-signals.json). On any production storefront
+      // that meant: (a) per-shop conversion metrics were absent from the
+      // merchant's own Prisma AnalyticsEvent table; (b) the demo file
+      // collected signal mixed across every Shopify tenant — a §3.5 #1
+      // tenancy invariant break and a cross-shop signal poisoner.
+      //
+      // Now: write directly into the per-tenant AnalyticsEvent table as
+      // CART_FROM_MIRA (already in EventName enum, previously had zero
+      // emitters per the audit). Handle resolution is shop-scoped.
+      // Fire-and-forget on errors so a Prisma blip never fails the
+      // shopper's post-add UX.
       try {
-        const upstream = await fetch(`${MIRA_BRAIN_ORIGIN}/api/mira/conversion`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body ?? {}),
-          signal: AbortSignal.timeout(5_000),
+        const b = (body ?? {}) as { productHandle?: string };
+        const { analytics, shopIdFromDomain } = await import("../lib/shopper-helpers.server");
+        const shopId = await shopIdFromDomain(shopDomain);
+        if (!shopId) return cors(json({ ok: false, error: "shop_not_installed" }));
+        const shopper = shopperCookieId
+          ? await prisma.shopperSession.findFirst({
+              where: { shopifyDomain: shopDomain, sessionId: shopperCookieId },
+              select: { id: true },
+            })
+          : null;
+        const handle = typeof b.productHandle === "string" ? b.productHandle : null;
+        const product = handle
+          ? await prisma.product.findFirst({
+              where: { shopId, handle },
+              select: { id: true, variants: { select: { priceCents: true }, take: 1 } },
+            })
+          : null;
+        await analytics.track({
+          shopId,
+          shopperId: shopper?.id,
+          name: "CART_FROM_MIRA",
+          productId: product?.id,
+          payload: {
+            handle: handle ?? null,
+            priceCents: product?.variants?.[0]?.priceCents ?? null,
+          },
         });
-        return cors(json(await upstream.json().catch(() => ({ ok: upstream.ok }))));
+        return cors(json({ ok: true }));
       } catch (err) {
-        console.error("[proxy] api/mira/conversion forward failed", err);
-        return cors(json({ ok: false, error: "forward_failed" }));
+        console.error("[proxy] api/mira/conversion write failed", err);
+        return cors(json({ ok: false, error: "write_failed" }));
       }
     }
     case "api/chat/stream": {
