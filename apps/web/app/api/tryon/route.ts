@@ -25,7 +25,9 @@ const Body = z.object({
   garmentImages: z.array(z.string().max(256)).min(1).max(4),
   size: z.string().max(8),
   recommendedSize: z.string().max(8).optional(),
-  garmentKind: z.enum(["top", "bottom", "dress", "outerwear"]).optional(),
+  // "accessory" (founder #11): belts/bags/sunglasses render ADDED to the look,
+  // placed by type — see accessoryClause in tryon-render.server.ts.
+  garmentKind: z.enum(["top", "bottom", "dress", "outerwear", "accessory"]).optional(),
   handle: z.string().max(120).optional(),
   // Honest fit signal from the brand-exact size map (per shopper body).
   easeCm: z.number().min(-40).max(60).optional(),
@@ -39,7 +41,7 @@ const Body = z.object({
     .array(
       z.object({
         name: z.string().max(120),
-        kind: z.enum(["top", "bottom", "dress", "outerwear"]),
+        kind: z.enum(["top", "bottom", "dress", "outerwear", "accessory"]),
         size: z.string().max(8),
         easeCm: z.number().min(-40).max(60).optional(),
         bindLabel: z.string().max(24).optional(),

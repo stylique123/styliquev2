@@ -1,0 +1,11 @@
+import { products, completeLookFor, recommendSizeForProduct } from "../app/lib/catalog";
+const belt = products.find(p => p.handle === "saddle-leather-belt")!;
+const dress = products.find(p => p.handle === "onyx-silk-slip")!;
+const trouser = products.find(p => p.handle === "atelier-wide-leg-trouser")!;
+const shirt = products.find(p => p.handle === "linen-relaxed-shirt")!;
+console.log("catalog count:", products.length);
+const fmt = (es: any[]) => es.map((e: any) => e.product?.handle ?? "?").join(", ");
+console.log("look(dress):", fmt(completeLookFor([dress])));
+console.log("look(trouser+shirt):", fmt(completeLookFor([trouser, shirt])));
+const rec = recommendSizeForProduct(belt, { heightCm: 170, weightKg: 65 });
+console.log("belt @170/65 →", rec.size, "| tote →", recommendSizeForProduct(products.find(p=>p.handle==="structured-leather-tote")!, { heightCm: 170, weightKg: 65 }).size);

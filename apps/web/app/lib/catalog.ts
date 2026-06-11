@@ -339,6 +339,52 @@ export const products: Product[] = [
     careInstructions: "Machine wash cold inside-out. Or better: hand wash every 5, 6 wears and wash infrequently to preserve the fade. Do not tumble dry, hang or lay flat.",
     keepRate: 0.83,
   },
+
+  // ── Accessories (founder #11 — recommended, rated, and try-on-able in the
+  //    ONE flow; the accent slot in completeLookFor + accessoryClause in the
+  //    try-on render pick these up with zero special-casing) ────────────────
+  {
+    handle: "saddle-leather-belt",
+    name: "Saddle Leather Belt",
+    collection: "accessories",
+    category: "accessory",
+    priceUsd: 180,
+    description:
+      "Full-grain vegetable-tanned leather with a polished antique-brass buckle. Cut at 3.5cm to sit cleanly at the waist of a trouser or over knitwear.",
+    images: ["/products/saddle-leather-belt-1.png", "/products/saddle-leather-belt-2.png"],
+    colors: ["Cognac"],
+    sizes: ["S", "M", "L"],
+    fitNotes: "Sized by waist: S fits 66-72cm, M fits 74-80cm, L fits 82-90cm, measured where you actually wear it (over trousers sits ~3cm larger than bare waist). Worn over knitwear or a coat, size up one.",
+    hesitationHint: "Vegetable-tanned leather starts stiff and breaks in to follow your waist within a couple of weeks, then holds that shape for years. The patina it develops is the point.",
+    fabricComposition: "Full-grain vegetable-tanned leather, solid antique-brass buckle. No bonded or split leather anywhere.",
+    careInstructions: "Wipe with a dry cloth. Condition with leather balm twice a year. Keep away from prolonged direct sun.",
+    keepRate: 0.94,
+    sizeChart: {
+      unit: "cm",
+      primary: "waist",
+      measures: ["waist"],
+      rows: { S: [69], M: [77], L: [86] },
+      ease: 2,
+      source: "brand size guide",
+    },
+  },
+  {
+    handle: "structured-leather-tote",
+    name: "Structured Leather Tote",
+    collection: "accessories",
+    category: "accessory",
+    priceUsd: 640,
+    description:
+      "An architectural everyday tote in grained calf leather. Holds a 14-inch laptop flat; stands upright on its own.",
+    images: ["/products/structured-leather-tote-1.png", "/products/structured-leather-tote-2.png"],
+    colors: ["Black"],
+    sizes: ["One Size"],
+    fitNotes: "One size. The top handles clear a coat sleeve comfortably on the shoulder; carried in hand it sits at mid-thigh on most frames.",
+    hesitationHint: "The structure is the feature: grained calf holds the architectural shape instead of slouching, so it reads polished with a coat at work and just as right over knitwear on the weekend.",
+    fabricComposition: "Grained calf leather, subtle gold-tone hardware. Unlined interior with a single flat pocket.",
+    careInstructions: "Wipe with a soft dry cloth. Stuff and store upright. Professional leather cleaning for marks.",
+    keepRate: 0.92,
+  },
 ];
 
 // Make every product image absolute when a build-time asset base is set (the
