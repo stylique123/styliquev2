@@ -201,7 +201,11 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
       return createTryOnService(
         createGeminiImageTryOnProvider({
           apiKey: geminiKey,
-          model: process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-preview-05-20",
+          // Audit fix: the previous default `gemini-2.5-flash-preview-05-20` is a
+          // TEXT model — it returns no image bytes, so every async (BullMQ) muse
+          // render silently failed. Match the working sync path (apps/web uses
+          // `gemini-2.5-flash-image`, the nano-banana image-output model).
+          model: process.env.GEMINI_IMAGE_MODEL ?? process.env.TRYON_IMAGE_MODEL ?? "gemini-2.5-flash-image",
         }),
       );
     }

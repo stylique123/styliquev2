@@ -72,6 +72,14 @@ function looksLikeInches(rawKey: string, value: number): boolean {
   if (k.includes("chest") || k.includes("bust") || k.includes("hip")) {
     return value > 5 && value < 80; // ambiguous mid-range stays as-is
   }
+  // Waist (audit fix): a bare US-inch waist chart (28/30/32) was previously
+  // stored as cm, so recommendFit read a ~30cm garment waist and sized every
+  // shopper far too large on trousers/jeans/skirts (where inch labelling is
+  // most common). Inch waists run ~22–46; cm waists run ~58+, so a tighter
+  // upper bound than chest cleanly separates them without false positives.
+  if (k.includes("waist")) {
+    return value > 12 && value < 55;
+  }
   return false;
 }
 
