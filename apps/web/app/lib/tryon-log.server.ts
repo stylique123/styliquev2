@@ -14,9 +14,8 @@
 // right weight for a demo.
 //
 // PRIVACY (D23 / PB17 / §3.5): muse-mode logs carry only non-identifying render
-// metadata (museId, handle, size, ease). For PHOTO mode we NEVER log the photo
-// bytes, any data URL, or anything shopper-identifying — only mode + the same
-// render metadata. The photo itself is pass-through, never persisted.
+// metadata (museId, handle, size, ease) — nothing shopper-identifying. Try-on is
+// muse-only (the upload-your-own-photo path was removed).
 
 import { promises as fs } from "fs";
 import path from "path";
@@ -29,16 +28,14 @@ export type TryonErrorCode =
   | "no_api_key"
   | "render_failed"
   | "render_no_image"
-  | "bad_photo"
   | "no_garment"
   | "invalid_asset"
   | "rate_limited"
   | "invalid_input"
-  | "muse_args"
-  | "photo_args";
+  | "muse_args";
 
 export type TryonStatus = "ok" | "error";
-export type TryonMode = "muse" | "photo";
+export type TryonMode = "muse";
 
 export type TryonLogEntry = {
   id: string;
@@ -103,8 +100,6 @@ const REMEDIATION: Record<TryonErrorCode, string | null> = {
     "The image model rejected or errored on the request. Check the prompt size, the garment/muse asset URLs, and model quota. Often transient — retry; if persistent, inspect the last prompt.",
   render_no_image:
     "Model returned a response with no image part (often a safety refusal or an over-constrained prompt). Loosen the fidelity/ease clauses or swap the garment image for a cleaner studio shot.",
-  bad_photo:
-    "Uploaded photo failed the data-URL allowlist (jpeg/png/webp/heic/heif). Surface a clearer upload error to the shopper; do not retry server-side.",
   no_garment:
     "No garment image resolved for the product — its catalog images[] is empty or points at a blocked path. Fix the product's imagery.",
   invalid_asset:
@@ -115,8 +110,6 @@ const REMEDIATION: Record<TryonErrorCode, string | null> = {
     "Request body failed Zod validation. A client is sending a malformed payload — check the TryOnPanel POST shape against the route schema.",
   muse_args:
     "Muse mode was requested without museImage/museId. Client bug — the muse picker should always set both.",
-  photo_args:
-    "Photo mode was requested without photoDataUrl. Client bug — the upload handler should always attach the data URL.",
 };
 
 export type RecordRenderInput = {

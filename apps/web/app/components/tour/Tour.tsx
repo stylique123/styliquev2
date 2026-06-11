@@ -128,7 +128,7 @@ const CHAPTERS: Chapter[] = [
         kind: "surface",
         surface: "tryon",
         headline: "Pick a model. Get your size.",
-        body: "Choose a muse that matches your frame, or upload your own photo. Mira cross-references 1,200+ shoppers to recommend a size with a fit-confidence score.",
+        body: "Choose a muse that matches your frame. Mira cross-references 1,200+ shoppers to recommend a size with a fit-confidence score.",
       },
       {
         kind: "done",

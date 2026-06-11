@@ -1201,13 +1201,11 @@ const ERR_LABELS: Record<string, string> = {
   no_api_key: "Missing API key",
   render_failed: "Model error / rejection",
   render_no_image: "No image returned",
-  bad_photo: "Bad photo upload",
   no_garment: "No garment image",
   invalid_asset: "Blocked asset path",
   rate_limited: "Rate limited",
   invalid_input: "Malformed request",
   muse_args: "Muse args missing",
-  photo_args: "Photo args missing",
   ok: "OK",
 };
 
@@ -1399,7 +1397,7 @@ function TryonHealthSection() {
               )}
             </div>
 
-            {/* By-mode split — muse (cacheable) vs photo (always live) */}
+            {/* Renders by mode — muse-only (cacheable to disk). */}
             <div
               style={{
                 background: "#161616",
@@ -1412,7 +1410,7 @@ function TryonHealthSection() {
                 Renders by mode
               </span>
               <span style={{ display: "block", fontFamily: "var(--sans)", fontSize: 11.5, color: "var(--mute)", marginTop: 6, fontStyle: "italic" }}>
-                Muse renders cache to disk; photo renders run live in-memory only (never stored).
+                Muse renders cache to disk and serve instantly on repeat.
               </span>
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 22 }}>
                 {ins.byMode.map((m) => {
