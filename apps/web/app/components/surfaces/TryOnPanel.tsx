@@ -1,8 +1,8 @@
 "use client";
 
-// Stylique Try-On Panel — v3
+// Stylique Try-On Panel — v3 (MUSE-ONLY)
 //   • Bottom-sheet modal, mobile-first.
-//   • Step 0 — Choose your muse (hyperrealistic body models) or upload a photo.
+//   • Step 0 — Choose your muse (hyperrealistic body models).
 //   • Step 1 — Height + weight (type or nudge) → live brand-exact fit pick.
 //   • Step 2 — Render on the chosen body, region-by-region fit map, size compare
 //              with a real "try this size" re-render, and combined complete-the-look
@@ -44,21 +44,12 @@ function sanitizeWornSet(worn: Product[]): Product[] {
 // only body shape, height and skin tone vary across the set. Stored once in
 // /public/muses. Display-only — no facial data is gathered or analysed.
 //
-// SIZING NOTE (muse↔size LOCK — founder: "sizing and models cannot overlap"):
-// the SIZE shown must always agree with the BODY it is displayed on, so the two
-// modes diverge by design:
-//   • AVATAR mode → the selected muse IS the body. Her real height + weight +
-//     bust/waist/hip drive the recommended size AND the per-region fit map. So a
-//     Small on the Curve muse renders genuinely tight (because the garment's
-//     S-cut is small against her 102/82/110 frame), and each muse yields her own
-//     correct size — the picture and the number can never contradict each other.
-//   • UPLOAD mode → the shopper's OWN typed height + weight drive it; the muse
-//     body never enters (there is no muse — the photo is the body).
-// This is NOT the old SIZE-1 bug: SIZE-1 was the muse body OVERRIDING typed input
-// so typing did nothing. Here, in avatar mode the muse IS the chosen body (there
-// is no separate "typed shopper" to honour); in upload mode typed input is the
-// sole driver. `pref` is retained on the data but not read — fit preference is
-// held neutral so the size is a clean function of (body × this product's cut).
+// SIZING NOTE (SIZE-1 — non-negotiable): try-on is MUSE-ONLY. The muse is the
+// VISUAL avatar only; the SIZE + per-region fit map are a clean function of the
+// shopper's OWN typed height + weight × this product's cut. The muse's body
+// measurements NEVER enter the recommender (that silent override WAS the SIZE-1
+// bug). `pref` is retained on the data but not read — fit preference is held
+// neutral so the size is a clean function of (typed body × this product's cut).
 
 type MuseBody = { bust: number; waist: number; hip: number };
 type MuseGender = "f" | "m";
@@ -98,7 +89,6 @@ function nearestMuseId(height: number, weight: number, gender: MuseGender): Muse
 }
 
 type MuseId = (typeof MUSES)[number]["id"];
-type Mode   = "avatar" | "upload";
 
 // Viewport hook — drives the desktop-modal vs mobile-bottom-sheet split.
 // Inline styles can't carry media queries, so we branch on a matchMedia signal.
@@ -138,12 +128,10 @@ function computeFit(
   age?: number,
   usualBrandSize?: string,
 ) {
-  // The body that decides the size: in avatar mode the caller passes the muse's
-  // real height/weight + bust/waist/hip (so her frame drives the size and the
-  // picture/number always agree); in upload mode the caller passes the shopper's
-  // own typed numbers and no `body` (estimated from height+weight). An explicit
-  // `body` (exact bust/waist/hip) wins; otherwise we estimate. Fit preference
-  // stays neutral so the size is a clean function of (body × this product's cut).
+  // The body that decides the size comes from the shopper's own typed numbers
+  // (estimated from height+weight). An explicit `body` (exact bust/waist/hip)
+  // wins when provided; otherwise we estimate. Fit preference stays neutral so
+  // the size is a clean function of (body × this product's cut).
   const profile = body;
   const pref: FitPref = "true";
   const rec = recommendSizeForProduct(product, {
@@ -201,17 +189,11 @@ export default function TryOnPanel({
   // choosing the avatar. A first-timer (no body) lands on Size first so the panel
   // never opens without the shopper having a frame on file.
   const [step,           setStep          ] = useState(savedBody ? 1 : 0);
-  // Upload-your-own-photo was removed (founder: muses only). `mode` is locked to
-  // "avatar" — every shopper tries garments on a curated muse. The type stays
-  // `Mode` (not the literal) so the dead `=== "upload"` display branches below
-  // still compile harmlessly; `selfie` is permanently null so they never fire.
-  const [mode]                              = useState<Mode>("avatar");
-  // NO auto-selection — the shopper MUST pick a model (or upload a photo) before
-  // we proceed. Starts null; the footer is gated until a choice is made.
+  // NO auto-selection — the shopper MUST pick a muse before we proceed. Starts
+  // null; the footer is gated until a choice is made.
   const [muse,           setMuse          ] = useState<MuseId | null>(null);
   // Women is the default cast; switching clears any muse whose gender no longer matches.
   const [gender,         setGender        ] = useState<MuseGender>("f");
-  const [selfie]                            = useState<string | null>(null);
   // Set when the shopper tries to advance without choosing — surfaces a prompt.
   const [chooseError,    setChooseError   ] = useState(false);
   const [height,         setHeight        ] = useState(savedBody?.heightCm ?? 168);
@@ -221,7 +203,7 @@ export default function TryOnPanel({
   const [usualSize,      setUsualSize     ] = useState<string>(savedBody?.usualBrandSize ?? "none");
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderPhase,    setRenderPhase   ] = useState(0);
-  // The real composited image (garment actually worn on the muse / the photo).
+  // The real composited image (garment actually worn on the muse).
   // null + renderError → graceful fallback to the studio shot.
   const [renderedUrl,    setRenderedUrl   ] = useState<string | null>(null);
   const [renderError,    setRenderError   ] = useState(false);
@@ -248,8 +230,7 @@ export default function TryOnPanel({
   const isDesktop = useIsDesktop();
 
   const isRendering = renderProgress > 0 && renderProgress < 100;
-  // null until the shopper picks one. In upload mode this stays null and the
-  // shopper's own photo is the body the garment is rendered on.
+  // null until the shopper picks one.
   const activeMuse  = muse ? (MUSES.find((m) => m.id === muse) ?? null) : null;
   // The muse whose frame best matches the shopper's typed height/weight — so the
   // body shown agrees with the size/ease the bars describe (no more contradiction).
@@ -257,10 +238,10 @@ export default function TryOnPanel({
   // Default the selection to that best match the moment we have a body and no muse
   // is chosen yet. The shopper can still override; switching gender re-defaults.
   useEffect(() => {
-    if (mode === "avatar" && !muse && height > 0 && weight > 0) {
+    if (!muse && height > 0 && weight > 0) {
       setMuse(bestMatchMuse);
     }
-  }, [mode, muse, height, weight, bestMatchMuse]);
+  }, [muse, height, weight, bestMatchMuse]);
 
   // Persist muse + body across PDP navigation (panel rec #20). A full page reload
   // remounts the widget, so without this the shopper re-picks their muse and
@@ -289,9 +270,9 @@ export default function TryOnPanel({
   // height + weight × this product's cut. The muse is the VISUAL avatar only —
   // her measurements NEVER enter the recommender (that was the SIZE-1 bug: the
   // muse silently overriding typed input so the numbers did nothing). So fitBody
-  // is always undefined; the size is estimated from the typed height/weight in
-  // BOTH avatar and upload mode, and two muses with the same typed body give the
-  // same size — the picture changes, the recommendation does not.
+  // is always undefined; the size is estimated from the typed height/weight, and
+  // two muses with the same typed body give the same size — the picture changes,
+  // the recommendation does not.
   const fitBody = undefined;
   const fitH    = height;
   const fitW    = weight;
@@ -316,11 +297,11 @@ export default function TryOnPanel({
   // no two jackets) and RE-RANKS every time a piece is added/removed — so adding a
   // top surfaces trousers, adding trousers surfaces a coat, never the same stale list.
   const outfit      = completeLookFor([currentProduct, ...lookItems]).map((e) => e.product);
-  // The body the garment is composited onto — the photo in upload mode, the
-  // chosen muse in avatar mode. null → nothing chosen yet (gates the flow).
-  const bodyImg     = mode === "upload" ? selfie : (activeMuse?.img ? resolveAsset(activeMuse.img) : null);
-  // Has the shopper made the required choice for the current mode?
-  const hasSelection = mode === "upload" ? !!selfie : !!muse;
+  // The body the garment is composited onto — the chosen muse.
+  // null → nothing chosen yet (gates the flow).
+  const bodyImg     = activeMuse?.img ? resolveAsset(activeMuse.img) : null;
+  // Has the shopper picked a muse?
+  const hasSelection = !!muse;
 
   // Reset only when a genuinely different product opens the panel from outside.
   useEffect(() => {
@@ -363,7 +344,7 @@ export default function TryOnPanel({
   // overwrite the shopper's typed height/weight (that silent autofill was the
   // SIZE-1 bug — it erased what the shopper entered, so 210cm/143kg and
   // 200cm/35kg both showed the muse's size). The shopper's typed numbers are the
-  // sole size driver in both modes; switching muse only changes the avatar shown.
+  // sole size driver; switching muse only changes the avatar shown.
 
   // Cosmetic progress crawl. It asymptotes to 92% and WAITS there for the real
   // fetch to land; runRender pushes it to 100 when the composite is back, and
@@ -393,16 +374,13 @@ export default function TryOnPanel({
   }, [renderProgress, renderPhase]);
 
   // The real compositing call. `garments[0]` is the focus piece; the rest layer
-  // on as a combined look. Muse mode hits the disk-cached static render; photo
-  // mode renders live and caches in memory only (the photo never touches disk).
+  // on as a combined look. The muse render hits the disk-cached static render.
   const runRender = useCallback(
     async (garmentsIn: Product[], sizeForRender: string) => {
-      // Fix #1 — never proceed without an explicit choice. In avatar mode a muse
-      // must be picked; in upload mode a photo must be loaded. Otherwise bail
-      // back to Step 0 and surface the "choose a model or upload a photo" prompt
-      // instead of silently auto-selecting one.
-      const useUpload = mode === "upload" && !!selfie;
-      if (!useUpload && (mode === "upload" || !activeMuse)) {
+      // Fix #1 — never proceed without an explicit muse choice. Otherwise bail
+      // back to the model step and surface the "choose a model" prompt instead of
+      // silently auto-selecting one.
+      if (!activeMuse) {
         // No model picked — bounce back to the model step (now step 1).
         setChooseError(true);
         setStep(1);
@@ -492,36 +470,21 @@ export default function TryOnPanel({
         return explicit ?? shopify ?? undefined;
       })();
 
-      const body = useUpload
-        ? {
-            mode: "photo" as const,
-            photoDataUrl: selfie!,
-            garmentImages,
-            size: sizeForRender,
-            recommendedSize: recSize,
-            garmentKind,
-            handle: focus.handle,
-            easeCm,
-            tightness,
-            bindLabel,
-            garmentFits: garmentFits.length > 1 ? garmentFits : undefined,
-            shopSlug,
-          }
-        : {
-            mode: "muse" as const,
-            museId: muse!,
-            museImage: activeMuse!.img,
-            garmentImages,
-            size: sizeForRender,
-            recommendedSize: recSize,
-            garmentKind,
-            handle: focus.handle,
-            easeCm,
-            tightness,
-            bindLabel,
-            garmentFits: garmentFits.length > 1 ? garmentFits : undefined,
-            shopSlug,
-          };
+      const body = {
+        mode: "muse" as const,
+        museId: muse!,
+        museImage: activeMuse.img,
+        garmentImages,
+        size: sizeForRender,
+        recommendedSize: recSize,
+        garmentKind,
+        handle: focus.handle,
+        easeCm,
+        tightness,
+        bindLabel,
+        garmentFits: garmentFits.length > 1 ? garmentFits : undefined,
+        shopSlug,
+      };
 
       try {
         const res = await fetch(`${SQ_TRYON_API}/api/tryon`, {
@@ -550,9 +513,9 @@ export default function TryOnPanel({
         if (token !== renderToken.current) return;
         // The render URL is served by the backend, not the storefront — a
         // relative "/api/tryon/image/<key>" must be prefixed with the backend
-        // origin or it 404s against the shop domain. A data: URL passes through.
+        // origin or it 404s against the shop domain.
         const raw = data.imageUrl ?? null;
-        const abs = raw && raw.startsWith("/") ? `${SQ_TRYON_API}${raw}` : raw;
+        const abs = raw && raw.startsWith("/") ? `${SQ_TRYON_API}${raw}` : raw; // backend-origin prefix
         setRenderedUrl(abs);
         setRenderError(!abs);
       } catch {
@@ -564,7 +527,7 @@ export default function TryOnPanel({
         if (token === renderToken.current) setRenderProgress(100);
       }
     },
-    [height, weight, muse, mode, selfie, activeMuse],
+    [height, weight, muse, activeMuse],
   );
 
   // "Generate my look" / re-render the current focus + look at the active size.
@@ -706,8 +669,6 @@ export default function TryOnPanel({
             step={isRendering ? 1 : step}
             product={currentProduct}
             muse={activeMuse}
-            selfie={selfie}
-            mode={mode}
             renderedUrl={renderedUrl}
             renderError={renderError}
             height={fitH}
@@ -833,7 +794,6 @@ export default function TryOnPanel({
             <StepResult
               product={currentProduct}
               muse={activeMuse}
-              selfie={selfie}
               height={fitH}
               weight={fitW}
               body={fitBody}
@@ -953,31 +913,27 @@ export default function TryOnPanel({
 // studio render once the look is generated. Pure display; the right column
 // owns all interaction.
 function DesktopVisual({
-  step, product, muse, selfie, mode, renderedUrl, renderError,
+  step, product, muse, renderedUrl, renderError,
   height, weight, body, displaySize,
 }: {
   step: number;
   product: Product;
   muse: (typeof MUSES)[number] | null;
-  selfie: string | null;
-  mode: Mode;
   renderedUrl: string | null;
   renderError: boolean;
   height: number;
   weight: number;
-  // Muse↔size LOCK: the effective fit body (muse's circumferences in avatar mode,
-  // undefined → estimate from height+weight in upload mode). Drives the fit map so
-  // the markers/strip agree with the body on screen.
+  // The effective fit body (muse's circumferences when available, undefined →
+  // estimate from height+weight). Drives the fit map so the markers/strip agree
+  // with the body on screen.
   body?: MuseBody;
   displaySize: string;
 }) {
   const onResult = step === 2;
-  // The body the garment is shown on: the photo in upload mode, else the chosen
-  // muse. Null when nothing's chosen yet (avatar mode pre-pick).
-  const bodyImg = mode === "upload" ? selfie : (muse?.img ? resolveAsset(muse.img) : null);
-  // Upload mode with no photo yet → a clean "your photo goes here" state, never
-  // a muse with a misleading "rendered on your frame" caption.
-  const awaitingPhoto = !onResult && ((mode === "upload" && !selfie) || (mode === "avatar" && !muse));
+  // The body the garment is shown on: the chosen muse. Null when nothing's chosen yet.
+  const bodyImg = muse?.img ? resolveAsset(muse.img) : null;
+  // No muse picked yet → a clean "choose a model" state.
+  const awaitingPhoto = !onResult && !muse;
   // The composited render. On the result step, if it failed we DON'T silently
   // swap to the studio shot here — StepResult owns the explicit error banner;
   // this pane just holds the last body image so the layout stays stable.
@@ -986,11 +942,9 @@ function DesktopVisual({
     : bodyImg ?? product.images[0];                       // body, or product as last resort
   const caption = onResult
     ? product.name
-    : mode === "upload" && selfie
-      ? "Your photo"
-      : muse
-        ? `${muse.label} · ${muse.silhouette}`
-        : "Choose a model";
+    : muse
+      ? `${muse.label} · ${muse.silhouette}`
+      : "Choose a model";
 
   // On the result step the left pane owns the fit-telling: the live fit map over
   // the worn render + a per-region "tight / true / loose" strip below it. Driven
@@ -1111,11 +1065,9 @@ function DesktopVisual({
           </p>
           {!onResult && (
             <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(199,184,255,0.7)", margin: "8px 0 0" }}>
-              {mode === "upload"
-                ? "Rendered on your frame"
-                : muse
-                  ? `${muse.silhouette} · ${muse.hint}`
-                  : "Pick the model closest to you"}
+              {muse
+                ? `${muse.silhouette} · ${muse.hint}`
+                : "Pick the model closest to you"}
             </p>
           )}
 
@@ -1442,7 +1394,7 @@ function StepSize({
   weight: number; onWeight: (v: number) => void;
   age: number;    onAge: (v: number) => void;
   usualSize: string; onUsualSize: (v: string) => void;
-  body?: MuseBody;                    // avatar mode → muse bust/waist/hip refine the fit map
+  body?: MuseBody;                    // muse bust/waist/hip refine the fit map
   fitResult: ReturnType<typeof computeFit>;
   product: Product;
 }) {
@@ -1794,16 +1746,15 @@ const LOOK_ANIM = "sqRise 440ms cubic-bezier(.2,.8,.2,1) both";
 const lookCardStagger = (i: number) => `${i * 55}ms`;
 
 function StepResult({
-  product, muse, selfie, height, weight, body, fitResult, outfit, lookItems,
+  product, muse, height, weight, body, fitResult, outfit, lookItems,
   onToggleLook, onFocus, onRemoveLook, onTryTheLook, lookDirty, onRetry,
   size, previewSize, onPreviewSize, onTryThisSize,
   renderedUrl, renderError, rateInfo, errCode, isDesktop,
 }: {
   product: Product;
   muse: (typeof MUSES)[number] | null;
-  selfie: string | null;
   height: number; weight: number;
-  body?: MuseBody;                    // avatar mode → muse bust/waist/hip refine the fit map
+  body?: MuseBody;                    // muse bust/waist/hip refine the fit map
   fitResult: ReturnType<typeof computeFit>;
   outfit: Product[];
   lookItems: Product[];
@@ -1823,29 +1774,28 @@ function StepResult({
   errCode: string | null;             // specific failure code for honest per-code copy
   isDesktop: boolean;                 // desktop → image + fit-telling live in the LEFT pane
 }) {
-  const museLabel = selfie ? "your photo" : muse?.label ?? "your model";
+  const museLabel = muse?.label ?? "your model";
   const sizeRun = product.sizes;
   // displaySize = what the fit map / badge reflect right now. A tapped (preview)
   // size updates the map instantly; the actual re-render waits for the button.
   const displaySize = previewSize ?? size;
-  // The fit map reflects the body the garment is shown on (muse↔size LOCK): in
-  // avatar mode the muse's real bust/waist/hip refine it so the map agrees with
-  // the avatar; in upload mode it's the shopper's typed height/weight alone. Same
-  // source of truth as the recommended size.
+  // The fit map reflects the body the garment is shown on — the muse's real
+  // bust/waist/hip refine it so the map agrees with the avatar. Same source of
+  // truth as the recommended size.
   const fit: SizeFit = fitBreakdown(product, displaySize, height, weight, body);
   const isRec = displaySize === fitResult.size;
   const previewing = !!previewSize && previewSize !== size;
 
   // The render shows the garment ACTUALLY worn — the real composited image of this
-  // piece on the chosen muse / the shopper's photo. We NEVER silently fall back to
-  // the bare product shot (founder: "showing just the product" is a failure).
+  // piece on the chosen muse. We NEVER silently fall back to the bare product
+  // shot (founder: "showing just the product" is a failure).
   const haveRender = !renderError && !!renderedUrl;
   // Hero list: the focus piece first, then any complete-the-look additions.
   const wornLook = [product, ...lookItems];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingBottom: 12, animation: "sqFadeSlide 300ms ease both" }}>
-      {/* Render — the piece worn on the model/photo, with a live fit map.
+      {/* Render — the piece worn on the muse, with a live fit map.
           On error we show an explicit retry, NOT the bare product.
           On DESKTOP the worn render + fit map + size badge live in the LEFT pane
           (DesktopVisual) — here we only keep the explicit error/retry banner so
@@ -1892,7 +1842,7 @@ function StepResult({
             )}
           </div>
         ) : (
-          /* The garment, actually worn on the model / shopper's photo */
+          /* The garment, actually worn on the muse */
           <img
             src={renderedUrl ?? wornLook[0].images[0]}
             alt={`${product.name} worn`}
@@ -1930,11 +1880,8 @@ function StepResult({
             background: "rgba(14,11,20,0.8)", border: "1px solid rgba(255,255,255,0.12)",
             borderRadius: 999, padding: "5px 11px", backdropFilter: "blur(8px)",
           }}>
-            {selfie && (
-              <span style={{ width: 18, height: 18, borderRadius: "50%", overflow: "hidden", flexShrink: 0, backgroundImage: `url(${selfie})`, backgroundSize: "cover", backgroundPosition: "center" }} />
-            )}
             <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(255,255,255,0.8)" }}>
-              {selfie ? "Fit to your photo" : `Fit to ${museLabel}`}
+              {`Fit to ${museLabel}`}
             </span>
           </div>
         )}

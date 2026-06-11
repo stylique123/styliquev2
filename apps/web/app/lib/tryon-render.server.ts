@@ -1,24 +1,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Real virtual try-on — compositing engine (server-only).
+// Real virtual try-on — compositing engine (server-only). MUSE-ONLY.
 //
-// This is the actual fitting-room render: it puts a garment ON a person
-// (a pre-rendered muse OR the shopper's own uploaded photo) using Gemini's
-// image model (nano-banana, `gemini-2.5-flash-image`). It returns a genuine
-// composited image, not the catalog studio shot.
+// This is the actual fitting-room render: it puts a garment ON a pre-rendered
+// muse using Gemini's image model (nano-banana, `gemini-2.5-flash-image`). It
+// returns a genuine composited image, not the catalog studio shot. The
+// upload-your-own-photo path was removed — try-on is muse-only.
 //
 // CACHING (founder spec):
-//   • Muse renders  → deterministic for (muse × product(s) × size). Cached to
-//     disk under public/tryon/<key>.png and served as a static URL. "Done once."
-//   • Photo renders → run live when the shopper uploads, cached IN MEMORY only
-//     (keyed by a hash of the photo bytes + product + size). The shopper's photo
-//     and any composite derived from it NEVER touch disk — privacy invariant
-//     D23 / PB17 / §3.5: shopper images are pass-through, never persisted.
+//   • Muse renders → deterministic for (muse × product(s) × size). Cached to a
+//     writable disk dir + memory and served via a dynamic route. "Done once."
 //
 // COMBINED LOOK: multiple garments are composited sequentially (garment A onto
 // the person → result → garment B onto the result → …) so "complete the look"
 // is a real multi-piece render on one body.
 // ─────────────────────────────────────────────────────────────────────────────
-import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -50,17 +45,9 @@ const BAKED_MUSE_DIR = path.join(PUBLIC_DIR, "tryon");
 // Railway), and what makes a muse "come instantly the second time" (cache hit).
 const MUSE_CACHE_DIR = process.env.TRYON_CACHE_DIR ?? path.join(os.tmpdir(), "stylique-tryon");
 
-// In-memory cache for photo composites (never written to disk).
-const photoCache = new Map<string, string>(); // key → data URL
-// Each composite is ~1.4–1.9 MB. Caps are conservative so worst-case resident
-// memory (photo data-URLs + muse bytes) stays well under a small container's
-// limit: ~40×1.9MB + ~80×1.4MB ≈ ~190 MB, vs the prior 200+400 ≈ ~940 MB OOM
-// risk. (Muse misses re-render from the persistent disk cache anyway, so a
-// smaller in-memory tier just adds a fast disk read, not a provider call.)
-const PHOTO_CACHE_CAP = 40;
-
 // In-memory byte cache for muse renders — instant serving without a disk read,
-// the hot path for "the muse comes up instantly the second time".
+// the hot path for "the muse comes up instantly the second time". Each composite
+// is ~1.4 MB; cap keeps worst-case resident memory bounded (~80×1.4MB ≈ 110 MB).
 const museByteCache = new Map<string, Buffer>(); // key → PNG bytes
 const MUSE_BYTE_CACHE_CAP = 80;
 
@@ -96,14 +83,12 @@ export async function readMuseRenderBytes(key: string): Promise<Buffer | null> {
   return null;
 }
 
-export type TryOnMode = "muse" | "photo";
+export type TryOnMode = "muse";
 
 export interface TryOnRequest {
   mode: TryOnMode;
-  /** Public path of the muse image, e.g. "/muses/slim.png" (muse mode only). */
+  /** Public path of the muse image, e.g. "/muses/slim.png". */
   museImage?: string;
-  /** Data URL of the shopper's photo (photo mode only — in-memory only). */
-  photoDataUrl?: string;
   /** Public paths of the garment image(s), first = focus piece, rest = look. */
   garmentImages: string[];
   /** Size label (XS/S/M/L/XL) — influences the rendered fit. */
@@ -155,13 +140,11 @@ export interface GarmentFit {
 }
 
 export interface TryOnResult {
-  /** A URL the client can render: static "/tryon/..." (muse) or a data URL (photo). */
+  /** A URL the client can render — the dynamic muse-render route. */
   imageUrl: string;
   cached: boolean;
   ms: number;
 }
-
-const DATA_URL_RE = /^data:image\/(jpeg|png|webp|heic|heif);base64,[A-Za-z0-9+/=]+$/;
 
 // Only allow reading assets we actually ship — block path traversal.
 // Accepts absolute URLs from our own origin (the Shopify storefront widget sends
@@ -563,72 +546,45 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
   const garmentImages = req.garmentImages.filter(Boolean).slice(0, 4);
   if (garmentImages.length === 0) throw new Error("no_garment");
 
-  // ── Muse mode: deterministic for (muse × product(s) × size). Cached in memory
+  // ── Muse render: deterministic for (muse × product(s) × size). Cached in memory
   //    + a writable disk dir + the baked public dir, served via a DYNAMIC route
   //    (/api/tryon/image/<key>) — NOT a static public/ path (those 404 at runtime
   //    on Railway). Second request for the same muse/product/size is an instant
   //    cache hit. ──
-  if (req.mode === "muse") {
-    if (!req.museImage || !req.museId || !req.handle) throw new Error("muse_args");
-    // Look-piece cache identity = the file basename MINUS the trailing numeric
-    // index (-1/-2), but KEEPING any colorway suffix. The old strip also removed
-    // `-[a-z]+\.png` which collapsed `onyx-silk-slip-ivory.png` and
-    // `onyx-silk-slip-onyx.png` to the same key → the WRONG colorway served from
-    // cache. Keeping the colorway makes each colorway its own cache entry.
-    const lookHandles = garmentImages
-      .slice(1)
-      .map((g) => g.split("/").pop()?.replace(/\.png$/i, "").replace(/-\d+$/, "") ?? "");
-    const key = museCacheKey(req.shopSlug, req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
-    const url = museRenderUrl(key);
+  if (!req.museImage || !req.museId || !req.handle) throw new Error("muse_args");
+  // Look-piece cache identity = the file basename MINUS the trailing numeric
+  // index (-1/-2), but KEEPING any colorway suffix. The old strip also removed
+  // `-[a-z]+\.png` which collapsed `onyx-silk-slip-ivory.png` and
+  // `onyx-silk-slip-onyx.png` to the same key → the WRONG colorway served from
+  // cache. Keeping the colorway makes each colorway its own cache entry.
+  const lookHandles = garmentImages
+    .slice(1)
+    .map((g) => g.split("/").pop()?.replace(/\.png$/i, "").replace(/-\d+$/, "") ?? "");
+  const key = museCacheKey(req.shopSlug, req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
+  const url = museRenderUrl(key);
 
-    // Cache hit anywhere (memory → writable disk → baked) → instant.
-    const cached = await readMuseRenderBytes(key);
-    if (cached) return { imageUrl: url, cached: true, ms: Date.now() - t0 };
+  // Cache hit anywhere (memory → writable disk → baked) → instant.
+  const cached = await readMuseRenderBytes(key);
+  if (cached) return { imageUrl: url, cached: true, ms: Date.now() - t0 };
 
-    // Miss → render the composite.
-    const personB64 = await readAssetB64(req.museImage);
-    const garmentB64s = await Promise.all(garmentImages.map(readAssetB64));
-    const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits, req.garmentFits?.[0]?.name);
-    const out = await renderImage(prompt, personB64, "image/png", garmentB64s);
-    const bytes = Buffer.from(out.b64, "base64");
-
-    // Save so it "comes up instantly the second time": memory always; writable
-    // disk best-effort (survives across requests within the container lifetime).
-    rememberMuseBytes(key, bytes);
-    void (async () => {
-      try {
-        await fs.mkdir(MUSE_CACHE_DIR, { recursive: true });
-        await fs.writeFile(path.join(MUSE_CACHE_DIR, `${key}.png`), bytes);
-      } catch {
-        /* read-only FS — memory cache still serves this instance */
-      }
-    })();
-
-    return { imageUrl: url, cached: false, ms: Date.now() - t0 };
-  }
-
-  // ── Photo mode: in-memory cache only, returns a data URL. Never hits disk. ──
-  if (!req.photoDataUrl || !DATA_URL_RE.test(req.photoDataUrl)) throw new Error("bad_photo");
-  const personB64 = req.photoDataUrl.split(",")[1] ?? "";
-  const personMime = req.photoDataUrl.slice(5, req.photoDataUrl.indexOf(";")) || "image/png";
-  const photoHash = createHash("sha256").update(personB64).digest("hex").slice(0, 24);
-  const lookKey = garmentImages.join("|");
-  const memKey = `p-${photoHash}-${req.handle ?? "x"}-${req.size}-${easeBucket(req.easeCm)}-${createHash("sha256").update(lookKey).digest("hex").slice(0, 12)}`;
-  const hit = photoCache.get(memKey);
-  if (hit) return { imageUrl: hit, cached: true, ms: Date.now() - t0 };
-
+  // Miss → render the composite.
+  const personB64 = await readAssetB64(req.museImage);
   const garmentB64s = await Promise.all(garmentImages.map(readAssetB64));
-  // Bug 4: pass per-piece fits in photo mode too — a combined look on the
-  // shopper's own photo must size each garment to ITS own size (pant at the
-  // pant's, top at the top's), exactly as muse mode does. Omitting garmentFits
-  // here collapsed every piece to one global size on the photo path.
   const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits, req.garmentFits?.[0]?.name);
-  const out = await renderImage(prompt, personB64, personMime, garmentB64s);
-  const dataUrl = `data:${out.mime};base64,${out.b64}`;
-  if (photoCache.size >= PHOTO_CACHE_CAP) {
-    const first = photoCache.keys().next().value;
-    if (first) photoCache.delete(first);
-  }
-  photoCache.set(memKey, dataUrl);
-  return { imageUrl: dataUrl, cached: false, ms: Date.now() - t0 };
+  const out = await renderImage(prompt, personB64, "image/png", garmentB64s);
+  const bytes = Buffer.from(out.b64, "base64");
+
+  // Save so it "comes up instantly the second time": memory always; writable
+  // disk best-effort (survives across requests within the container lifetime).
+  rememberMuseBytes(key, bytes);
+  void (async () => {
+    try {
+      await fs.mkdir(MUSE_CACHE_DIR, { recursive: true });
+      await fs.writeFile(path.join(MUSE_CACHE_DIR, `${key}.png`), bytes);
+    } catch {
+      /* read-only FS — memory cache still serves this instance */
+    }
+  })();
+
+  return { imageUrl: url, cached: false, ms: Date.now() - t0 };
 }

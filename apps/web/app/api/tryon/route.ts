@@ -1,14 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Virtual try-on API — real garment-on-body compositing.
+// Virtual try-on API — real garment-on-body compositing. MUSE-ONLY.
 //
-// POST { mode, museId?, museImage?, photoDataUrl?, garmentImages[], size,
+// POST { mode, museId?, museImage?, garmentImages[], size,
 //        recommendedSize?, handle? }
 //   → { imageUrl, cached, ms }
 //
-// muse mode  → deterministic, cached to disk, returns a static "/tryon/..." URL.
-// photo mode → live render, cached IN MEMORY only, returns a data: URL.
-//              The shopper's photo bytes are pass-through only — never written
-//              to disk (privacy invariant D23 / PB17 / §3.5).
+// muse mode → deterministic, disk+memory cached, returns the dynamic render URL.
+// (The upload-your-own-photo path was removed — try-on is muse-only.)
 // ─────────────────────────────────────────────────────────────────────────────
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -20,13 +18,10 @@ import { products as catalog } from "../../lib/catalog";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DATA_URL_RE = /^data:image\/(jpeg|png|webp|heic|heif);base64,[A-Za-z0-9+/=]+$/;
-
 const Body = z.object({
-  mode: z.enum(["muse", "photo"]),
+  mode: z.literal("muse"),
   museId: z.string().max(64).optional(),
   museImage: z.string().max(256).optional(),
-  photoDataUrl: z.string().refine((v) => DATA_URL_RE.test(v), "bad_photo").optional(),
   garmentImages: z.array(z.string().max(256)).min(1).max(4),
   size: z.string().max(8),
   recommendedSize: z.string().max(8).optional(),
@@ -84,7 +79,7 @@ export async function POST(req: Request) {
   const b = parsed.data;
 
   // Non-identifying render metadata shared by every log entry for this attempt.
-  // PRIVACY (D23/PB17/§3.5): NEVER log photoDataUrl/museImage bytes — only this.
+  // PRIVACY (D23/PB17/§3.5): NEVER log museImage bytes — only this.
   const meta = {
     mode: b.mode,
     handle: b.handle ?? null,
@@ -96,13 +91,9 @@ export async function POST(req: Request) {
   const logErr = (errorCode: TryonErrorCode, ms?: number | null) =>
     void recordRender({ ...meta, status: "error", errorCode, ms }).catch(() => {});
 
-  if (b.mode === "muse" && (!b.museImage || !b.museId)) {
+  if (!b.museImage || !b.museId) {
     logErr("muse_args");
     return NextResponse.json({ error: "muse_args" }, { status: 400 });
-  }
-  if (b.mode === "photo" && !b.photoDataUrl) {
-    logErr("photo_args");
-    return NextResponse.json({ error: "photo_args" }, { status: 400 });
   }
 
   // Validate handle + size against the real catalog BEFORE rendering. Without
@@ -126,7 +117,6 @@ export async function POST(req: Request) {
     const result = await renderTryOn({
       mode: b.mode,
       museImage: b.museImage,
-      photoDataUrl: b.photoDataUrl,
       garmentImages: b.garmentImages,
       size: b.size,
       recommendedSize: b.recommendedSize,
@@ -154,7 +144,7 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : "render_failed";
     // Map known internal errors to a stable client vocabulary; log details server-side.
     console.error("[tryon] render error", msg);
-    const known = ["no_api_key", "render_failed", "render_no_image", "bad_photo", "no_garment"];
+    const known = ["no_api_key", "render_failed", "render_no_image", "no_garment"];
     // invalid_asset is thrown as "invalid_asset:<path>" — keep its class for the log,
     // but the client vocabulary stays render_failed (don't leak the path).
     const isInvalidAsset = msg.startsWith("invalid_asset");
