@@ -328,13 +328,25 @@ export async function buildOverview(args: {
   // Of shoppers who confirmed a cart this window, what % came back for a 2nd
   // confirmed cart. CART_CONFIRMED has no order value, so this is a repeat-
   // PURCHASER rate, not $-weighted — labeled as such in the UI (PB19 honesty).
-  const confirmRows = await prisma.analyticsEvent.groupBy({
-    by: ["shopperId"],
+  // ONE order emits ONE CART_CONFIRMED per line item (see webhooks.orders.fulfilled),
+  // so counting raw events per shopper made a single multi-item order look like a
+  // repeat purchase — inflating this rate. Count DISTINCT orderIds per shopper
+  // instead (fall back to per-event only when an older row carries no orderId).
+  const confirmRows = await prisma.analyticsEvent.findMany({
     where: { shopId: args.shopId, name: "CART_CONFIRMED", createdAt: { gte: since }, shopperId: { not: null } },
-    _count: { _all: true },
-  }).catch(() => [] as Array<{ shopperId: string | null; _count: { _all: number } }>);
-  const totalBuyers = confirmRows.length;
-  const repeatBuyers = confirmRows.filter((r) => r._count._all >= 2).length;
+    select: { id: true, shopperId: true, payload: true },
+  }).catch(() => [] as Array<{ id: string; shopperId: string | null; payload: unknown }>);
+  const ordersByShopper = new Map<string, Set<string>>();
+  for (const r of confirmRows) {
+    if (!r.shopperId) continue;
+    const orderId = (r.payload as { orderId?: string | number } | null)?.orderId;
+    const orderKey = orderId != null ? `o:${orderId}` : `e:${r.id}`;
+    let set = ordersByShopper.get(r.shopperId);
+    if (!set) { set = new Set(); ordersByShopper.set(r.shopperId, set); }
+    set.add(orderKey);
+  }
+  const totalBuyers = ordersByShopper.size;
+  const repeatBuyers = [...ordersByShopper.values()].filter((s) => s.size >= 2).length;
   const repeatPurchaseRate = {
     pct: totalBuyers > 0 ? Math.round((repeatBuyers / totalBuyers) * 1000) / 10 : 0,
     repeatShoppers: repeatBuyers,
