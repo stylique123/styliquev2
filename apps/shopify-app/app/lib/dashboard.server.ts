@@ -164,6 +164,11 @@ export async function buildOverview(args: {
     // itself" answer. miraRoiMultiple e.g. 31 = $14,200 assisted ÷ $449 plan.
     miraRoiMultiple: number;
     assistedAovCents: number;
+    // Ecom/Retention panel #1 — MEASURED repeat-PURCHASER rate (count-based;
+    // CART_CONFIRMED carries no order value, so this is honestly "% of shoppers
+    // who confirmed a cart that came back for a SECOND confirmed cart this
+    // window", not $-weighted). The retention lever.
+    repeatPurchaseRate: { pct: number; repeatShoppers: number; totalShoppers: number };
     tryOnSessions: number;
     fitSubmitted: number;
     signupsClaimed: number;
@@ -229,6 +234,10 @@ export async function buildOverview(args: {
       askCount: number; intensity: number; lastSeen: Date;
       recoverableRevenueEst: number;
     }>;
+    // Unmet Demand Index (Merch-buyer panel) — ONE modeled $ headline of demand
+    // we couldn't fulfil this window: Σ gap revenue-at-risk (high end) + Σ
+    // near-miss recoverable revenue. A range, labeled Est. in the UI (PB19).
+    unmetDemandIndexUsd: { low: number; high: number };
   } | null;
   taste: {
     topColorFamilies: Array<{ key: string; share: number }>;
@@ -315,6 +324,23 @@ export async function buildOverview(args: {
     if (Number.isFinite(n) && n > 0) miraAssistedRevenueCents += n;
   }
 
+  // ─── Repeat-purchase rate (Ecom/Retention panel #1 — MEASURED, count-based) ─
+  // Of shoppers who confirmed a cart this window, what % came back for a 2nd
+  // confirmed cart. CART_CONFIRMED has no order value, so this is a repeat-
+  // PURCHASER rate, not $-weighted — labeled as such in the UI (PB19 honesty).
+  const confirmRows = await prisma.analyticsEvent.groupBy({
+    by: ["shopperId"],
+    where: { shopId: args.shopId, name: "CART_CONFIRMED", createdAt: { gte: since }, shopperId: { not: null } },
+    _count: { _all: true },
+  }).catch(() => [] as Array<{ shopperId: string | null; _count: { _all: number } }>);
+  const totalBuyers = confirmRows.length;
+  const repeatBuyers = confirmRows.filter((r) => r._count._all >= 2).length;
+  const repeatPurchaseRate = {
+    pct: totalBuyers > 0 ? Math.round((repeatBuyers / totalBuyers) * 1000) / 10 : 0,
+    repeatShoppers: repeatBuyers,
+    totalShoppers: totalBuyers,
+  };
+
   // ─── headline ────────────────────────────────────────────────────────
   const headline = {
     chatSessions:        evt("CHAT_OPENED"),
@@ -332,6 +358,7 @@ export async function buildOverview(args: {
     assistedAovCents:    assistedRows.length > 0
       ? Math.round(miraAssistedRevenueCents / assistedRows.length)
       : 0,
+    repeatPurchaseRate,
     tryOnSessions:       evt("WIDGET_OPENED"),
     fitSubmitted:        evt("WIDGET_FIT_SUBMITTED"),
     signupsClaimed:      evt("SIGNUP_CLAIMED"),
@@ -504,24 +531,34 @@ export async function buildOverview(args: {
         recoverableRevenueEst: Math.round((n.count * aovCents * 0.5) / 100), // dollars, modeled
       }));
 
+    const gapsRanked = gapRows
+      .map((g) => {
+        const count = g._count._all;
+        const lastSeen = g._max.createdAt ?? new Date(0);
+        return {
+          query: g.normalizedQuery, count, lastSeen,
+          intensity: Math.round(count * recencyWeight(lastSeen) * 100) / 100,
+          canonicalCategory: canonicalGapCategory(g.normalizedQuery),
+          revenueLeakRange: {
+            low: Math.round((count * aovCents * 0.2) / 100),
+            high: Math.round((count * aovCents * 0.4) / 100),
+          },
+        };
+      })
+      .sort((a, b) => b.intensity - a.intensity);
+
+    // Unmet Demand Index — one modeled $ range across gaps + near-misses.
+    const nearMissSum = nearMisses.reduce((s, n) => s + n.recoverableRevenueEst, 0);
+    const unmetDemandIndexUsd = {
+      low: gapsRanked.reduce((s, g) => s + g.revenueLeakRange.low, 0) + Math.round(nearMissSum * 0.6),
+      high: gapsRanked.reduce((s, g) => s + g.revenueLeakRange.high, 0) + nearMissSum,
+    };
+
     catalog = {
       topQueries: qCount.slice(0, 10).map(([k, v]) => ({ query: k, count: v })),
-      gaps: gapRows
-        .map((g) => {
-          const count = g._count._all;
-          const lastSeen = g._max.createdAt ?? new Date(0);
-          return {
-            query: g.normalizedQuery, count, lastSeen,
-            intensity: Math.round(count * recencyWeight(lastSeen) * 100) / 100,
-            canonicalCategory: canonicalGapCategory(g.normalizedQuery),
-            revenueLeakRange: {
-              low: Math.round((count * aovCents * 0.2) / 100),
-              high: Math.round((count * aovCents * 0.4) / 100),
-            },
-          };
-        })
-        .sort((a, b) => b.intensity - a.intensity),
+      gaps: gapsRanked,
       nearMisses,
+      unmetDemandIndexUsd,
     };
   }
 
