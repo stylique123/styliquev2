@@ -40,6 +40,7 @@ export default function AppLayout() {
     <AppProvider apiKey={apiKey} isEmbeddedApp>
       <ui-nav-menu>
         <Link to="/app" rel="home">Home</Link>
+        <Link to="/app/dashboard">Dashboard</Link>
         <Link to="/app/catalog">Catalog</Link>
         <Link to="/app/billing">Billing</Link>
         <Link to="/app/settings/stylist">Stylist</Link>
