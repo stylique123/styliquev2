@@ -147,7 +147,7 @@ function buildJobs(): Job[] {
   return jobs;
 }
 
-async function processSlice(jobs: Job[]): Promise<{ warmed: number; cached: number; errors: number }> {
+async function processSlice(jobs: Job[], shopSlug?: string): Promise<{ warmed: number; cached: number; errors: number }> {
   let warmed = 0;
   let cached = 0;
   let errors = 0;
@@ -161,6 +161,12 @@ async function processSlice(jobs: Job[]): Promise<{ warmed: number; cached: numb
       try {
         const r = await renderTryOn({
           mode: "muse",
+          // Brand partition: without this, warm keys land in the "_" partition
+          // (shopKey(undefined)) while live storefront renders use the brand
+          // slug — so the warm renders sit unused and every shopper pays a fresh
+          // render. Passing shopSlug makes warm keys byte-match the brand's live
+          // keys. Demo prewarm (no shopSlug) stays in "_", matching demo renders.
+          shopSlug,
           museId: job.museId,
           museImage: job.museImage,
           garmentImages: job.garmentImages,
@@ -189,19 +195,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { offset?: number; limit?: number } = {};
+  let body: { offset?: number; limit?: number; shopSlug?: string } = {};
   try {
-    body = (await req.json()) as { offset?: number; limit?: number };
+    body = (await req.json()) as { offset?: number; limit?: number; shopSlug?: string };
   } catch {
     /* empty body = defaults */
   }
   const offset = Math.max(0, Math.floor(body.offset ?? 0));
   const limit = Math.min(20, Math.max(1, Math.floor(body.limit ?? 6)));
+  // Brand to partition the warm cache under — must match the shopSlug the live
+  // storefront render passes, or the warmed keys never get hit. Absent = demo.
+  const shopSlug = typeof body.shopSlug === "string" && body.shopSlug.trim() ? body.shopSlug.trim() : undefined;
 
   const allJobs = buildJobs();
   const slice = allJobs.slice(offset, offset + limit);
   const t0 = Date.now();
-  const { warmed, cached, errors } = await processSlice(slice);
+  const { warmed, cached, errors } = await processSlice(slice, shopSlug);
   const nextOffset = offset + slice.length;
   const done = nextOffset >= allJobs.length;
 
