@@ -1,83 +1,68 @@
-# Database Migration — Clean Baseline
+# Stylique — Prisma migration runbook
 
-## What this is
+> **State after the audit fix (P0 #3):** the migration history is now a **single
+> authoritative baseline** — `prisma/migrations/00000000000000_baseline`, generated
+> from the current `schema.prisma`. The old 15-migration chain (two conflicting full
+> baselines: `20250528000000_clean_baseline` creating `PlanTier` as
+> `STARTER/GROWTH/ULTIMATE` and `20260526034443_init` re-creating it as
+> `GROWTH/PRO/SCALE/ENTERPRISE`) is **deleted** — that chain aborted a fresh
+> `prisma migrate deploy` with `duplicate_object` on `CREATE TYPE "PlanTier"`.
 
-`packages/db/prisma/migrations/20250528000000_clean_baseline/migration.sql` is a
-**clean baseline migration** that consolidates every sprint session (sprints 1–6
-and all in-between additive changes) into a single, authoritative CREATE script
-that fully reflects the current `schema.prisma`.
-
-Previous migration directories are preserved and must NOT be deleted unless you
-are on a completely fresh database (see the warning below).
-
----
-
-## Applying to a fresh database
-
-Run Prisma's standard deploy command from the repo root:
+## Fresh database (CI / staging / DR / a new Railway DB)
 
 ```bash
-pnpm --filter @stylique/db exec prisma migrate deploy
+cd packages/db
+DATABASE_URL="<fresh empty postgres>" npx prisma migrate deploy
 ```
 
-On a fresh DB, Prisma will walk every migration in chronological order.  
-The earlier sprint migrations will execute first; the baseline migration will then
-be a no-op because all objects already exist — **OR** you can mark the sprint
-migrations as already applied and only run the baseline (see below).
+Applies the single baseline → a clean DB that **exactly matches `schema.prisma`**.
+Verified: a fresh `migrate deploy` on a scratch Postgres, then
+`migrate diff --from-url <db> --to-schema-datamodel prisma/schema.prisma`, returns an
+empty migration. No collision, no manual steps.
 
-If you want a single-migration fresh start (CI, staging, new deployment):
+## The LIVE production DB — ONE-TIME reconciliation (deliberate, not on a deploy)
 
-1. Create a fresh Postgres database.
-2. Mark all old migrations as applied without running them:
-   ```bash
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260526034443_init
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260526035622_step2_shopify
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260526075653_step3_demo_events
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260526093809_step4_widget_events
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260527032800_shopper_account_and_chat_history
-   pnpm --filter @stylique/db exec prisma migrate resolve --applied 20260527112758_layer_2_taste_and_events
-   ```
-3. Then deploy only the baseline:
-   ```bash
-   pnpm --filter @stylique/db exec prisma migrate deploy
-   ```
-
----
-
-## Resetting a development database
+The live Neon DB was provisioned via `prisma db push`, so it already has the schema but
+**no `_prisma_migrations` row for the baseline**. Today the Railway services do NOT run
+`migrate` on boot, so nothing is broken right now. Before the live DB could ever run
+`migrate deploy`, mark the baseline as already-applied so deploy doesn't try to re-create
+existing tables:
 
 ```bash
-pnpm --filter @stylique/db exec prisma migrate reset --force
+cd packages/db
+DATABASE_URL="<live neon url>" npx prisma migrate resolve --applied 00000000000000_baseline
 ```
 
-This drops and recreates the database from scratch, running every migration from
-the beginning (including the baseline). Use only in local development — never on
-production.
+Metadata-only (writes one `_prisma_migrations` row); touches no table. Run once.
 
----
+### Beauty-removal drift (separate, optional cleanup)
 
-## WARNING — existing production databases
-
-Do **NOT** delete the old sprint migration files if you have a live production
-database that ran those migrations. Prisma tracks applied migrations in the
-`_prisma_migrations` table. Deleting a migration file that is recorded there
-causes Prisma to error on the next `migrate deploy`.
-
-For any existing production database that has already run the sprint migrations,
-mark the new baseline as applied without running it:
+`schema.prisma` dropped the beauty fields / `SavedRoutine` / `BEAUTY_*` enum values, but
+the **live** DB still has those orphan columns/values (db-push history, never dropped).
+They are harmless — no code reads them. To converge the live DB with the schema, after a
+backup:
 
 ```bash
-pnpm --filter @stylique/db exec prisma migrate resolve --applied 20250528000000_clean_baseline
+DATABASE_URL="<live>" npx prisma migrate diff \
+  --from-url "<live>" --to-schema-datamodel prisma/schema.prisma --script
+# shows the DROP COLUMN / DROP TYPE for the orphan beauty objects → review, then apply.
 ```
 
-This tells Prisma "the schema this migration would create is already present"
-and skips execution.
+Not required for correctness.
 
----
+## Changing the schema going forward
 
-## Schema source of truth
+```bash
+cd packages/db
+# edit prisma/schema.prisma, then:
+DATABASE_URL="<a shadow/dev db>" npx prisma migrate dev --name <change>
+```
 
-`packages/db/prisma/schema.prisma` is always the canonical source.  
-The baseline SQL was generated by hand from that file on **2025-05-28**.  
-Any future schema changes must go through `prisma migrate dev` as normal to
-produce incremental migration files on top of this baseline.
+Creates a new incremental migration on top of the baseline. Commit it. A fresh
+`migrate deploy` then runs baseline → your new migration.
+
+## Railway deploy note
+
+`.railwayignore` (excludes `node_modules/.git/.next/build/dist`, keeps `apps/web/public`)
+is unchanged. The services do **not** run `migrate deploy` on boot — provisioning is an
+explicit operator step per the above.
