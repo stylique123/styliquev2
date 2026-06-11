@@ -1814,9 +1814,16 @@ export default function MiraWidget() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onOpen = () => {
-      const p = currentProduct()
-        ?? catalog.find((x) => x.handle === "onyx-silk-slip")
-        ?? catalog[0];
+      const real = currentProduct();
+      if (real) { setTryOn(real); return; }
+      // On a REAL storefront (ASSET_BASE set) NEVER fall back to the demo
+      // catalog — opening the fitting room on onyx-silk-slip / catalog[0] would
+      // show the wrong garment (not the merchant's product). If the PDP product
+      // isn't registered yet, open Mira instead — her opener fetches the real
+      // product and registers it, so the next try-on click works on the right
+      // piece. The demo (ASSET_BASE === "") keeps its hero fallback.
+      if (ASSET_BASE) { setOpen(true); return; }
+      const p = catalog.find((x) => x.handle === "onyx-silk-slip") ?? catalog[0];
       if (p) setTryOn(p);
     };
     document.addEventListener("stylique:open-tryon", onOpen as EventListener);
