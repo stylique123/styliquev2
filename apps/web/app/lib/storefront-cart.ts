@@ -82,6 +82,11 @@ export async function addToCart(handle: string, size: string | null, quantity = 
 export async function addOutfitToCart(pieces: Array<{ handle: string; size: string | null }>): Promise<CartResult> {
   if (!onStorefront()) return { ok: true, real: false };
   const ids = await Promise.all(pieces.map((p) => resolveVariant(p.handle, p.size)));
+  if (ids.some((id) => !id)) {
+    const unresolved = pieces.filter((_, index) => !ids[index]).map((p) => p.handle);
+    console.warn("[stylique] cart:add-outfit unresolved_variants", { unresolved });
+    return { ok: false, real: true, error: "variant_not_found" };
+  }
   const items = ids.map((id, i) => (id ? { id, quantity: 1 } : null)).filter(Boolean) as Array<{ id: number; quantity: number }>;
   if (!items.length) {
     console.warn("[stylique] cart:add-outfit no_variants", { pieces });

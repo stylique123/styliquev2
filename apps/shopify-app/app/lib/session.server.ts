@@ -66,7 +66,11 @@ export async function getOrCreateShopperSession(args: {
       return { row: existing, setCookie: null };
     }
   }
-  const sessionId = args.cookieId && /^[a-z0-9_-]{8,64}$/i.test(args.cookieId) ? args.cookieId : randomId();
+  // `sessionId` is globally unique in the schema. If a valid cookie belongs to
+  // another shop, reusing it here would violate that constraint and make the
+  // first request on the second merchant fail. Mint a shop-local identity and
+  // replace the cookie instead.
+  const sessionId = randomId();
   const created = await prisma.shopperSession.create({
     data: { sessionId, shopifyDomain: args.shopifyDomain },
     select: { id: true, sessionId: true },

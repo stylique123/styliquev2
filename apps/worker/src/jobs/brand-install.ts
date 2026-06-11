@@ -13,7 +13,7 @@
 // provider; failed steps land in NotificationKind for the brand to retry.
 
 import { prisma } from "@stylique/db";
-import { createHash } from "node:crypto";
+import { computeTryOnCacheKey } from "@stylique/core";
 import type { Queue } from "bullmq";
 
 export type BrandInstallJobData = {
@@ -129,12 +129,17 @@ export async function processBrandInstall(
           const garmentUrl = p.images[0]?.url;
           if (!garmentUrl) continue;
 
-          // Cache key must match processTryOnRender exactly:
-          //   sha256(shopId | productId | mode | modelHint).slice(0, 40)
-          const cacheKey = createHash("sha256")
-            .update(`${data.shopId}|${p.id}|BODY_MODEL|slim`)
-            .digest("hex")
-            .slice(0, 40);
+          // Prewarm the no-profile fallback. Personalized size/body contexts
+          // intentionally get their own live render rather than a wrong hit.
+          const renderContextKey = "size-unknown|body-unknown";
+          const cacheKey = computeTryOnCacheKey({
+            shopId: data.shopId,
+            productId: p.id,
+            mode: "BODY_MODEL",
+            modelHint: "slim",
+            renderContextKey,
+          });
+          if (!cacheKey) continue;
 
           // Skip if already cached from a previous install (idempotent).
           const existing = await prisma.tryOnSession.findFirst({
@@ -168,6 +173,7 @@ export async function processBrandInstall(
               mode: "BODY_MODEL",
               providerKey: prewarmProvider,
               modelHint: "slim",
+              renderContextKey,
               garmentUrl,
               personImageBase64: undefined,
               personImageMime: undefined,

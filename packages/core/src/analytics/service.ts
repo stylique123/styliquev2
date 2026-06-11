@@ -1,12 +1,12 @@
 import type { PrismaClient } from "@stylique/db";
-import { EventPayloadSchemas, type EventName } from "@stylique/types";
+import { safeParseEventPayload, type EventName } from "@stylique/types";
 import type { AnalyticsService, TrackInput } from "./index.js";
 
 export function createAnalyticsService(prisma: PrismaClient): AnalyticsService {
   function validate(input: TrackInput): unknown {
-    const schema = EventPayloadSchemas[input.name as EventName];
-    if (!schema) throw new Error(`Unknown event: ${input.name}`);
-    return schema.parse(input.payload); // throws ZodError if invalid
+    const parsed = safeParseEventPayload(input.name as EventName, input.payload);
+    if (!parsed.success) throw parsed.error;
+    return parsed.data;
   }
 
   return {

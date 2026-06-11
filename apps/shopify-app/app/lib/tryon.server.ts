@@ -25,6 +25,7 @@ import {
   createVertexVtoProvider,
   createVertexNanaBananaProvider,
   createLiteLocalProvider,
+  computeTryOnCacheKey,
   type TryOnService,
   type TryOnMode,
 } from "@stylique/core";
@@ -33,7 +34,6 @@ import { reportError } from "./sentry.server";
 import type { EventName } from "@stylique/types";
 import { enqueueTryonRender, tryonRenderQueue } from "../queue.server";
 import { loadMuseImage } from "./muse-assets.server";
-import { createHash } from "node:crypto";
 
 // OI-33: async render via the shared BullMQ singleton from queue.server.ts.
 // When Redis is unavailable, tryonRenderQueue.client is not connected and
@@ -188,6 +188,7 @@ export async function renderComboTryOn(args: {
   shopperRowId: string;
   productIds: string[];          // [base, mid, outer/accessory], lowest → highest layer
   modelHint?: string | null;
+  renderContextKey?: string | null;
   mode: "BODY_MODEL";
 }): Promise<{ ok: true; imageUrl: string } | { ok: false; error: TryOnError }> {
   if (args.productIds.length === 0) return { ok: false, error: "product_not_found" };
@@ -198,6 +199,8 @@ export async function renderComboTryOn(args: {
       productId: args.productIds[0]!,
       mode: "BODY_MODEL",
       modelHint: args.modelHint ?? undefined,
+      renderContextKey: args.renderContextKey ?? undefined,
+      forceSync: true,
     });
     return single.ok
       ? { ok: true, imageUrl: single.data.imageUrl }
@@ -215,6 +218,8 @@ export async function renderComboTryOn(args: {
       productId,
       mode: "BODY_MODEL",
       modelHint: i === 0 ? (args.modelHint ?? undefined) : undefined,
+      renderContextKey: `${args.renderContextKey ?? "default"}|layer:${i}`,
+      forceSync: true,
       personImageDataUrl: currentPersonImageDataUrl,
     });
     if (!result.ok) return { ok: false, error: result.error };
@@ -256,6 +261,8 @@ export async function renderTryOn(args: {
   productId: string;
   mode: TryOnMode;
   modelHint?: string;                  // BODY_MODEL only
+  renderContextKey?: string;           // selected size + coarse body bucket
+  forceSync?: boolean;                 // combo chaining needs each prior image inline
   personImageDataUrl?: string;         // PERSONAL_PHOTO only
   trackEvent?: (name: EventName, productId: string | undefined, payload: unknown) => void;
 }): Promise<TryOnRenderResponse> {
@@ -355,7 +362,7 @@ export async function renderTryOn(args: {
   //    The widget polls /api/tryon/render/status?renderId=… until done.
   //    SECURITY: personImageBase64 lives in Redis only for job duration;
   //    BullMQ removes it via removeOnComplete. Never written to DB.
-  if (asyncRenderAvailable) {
+  if (asyncRenderAvailable && !args.forceSync) {
     try {
     await enqueueTryonRender({
       renderId: row.id,
@@ -364,6 +371,7 @@ export async function renderTryOn(args: {
       mode: args.mode,
       providerKey,
       modelHint: args.modelHint ?? null,
+      renderContextKey: args.renderContextKey ?? null,
       garmentUrl,
       personImageBase64: personBase64,
       personImageMime: personMime,
@@ -456,12 +464,13 @@ export async function renderTryOn(args: {
     // OI-32: compute cache key for BODY_MODEL so the worker path and this
     // sync path both write the same key — future worker hits can reuse it.
     // providerKey intentionally excluded — same render should cache-hit across provider changes
-    const cacheKey = args.mode === "BODY_MODEL"
-      ? createHash("sha256")
-          .update(`${args.shopId}|${args.productId}|${args.mode}|${args.modelHint ?? "default"}`)
-          .digest("hex")
-          .slice(0, 40)
-      : null;
+    const cacheKey = computeTryOnCacheKey({
+      shopId: args.shopId,
+      productId: args.productId,
+      mode: args.mode,
+      modelHint: args.modelHint,
+      renderContextKey: args.renderContextKey,
+    });
 
     await prisma.tryOnSession.update({
       where: { id: row.id },

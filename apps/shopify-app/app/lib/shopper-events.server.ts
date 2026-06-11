@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { prisma } from "../db.server";
-import { EventNameSchema } from "@stylique/types";
+import { EventNameSchema, safeParseEventPayload } from "@stylique/types";
 import { type ApiResponse } from "./shopper-types.server";
 import { shopIdFromDomain, rateOk, analytics } from "./shopper-helpers.server";
 import { getOrCreateShopperSession } from "./session.server";
@@ -16,7 +16,7 @@ const EventSchema = z.object({
   name: EventNameSchema,
   productId: z.string().optional(),
   payload: z.unknown(),
-});
+}).strict();
 
 export async function postEvent(args: { shopDomain: string; body: unknown; shopperCookieId?: string | null }): Promise<ApiResponse<{ accepted: true }>> {
   if (!await rateOk(args.shopDomain, args.shopperCookieId)) return { ok: false, error: "rate_limited" };
@@ -25,6 +25,8 @@ export async function postEvent(args: { shopDomain: string; body: unknown; shopp
 
   const parsed = EventSchema.safeParse(args.body);
   if (!parsed.success) return { ok: false, error: "invalid_input" };
+  const payload = safeParseEventPayload(parsed.data.name, parsed.data.payload);
+  if (!payload.success) return { ok: false, error: "invalid_payload" };
 
   try {
     const session = args.shopperCookieId
@@ -38,7 +40,7 @@ export async function postEvent(args: { shopDomain: string; body: unknown; shopp
       shopperId: session?.row.id,
       name: parsed.data.name,
       productId: parsed.data.productId,
-      payload: parsed.data.payload,
+      payload: payload.data,
     });
   } catch {
     return { ok: false, error: "invalid_payload" };

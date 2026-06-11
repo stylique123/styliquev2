@@ -225,7 +225,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       // Fire-and-forget on errors so a Prisma blip never fails the
       // shopper's post-add UX.
       try {
-        const b = (body ?? {}) as { productHandle?: string };
+        const b = (body ?? {}) as { productHandle?: string; size?: string };
         const { analytics, shopIdFromDomain } = await import("../lib/shopper-helpers.server");
         const shopId = await shopIdFromDomain(shopDomain);
         if (!shopId) return cors(json({ ok: false, error: "shop_not_installed" }));
@@ -239,17 +239,20 @@ export async function action({ request, params }: ActionFunctionArgs) {
         const product = handle
           ? await prisma.product.findFirst({
               where: { shopId, handle },
-              select: { id: true, variants: { select: { priceCents: true }, take: 1 } },
+              select: { id: true },
             })
           : null;
+        if (!product) return cors(json({ ok: false, error: "product_not_found" }));
         await analytics.track({
           shopId,
           shopperId: shopper?.id,
           name: "CART_FROM_MIRA",
-          productId: product?.id,
+          productId: product.id,
           payload: {
-            handle: handle ?? null,
-            priceCents: product?.variants?.[0]?.priceCents ?? null,
+            productId: product.id,
+            source: "mira_proxy",
+            size: typeof b.size === "string" ? b.size : undefined,
+            itemCount: 1,
           },
         });
         return cors(json({ ok: true }));

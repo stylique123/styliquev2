@@ -13,6 +13,11 @@
 import { prisma } from "../db.server";
 import type { BrainClientAction, BrainCombo, BrainProduct } from "@stylique/ai";
 import { canConsume, recordConsume } from "./entitlement.server";
+import {
+  appendChatTurns,
+  buildShopperBrief,
+  getOrCreateShopperSession,
+} from "./session.server";
 
 // SYSTEMIC FALLBACK — the brain's LLM sometimes replies without calling its
 // search/combo tools (then brain.ts emits the "One sec…" placeholder with no
@@ -150,10 +155,12 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
 }
 
 type MiraRoute =
-  | "reco_handle" | "navigate" | "look" | "size_form" | "try_on"
-  | "add_to_cart" | "studio" | "compare" | "talk_only";
+  | "reco_category" | "reco_handle" | "reco_filter" | "navigate" | "look"
+  | "fit" | "fabric" | "suitability" | "size_form" | "try_on" | "returns"
+  | "add_to_cart" | "studio" | "search" | "compare" | "talk_only";
 
 export type AdaptedProduct = {
+  id?: string;
   handle: string;
   name: string;
   category: string | null;
@@ -418,6 +425,7 @@ async function loadMerchantCatalog(shopDomain: string): Promise<{ catalog: unkno
       where: { shopId: shop.id },
       orderBy: { updatedAt: "desc" },
       select: {
+        id: true,
         handle: true,
         title: true,
         category: true,
@@ -497,6 +505,7 @@ async function loadMerchantCatalog(shopDomain: string): Promise<{ catalog: unkno
       const desc = stripHtml(p.descriptionHtml);
 
       return {
+        id: p.id,
         handle: p.handle,
         name: p.title,
         category: p.category ?? p.productType ?? "top",
@@ -592,7 +601,7 @@ async function loadMerchantBrand(shopDomain: string): Promise<Record<string, str
   }
 }
 
-function decisionToAdapter(
+export function decisionToAdapter(
   decision: {
     voice?: string;
     route?: string;
@@ -603,6 +612,10 @@ function decisionToAdapter(
   } | null,
   fallbackVoice: string,
   activeCatalog: AdaptedProduct[] = [],
+  context: {
+    currentProductHandle?: string | null;
+    shopperQuery?: string;
+  } = {},
 ): MiraAdapterResult {
   if (!decision) {
     return {
@@ -612,30 +625,58 @@ function decisionToAdapter(
       look: null,
     };
   }
-  // P4-comparison resolution: when the brain emitted route=compare with
-  // compareHandles, resolve each against the merchant's catalog (already loaded
-  // for THIS turn) in the named order, dropping handles we can't verify so we
-  // never show a phantom card.
+  // Resolve every product-bearing route against this tenant's catalog. The old
+  // adapter only hydrated `compare`, so Mira could correctly name a merchant
+  // product while the widget received no card and fell back to demo inventory.
   let products: AdaptedProduct[] = [];
-  const route = (decision.route as MiraRoute) ?? "talk_only";
+  let route = (decision.route as MiraRoute) ?? "talk_only";
+  const requestedHandle = decision.productHandle ?? context.currentProductHandle ?? null;
+  const resolvedProduct = requestedHandle
+    ? activeCatalog.find((p) => p.handle === requestedHandle)
+    : undefined;
+  let look: MiraAdapterResult["look"] = null;
+
   if (route === "compare" && decision.compareHandles?.length && activeCatalog.length) {
     products = decision.compareHandles
       .map((h) => activeCatalog.find((p) => p.handle === h))
       .filter((p): p is AdaptedProduct => p != null)
       .slice(0, 3);
+  } else if (route === "look" && activeCatalog.length) {
+    const anchor = resolvedProduct ?? activeCatalog[0];
+    const ordered = anchor
+      ? [anchor, ...activeCatalog.filter((p) => p.handle !== anchor.handle)]
+      : activeCatalog;
+    look = buildStyledLook(ordered, context.shopperQuery ?? "");
+    products = look?.pieces ?? (anchor ? [anchor] : []);
+  } else if (resolvedProduct) {
+    products = [resolvedProduct];
+  } else if (["reco_category", "reco_filter", "search"].includes(route)) {
+    // These routes let the client choose from a category/filter. Give it a
+    // bounded tenant catalog to choose from; never make it consult demo data.
+    products = activeCatalog.slice(0, 12);
   }
+
+  const requiresProduct = new Set<MiraRoute>([
+    "reco_handle", "navigate", "look", "fit", "fabric", "suitability",
+    "size_form", "try_on", "add_to_cart",
+  ]);
+  if (requiresProduct.has(route) && products.length === 0) {
+    route = "talk_only";
+  }
+
+  const groundedHandle = products[0]?.handle ?? null;
   return {
     source: "brain",
     decision: {
       voice: decision.voice ?? fallbackVoice,
       route,
-      productHandle: decision.productHandle ?? null,
+      productHandle: route === "talk_only" ? null : groundedHandle,
       quickReplies: decision.quickReplies ?? [],
       intent: decision.intent ?? "other",
       compareHandles: decision.compareHandles,
     },
     products,
-    look: null,
+    look,
   };
 }
 
@@ -653,6 +694,22 @@ export async function runMiraAdapter(args: {
     currentProductHandle?: string | null;
     history?: Array<{ from?: string; text?: string }>;
     shownHandles?: string[];
+    knownSize?: string | null;
+    bodyOnFile?: {
+      heightCm: number;
+      weightKg: number;
+      fitPref: string;
+      age?: number;
+      usualBrandSize?: string;
+    } | null;
+    sizeConfirmed?: boolean;
+    tryOnCompleted?: boolean;
+    tryOnAbandoned?: boolean;
+    outfitAccepted?: boolean;
+    outfitPiecesRecommended?: number;
+    cartItemCount?: number;
+    activeLookSummary?: string | null;
+    tryOnContextSummary?: string | null;
   };
   const messages = b.messages ?? [];
   const lastUserMsg = b.message ?? [...messages].reverse().find((m) => m?.role === "user")?.text ?? "";
@@ -665,9 +722,28 @@ export async function runMiraAdapter(args: {
   // brand on the merchant's catalog — not "Stylique Maison" on demo products.
   // These run in parallel — both are pure Prisma reads, no LLM cost.
   // Catalog is cached 5min/shop to survive 100+ concurrent chat turns (B1 fix).
-  const [{ catalog: injectedCatalog, currency }, brandRaw] = await Promise.all([
+  const shopperSession = await getOrCreateShopperSession({
+    shopifyDomain: args.shopDomain,
+    cookieId: args.shopperCookieId,
+  });
+
+  const [{ catalog: injectedCatalog, currency }, brandRaw, shopperBrief, shopperMemory] = await Promise.all([
     loadMerchantCatalog(args.shopDomain),
     loadMerchantBrand(args.shopDomain),
+    buildShopperBrief(shopperSession.row.id),
+    prisma.shopperSession.findUnique({
+      where: { id: shopperSession.row.id },
+      select: {
+        heightCm: true,
+        weightKg: true,
+        fitPreference: true,
+        fits: {
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: { recommendedSize: true },
+        },
+      },
+    }),
   ]);
 
   // ── Currency directive (B5) ────────────────────────────────────────────────
@@ -714,6 +790,27 @@ export async function runMiraAdapter(args: {
     shownHandles: b.shownHandles ?? [],
     injectedCatalog,
     injectedBrand,
+    knownSize: b.knownSize ?? shopperMemory?.fits[0]?.recommendedSize ?? null,
+    bodyOnFile: b.bodyOnFile ?? (
+      shopperMemory?.heightCm && shopperMemory.weightKg
+        ? {
+            heightCm: shopperMemory.heightCm,
+            weightKg: shopperMemory.weightKg,
+            fitPref: shopperMemory.fitPreference?.toLowerCase() ?? "regular",
+          }
+        : null
+    ),
+    sizeConfirmed: b.sizeConfirmed,
+    tryOnCompleted: b.tryOnCompleted,
+    tryOnAbandoned: b.tryOnAbandoned,
+    outfitAccepted: b.outfitAccepted,
+    outfitPiecesRecommended: b.outfitPiecesRecommended,
+    cartItemCount: b.cartItemCount,
+    activeLookSummary: b.activeLookSummary,
+    tryOnContextSummary: b.tryOnContextSummary,
+    injectedKnowledge: shopperBrief.brief
+      ? `SAVED SHOPPER CONTEXT:\n${shopperBrief.brief}`
+      : undefined,
     // Audit P1: pass the ISO currency through so the brain prefixes prices with
     // the correct symbol (PKR/INR/JPY no longer get a fictitious `$`).
     injectedCurrency: currency,
@@ -748,11 +845,12 @@ export async function runMiraAdapter(args: {
         null,
         "We've hit this month's Mira conversation cap on this store — the merchant can lift it from the dashboard. I'll be back next cycle.",
       ),
-      setCookie: null,
+      setCookie: shopperSession.setCookie,
     };
   }
 
   try {
+    const brainStartedAt = Date.now();
     const res = await fetch(UNIFIED_BRAIN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -776,22 +874,30 @@ export async function runMiraAdapter(args: {
     // broke silently. Now: every turn fires the right event(s) so the
     // existing dashboard machinery starts seeing real numbers. All writes
     // are fire-and-forget — a Prisma blip never blocks the shopper.
-    if (shopId && args.shopperCookieId) {
+    if (shopId) {
       void (async () => {
         try {
           const { analytics } = await import("./shopper-helpers.server");
-          const shopper = await prisma.shopperSession.findFirst({
-            where: { shopifyDomain: args.shopDomain, sessionId: args.shopperCookieId! },
-            select: { id: true },
-          });
-          if (!shopper) return;
           const isFirstTurn = (b.history?.length ?? 0) === 0;
           if (isFirstTurn) {
-            await analytics.track({ shopId, shopperId: shopper.id, name: "CHAT_OPENED", payload: { source: "mira_proxy" } });
+            await analytics.track({
+              shopId,
+              shopperId: shopperSession.row.id,
+              name: "CHAT_OPENED",
+              payload: { surface: "mira_proxy" },
+            });
           }
           await analytics.track({
-            shopId, shopperId: shopper.id, name: "CHAT_MESSAGE_SENT",
-            payload: { route: payload.decision?.route ?? "talk_only" },
+            shopId, shopperId: shopperSession.row.id, name: "CHAT_MESSAGE_SENT",
+            payload: { length: lastUserMsg.length },
+          });
+          await analytics.track({
+            shopId, shopperId: shopperSession.row.id, name: "CHAT_REPLY_RECEIVED",
+            payload: {
+              latencyMs: Math.max(0, Date.now() - brainStartedAt),
+              combos: payload.decision?.route === "look" ? 1 : 0,
+              actions: payload.decision?.route && payload.decision.route !== "talk_only" ? 1 : 0,
+            },
           });
           const route = payload.decision?.route;
           const handle = payload.decision?.productHandle;
@@ -802,8 +908,8 @@ export async function runMiraAdapter(args: {
             });
             if (prod) {
               await analytics.track({
-                shopId, shopperId: shopper.id, name: "CHAT_PRODUCT_CLICKED",
-                productId: prod.id, payload: { handle, route },
+                shopId, shopperId: shopperSession.row.id, name: "CHAT_PRODUCT_CLICKED",
+                productId: prod.id, payload: { productHandle: handle },
               });
             }
           }
@@ -811,10 +917,15 @@ export async function runMiraAdapter(args: {
             const prod = handle ? await prisma.product.findFirst({
               where: { shopId, handle }, select: { id: true },
             }) : null;
-            await analytics.track({
-              shopId, shopperId: shopper.id, name: "CHAT_CART_REQUESTED",
-              productId: prod?.id, payload: { handle: handle ?? null },
-            });
+            if (prod) {
+              await analytics.track({
+                shopId, shopperId: shopperSession.row.id, name: "CHAT_CART_REQUESTED",
+                productId: prod.id, payload: {
+                  productId: prod.id,
+                  suggestedSize: b.knownSize ?? undefined,
+                },
+              });
+            }
           }
 
           // ── CATALOG-GAP / NEAR-MISS CAPTURE (P1 #5) ───────────────────────
@@ -834,7 +945,7 @@ export async function runMiraAdapter(args: {
             const { logCatalogGap } = await import("./taste.server");
             if (dec.unmet) {
               await logCatalogGap({
-                shopId, shopperRowId: shopper.id, rawQuery: askedText,
+                shopId, shopperRowId: shopperSession.row.id, rawQuery: askedText,
                 resultCount: 0, category: dec.unmetCategory, source: "mira_proxy",
               });
             } else if (dec.nearMiss && handle) {
@@ -842,7 +953,7 @@ export async function runMiraAdapter(args: {
                 where: { shopId, handle }, select: { id: true },
               });
               await logCatalogGap({
-                shopId, shopperRowId: shopper.id, rawQuery: askedText,
+                shopId, shopperRowId: shopperSession.row.id, rawQuery: askedText,
                 resultCount: 1, category: dec.nearMissCategory,
                 source: "mira_proxy_nearmiss",
                 nearMissProductId: np?.id, nearMissAttribute: dec.nearMissAttribute,
@@ -859,6 +970,7 @@ export async function runMiraAdapter(args: {
     // so the adapter's compare-resolution can find the named handles. The
     // projection is a thin field-rename — same data, smaller surface.
     const cat = injectedCatalog as Array<{
+      id?: string;
       handle?: string; name?: string; category?: string | null;
       priceUsd?: number | null;
       images?: string[]; sizes?: string[]; colors?: string[];
@@ -866,6 +978,7 @@ export async function runMiraAdapter(args: {
     const compareCatalog: AdaptedProduct[] = cat
       .filter((p) => typeof p?.handle === "string")
       .map((p) => ({
+        id: p.id,
         handle: p.handle!,
         name: p.name ?? p.handle!,
         category: p.category ?? null,
@@ -874,13 +987,26 @@ export async function runMiraAdapter(args: {
         sizes: Array.isArray(p.sizes) ? p.sizes : [],
         colors: Array.isArray(p.colors) ? p.colors : [],
       }));
-    return { result: decisionToAdapter(payload.decision ?? null, "Tell me what you're after and I'll pull one piece, not a wall.", compareCatalog), setCookie: null };
+    const result = decisionToAdapter(
+      payload.decision ?? null,
+      "Tell me what you're after and I'll pull one piece, not a wall.",
+      compareCatalog,
+      {
+        currentProductHandle: b.currentProductHandle,
+        shopperQuery: lastUserMsg,
+      },
+    );
+    void appendChatTurns(shopperSession.row.id, [
+      { role: "user", text: lastUserMsg },
+      { role: "model", text: result.decision.voice },
+    ]).catch((err) => console.error("[mira-adapter] chat persistence failed", err));
+    return { result, setCookie: shopperSession.setCookie };
   } catch (err) {
     console.error("[mira-adapter] unified brain forward failed", err);
     if (shopId) void recordConsume({ shopId, metric: "STYLIST_TURN", by: 1 });
     return {
       result: decisionToAdapter(null, "I'm here when you're ready — what are you looking for?"),
-      setCookie: null,
+      setCookie: shopperSession.setCookie,
     };
   }
 }

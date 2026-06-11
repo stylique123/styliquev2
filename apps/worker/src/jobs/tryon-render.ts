@@ -2,7 +2,7 @@
 //
 // Responsibilities:
 //   1. Cache check (OI-32): BODY_MODEL renders are deterministic for
-//      (shopId, productId, mode, modelHint, providerKey). On a hit we copy
+//      (shopId, productId, mode, modelHint, renderContextKey). On a hit we copy
 //      the stored URL onto the pending row and return immediately — no charge.
 //   2. Render (OI-33): the actual provider call that was previously inline in
 //      the HTTP request. Running here decouples render latency from the widget.
@@ -32,8 +32,8 @@ import {
   createVertexVtoProvider,
   createVertexNanaBananaProvider,
   createLiteLocalProvider,
+  computeTryOnCacheKey,
 } from "@stylique/core";
-import { createHash } from "node:crypto";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
@@ -97,6 +97,7 @@ export type TryOnRenderJobData = {
   mode: "BODY_MODEL" | "PERSONAL_PHOTO";
   providerKey: string;
   modelHint?: string | null;
+  renderContextKey?: string | null;
   garmentUrl: string;
   // SECURITY: personImageBase64 must NOT be logged or persisted anywhere.
   personImageBase64?: string;
@@ -116,21 +117,21 @@ export type TryOnRenderJobData = {
 export async function processTryOnRender(data: TryOnRenderJobData): Promise<void> {
   const t0 = Date.now();
   const {
-    renderId, shopId, productId, mode, providerKey, modelHint,
+    renderId, shopId, productId, mode, providerKey, modelHint, renderContextKey,
     garmentUrl, personImageBase64, personImageMime, museImageBase64, museImageMime, hints,
   } = data;
 
   // 1. Cache check for BODY_MODEL renders (OI-32).
   //    PERSONAL_PHOTO is never cached — the shopper's own photo makes it
   //    non-deterministic, and we must not retain the bytes across renders.
-  let cacheKey: string | null = null;
-  if (mode === "BODY_MODEL") {
-    // providerKey intentionally excluded — same render should cache-hit across provider changes
-    cacheKey = createHash("sha256")
-      .update(`${shopId}|${productId}|${mode}|${modelHint ?? "default"}`)
-      .digest("hex")
-      .slice(0, 40);
-
+  const cacheKey = computeTryOnCacheKey({
+    shopId,
+    productId,
+    mode,
+    modelHint,
+    renderContextKey,
+  });
+  if (cacheKey) {
     const cached = await prisma.tryOnSession.findFirst({
       where: { shopId, cacheKey, status: "SUCCEEDED" },
       select: { outputImageUrl: true },

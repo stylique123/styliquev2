@@ -447,6 +447,10 @@ const TryOnRenderSchema = z.object({
   productIds: z.array(z.string().min(1)).max(3).optional(),  // Fix 9 — combo sequential render
   mode:      z.enum(["BODY_MODEL", "PERSONAL_PHOTO"]),
   modelHint: z.string().max(40).optional(),
+  selectedSize: z.string().max(16).optional(),
+  // Compact, non-identifying body bucket supplied by the widget (height:weight).
+  // It is hashed before entering the cache key and never persisted directly.
+  bodyProfile: z.string().max(40).optional(),
   // Person image is required for PERSONAL_PHOTO. Validated again server-side
   // in renderTryOn (MIME regex + size cap) — the zod check here is a fast
   // first pass.
@@ -489,6 +493,10 @@ export async function postTryOnRender(args: {
       shopperRowId: session.row.id,
       productIds: ids,
       modelHint: parsed.data.modelHint ?? null,
+      renderContextKey: [
+        parsed.data.selectedSize ?? "size-unknown",
+        parsed.data.bodyProfile ?? "body-unknown",
+      ].join("|"),
       mode: "BODY_MODEL",
     });
     if (!comboResult.ok) {
@@ -511,6 +519,10 @@ export async function postTryOnRender(args: {
     productId: ids[0]!,
     mode: parsed.data.mode,
     modelHint: parsed.data.modelHint,
+    renderContextKey: [
+      parsed.data.selectedSize ?? "size-unknown",
+      parsed.data.bodyProfile ?? "body-unknown",
+    ].join("|"),
     personImageDataUrl: parsed.data.personImageDataUrl,
     trackEvent: track,
   });

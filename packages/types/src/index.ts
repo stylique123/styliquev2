@@ -670,4 +670,18 @@ export const EventPayloadSchemas = {
   }),
 } as const;
 
+export function safeParseEventPayload(name: EventName, payload: unknown) {
+  const schema: z.ZodTypeAny = EventPayloadSchemas[name];
+  if (schema instanceof z.ZodObject) {
+    return schema.strict().safeParse(payload);
+  }
+  if (schema instanceof z.ZodOptional) {
+    const inner = schema.unwrap();
+    if (inner instanceof z.ZodObject) {
+      return inner.strict().optional().safeParse(payload);
+    }
+  }
+  return schema.safeParse(payload);
+}
+
 export type EventPayload<T extends EventName> = z.infer<(typeof EventPayloadSchemas)[T]>;

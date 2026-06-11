@@ -19,6 +19,11 @@ import { addToCart, addOutfitToCart } from "../../lib/storefront-cart";
 // module-load-ordering hazard (a runtime window read at module-init evaluated to
 // "" before the entry set it → storefront try-on hit the shop domain).
 const SQ_TRYON_API = ASSET_BASE;
+function shopperApi(): string {
+  if (typeof window === "undefined") return ASSET_BASE;
+  const api = (window as unknown as { __sqApi?: unknown }).__sqApi;
+  return typeof api === "string" ? api : ASSET_BASE;
+}
 
 // Loophole A — slot-aware worn outfit. Given an ordered worn list (focus first),
 // keep only the pieces that genuinely combine into ONE outfit: a dress occupies
@@ -155,6 +160,15 @@ function computeFit(
 // `rememberBody`). Lets the fitting room reuse it instead of re-asking, and
 // keeps the size it shows consistent with the size Mira already named.
 type SavedBody = { heightCm: number; weightKg: number; age?: number; usualBrandSize?: string };
+type StorefrontFitResult = {
+  size: string;
+  confidence: number;
+  reasoning: string;
+  alt: { size: string; note: string } | undefined;
+  primaryLabel: string;
+  bodyValue: number;
+};
+
 function readSavedBody(): SavedBody | null {
   if (typeof window === "undefined") return null;
   try {
@@ -162,7 +176,12 @@ function readSavedBody(): SavedBody | null {
     if (!raw) return null;
     const b = JSON.parse(raw) as Partial<SavedBody>;
     if (typeof b?.heightCm === "number" && typeof b?.weightKg === "number") {
-      return { heightCm: b.heightCm, weightKg: b.weightKg };
+      return {
+        heightCm: b.heightCm,
+        weightKg: b.weightKg,
+        age: typeof b.age === "number" ? b.age : undefined,
+        usualBrandSize: typeof b.usualBrandSize === "string" ? b.usualBrandSize : undefined,
+      };
     }
   } catch { /* ignore */ }
   return null;
@@ -170,10 +189,18 @@ function readSavedBody(): SavedBody | null {
 
 export default function TryOnPanel({
   product: initialProduct,
+  catalogProducts,
+  trigger = "reco_card",
   onClose,
+  onRenderComplete,
+  onRenderFailed,
 }: {
   product?: Product;
+  catalogProducts?: Product[];
+  trigger?: "pdp_button" | "mira_suggest" | "look_card" | "reco_card";
   onClose?: () => void;
+  onRenderComplete?: (imageUrl: string) => void;
+  onRenderFailed?: (errorCode: string) => void;
 }) {
   const defaultProduct = catalog.find((p) => p.handle === "onyx-silk-slip") ?? catalog[0];
   const [currentProduct, setCurrentProduct] = useState<Product>(initialProduct ?? defaultProduct);
@@ -227,7 +254,54 @@ export default function TryOnPanel({
   const [saved,          setSaved         ] = useState(false);
   // Monotonic token so a superseded in-flight render never overwrites a newer one.
   const renderToken = useRef(0);
+  const renderStartedRef = useRef(false);
+  const renderCompletedRef = useRef(false);
+  const renderFailedRef = useRef(false);
+  const cartAddedRef = useRef(false);
   const isDesktop = useIsDesktop();
+
+  const emitStorefrontEvent = useCallback((
+    name: "PDP_TRYON_CLICKED" | "TRYON_ABANDONED" | "CART_FROM_TRYON",
+    product: Product,
+    payload: Record<string, unknown>,
+  ) => {
+    if (!ASSET_BASE) return;
+    const eventPayload = name === "CART_FROM_TRYON"
+      ? { productId: product.productId, ...payload }
+      : {
+          productId: product.productId,
+          productHandle: product.handle,
+          trigger,
+          ...payload,
+        };
+    void fetch(`${shopperApi()}/api/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        productId: product.productId,
+        payload: eventPayload,
+      }),
+    }).catch(() => {});
+  }, [trigger]);
+
+  useEffect(() => {
+    const openedProduct = initialProduct;
+    if (openedProduct && trigger === "pdp_button") {
+      emitStorefrontEvent("PDP_TRYON_CLICKED", openedProduct, {});
+    }
+    return () => {
+      if (
+        openedProduct &&
+        renderStartedRef.current &&
+        !renderCompletedRef.current &&
+        !renderFailedRef.current &&
+        !cartAddedRef.current
+      ) {
+        emitStorefrontEvent("TRYON_ABANDONED", openedProduct, {});
+      }
+    };
+  }, [initialProduct, trigger, emitStorefrontEvent]);
 
   const isRendering = renderProgress > 0 && renderProgress < 100;
   // null until the shopper picks one.
@@ -276,7 +350,89 @@ export default function TryOnPanel({
   const fitBody = undefined;
   const fitH    = height;
   const fitW    = weight;
-  const fitResult   = computeFit(currentProduct, fitH, fitW, muse, fitBody, fitAge > 0 ? fitAge : undefined, usualSize !== "none" ? usualSize : undefined);
+  const localFitResult = computeFit(currentProduct, fitH, fitW, muse, fitBody, fitAge > 0 ? fitAge : undefined, usualSize !== "none" ? usualSize : undefined);
+  const [storefrontFit, setStorefrontFit] = useState<StorefrontFitResult | null>(null);
+  const [fitPending, setFitPending] = useState(Boolean(ASSET_BASE));
+  const [fitError, setFitError] = useState<string | null>(null);
+
+  // The installed widget must use the tenant-scoped fit service as its sizing
+  // authority. Local chart math remains available only to the standalone demo.
+  useEffect(() => {
+    if (!ASSET_BASE) return;
+    const productId = currentProduct.productId;
+    setStorefrontFit(null);
+    setFitError(null);
+    if (!productId) {
+      setFitPending(false);
+      setFitError("This product has not finished syncing its sizing data.");
+      return;
+    }
+
+    const controller = new AbortController();
+    setFitPending(true);
+    const timer = window.setTimeout(() => {
+      void fetch(`${shopperApi()}/api/fit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          productId,
+          heightCm: Math.round(height),
+          weightKg: Math.round(weight),
+          fitPreference: "REGULAR",
+        }),
+      })
+        .then(async (res) => {
+          const payload = (await res.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: string;
+            data?: {
+              recommendedSize?: string;
+              confidence?: number;
+              rationale?: string;
+              trustLine?: string;
+              alternativeSize?: string;
+              sizeUpAdvice?: string;
+            };
+          } | null;
+          if (!res.ok || !payload?.ok || !payload.data?.recommendedSize) {
+            throw new Error(payload?.error ?? "fit_unavailable");
+          }
+          const data = payload.data;
+          const recommendedSize = data.recommendedSize!;
+          setStorefrontFit({
+            size: recommendedSize,
+            confidence: Math.round((data.confidence ?? 0) * 100),
+            reasoning: data.rationale ?? data.trustLine ?? "Matched against this product's available sizes.",
+            alt: data.alternativeSize
+              ? { size: data.alternativeSize, note: data.sizeUpAdvice ?? `Try ${data.alternativeSize} for more room.` }
+              : undefined,
+            primaryLabel: "Verified fit",
+            bodyValue: 0,
+          });
+        })
+        .catch((error: unknown) => {
+          if (controller.signal.aborted) return;
+          const code = error instanceof Error ? error.message : "fit_unavailable";
+          setFitError(
+            code === "product_not_found" || code === "invalid_input"
+              ? "Verified sizing data is not available for this product yet."
+              : "Sizing could not be verified right now. Please use the product size chart.",
+          );
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setFitPending(false);
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [currentProduct.productId, height, weight]);
+
+  const fitResult = ASSET_BASE && storefrontFit ? storefrontFit : localFitResult;
+  const fitReady = !ASSET_BASE || Boolean(storefrontFit);
   // Persist age + usualBrandSize into the shared body store whenever they change
   // so Mira and the sizing engine both see the most-complete profile next session.
   useEffect(() => {
@@ -296,7 +452,11 @@ export default function TryOnPanel({
   // pieces that genuinely complete what's currently worn (no camisole-with-a-gown,
   // no two jackets) and RE-RANKS every time a piece is added/removed — so adding a
   // top surfaces trousers, adding trousers surfaces a coat, never the same stale list.
-  const outfit      = completeLookFor([currentProduct, ...lookItems]).map((e) => e.product);
+  const recommendationCatalog = catalogProducts ?? (ASSET_BASE ? [currentProduct, ...lookItems] : catalog);
+  const outfit = completeLookFor(
+    [currentProduct, ...lookItems],
+    recommendationCatalog,
+  ).map((e) => e.product);
   // The body the garment is composited onto — the chosen muse.
   // null → nothing chosen yet (gates the flow).
   const bodyImg     = activeMuse?.img ? resolveAsset(activeMuse.img) : null;
@@ -327,18 +487,42 @@ export default function TryOnPanel({
   const [adding, setAdding] = useState(false);
   const addOneToBag = useCallback(async () => {
     setAdding(true);
-    try { await addToCart(currentProduct.handle, effectiveSize); }
-    finally { setAdding(false); onClose?.(); }
-  }, [currentProduct, effectiveSize, onClose]);
+    try {
+      const result = await addToCart(currentProduct.handle, effectiveSize);
+      if (!result.ok) {
+        setRenderErrCode(result.error ?? "cart_failed");
+        return;
+      }
+      cartAddedRef.current = true;
+      emitStorefrontEvent("CART_FROM_TRYON", currentProduct, {
+        renderId: undefined,
+      });
+      onClose?.();
+    } finally {
+      setAdding(false);
+    }
+  }, [currentProduct, effectiveSize, emitStorefrontEvent, onClose]);
   const addLookToBag = useCallback(async () => {
     setAdding(true);
     const pieces = [
       { handle: currentProduct.handle, size: effectiveSize },
       ...lookItems.map((p) => ({ handle: p.handle, size: null as string | null })),
     ];
-    try { await addOutfitToCart(pieces); }
-    finally { setAdding(false); onClose?.(); }
-  }, [currentProduct, effectiveSize, lookItems, onClose]);
+    try {
+      const result = await addOutfitToCart(pieces);
+      if (!result.ok) {
+        setRenderErrCode(result.error ?? "cart_failed");
+        return;
+      }
+      cartAddedRef.current = true;
+      emitStorefrontEvent("CART_FROM_TRYON", currentProduct, {
+        comboName: `${pieces.length}-piece look`,
+      });
+      onClose?.();
+    } finally {
+      setAdding(false);
+    }
+  }, [currentProduct, effectiveSize, lookItems, emitStorefrontEvent, onClose]);
 
   // SIZE-1: the muse is the picture, NOT the body. Picking a muse must NEVER
   // overwrite the shopper's typed height/weight (that silent autofill was the
@@ -393,6 +577,9 @@ export default function TryOnPanel({
       const garments = sanitizeWornSet(garmentsIn);
 
       const token = ++renderToken.current;
+      renderStartedRef.current = true;
+      renderCompletedRef.current = false;
+      renderFailedRef.current = false;
       setRenderError(false);
       setRateInfo(null);
       setRenderErrCode(null);
@@ -408,7 +595,9 @@ export default function TryOnPanel({
       const rBody = undefined;
 
       const focus = garments[0];
-      const recSize = computeFit(focus, rH, rW, muse, rBody).size;
+      const recSize = ASSET_BASE && focus.handle === currentProduct.handle
+        ? fitResult.size
+        : computeFit(focus, rH, rW, muse, rBody).size;
       // Map the focus product's category to a fit axis the render understands
       // (top/bottom/dress/outerwear) so the size change reads on the right body
       // region. knitwear falls back to "top"; ACCESSORIES (belts/bags/sunglasses/
@@ -487,11 +676,40 @@ export default function TryOnPanel({
       };
 
       try {
-        const res = await fetch(`${SQ_TRYON_API}/api/tryon`, {
+        const productionIds = garments
+          .map((g) => g.productId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0);
+        if (ASSET_BASE && productionIds.length !== garments.length) {
+          setRenderedUrl(null);
+          setRenderErrCode("product_not_synced");
+          setRenderError(true);
+          onRenderFailed?.("product_not_synced");
+          return;
+        }
+
+        const productionBody = productionIds.length > 1
+          ? {
+              productIds: productionIds,
+              mode: "BODY_MODEL" as const,
+              modelHint: muse!,
+              selectedSize: sizeForRender,
+              bodyProfile: `${Math.round(rH)}:${Math.round(rW)}`,
+            }
+          : {
+              productId: productionIds[0],
+              mode: "BODY_MODEL" as const,
+              modelHint: muse!,
+              selectedSize: sizeForRender,
+              bodyProfile: `${Math.round(rH)}:${Math.round(rW)}`,
+            };
+        const res = await fetch(
+          ASSET_BASE ? `${shopperApi()}/api/tryon/render` : `${SQ_TRYON_API}/api/tryon`,
+          {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
+          body: JSON.stringify(ASSET_BASE ? productionBody : body),
+          },
+        );
         if (token !== renderToken.current) return; // superseded
         if (res.status === 429) {
           const info = (await res.json().catch(() => ({}))) as { retryAfterSec?: number };
@@ -509,25 +727,75 @@ export default function TryOnPanel({
           setRenderError(true);
           return;
         }
-        const data = (await res.json()) as { imageUrl?: string };
+        const payload = (await res.json()) as {
+          ok?: boolean;
+          error?: string;
+          data?: {
+            renderId?: string;
+            imageUrl?: string;
+            status?: "PENDING" | "SUCCEEDED";
+          };
+          imageUrl?: string;
+        };
         if (token !== renderToken.current) return;
+        if (ASSET_BASE && !payload.ok) {
+          const error = payload.error ?? "render_failed";
+          setRenderedUrl(null);
+          setRenderErrCode(error);
+          setRenderError(true);
+          onRenderFailed?.(error);
+          return;
+        }
+
+        let raw = ASSET_BASE ? (payload.data?.imageUrl ?? null) : (payload.imageUrl ?? null);
+        if (ASSET_BASE && payload.data?.status === "PENDING" && payload.data.renderId) {
+          const renderId = payload.data.renderId;
+          const deadline = Date.now() + 70_000;
+          while (Date.now() < deadline && token === renderToken.current) {
+            await new Promise((resolve) => window.setTimeout(resolve, 1_000));
+            const statusRes = await fetch(
+              `${shopperApi()}/api/tryon/render/status?renderId=${encodeURIComponent(renderId)}`,
+              { cache: "no-store" },
+            );
+            const statusPayload = (await statusRes.json().catch(() => null)) as {
+              ok?: boolean;
+              data?: { status?: string; imageUrl?: string | null };
+            } | null;
+            if (!statusRes.ok || !statusPayload?.ok) continue;
+            if (statusPayload.data?.status === "SUCCEEDED") {
+              raw = statusPayload.data.imageUrl ?? null;
+              break;
+            }
+            if (statusPayload.data?.status === "FAILED") {
+              throw new Error("render_failed");
+            }
+          }
+          if (!raw) throw new Error("timeout");
+        }
+
         // The render URL is served by the backend, not the storefront — a
         // relative "/api/tryon/image/<key>" must be prefixed with the backend
         // origin or it 404s against the shop domain.
-        const raw = data.imageUrl ?? null;
         const abs = raw && raw.startsWith("/") ? `${SQ_TRYON_API}${raw}` : raw; // backend-origin prefix
         setRenderedUrl(abs);
         setRenderError(!abs);
-      } catch {
+        if (abs) {
+          renderCompletedRef.current = true;
+          onRenderComplete?.(abs);
+        }
+      } catch (err) {
         if (token !== renderToken.current) return;
         setRenderedUrl(null);
-        setRenderErrCode("timeout");
+        const code = err instanceof Error && err.message === "render_failed" ? "render_failed" : "timeout";
+        setRenderErrCode(code);
         setRenderError(true); // StepResult shows an explicit error + retry
+        renderFailedRef.current = true;
+        onRenderFailed?.(code);
       } finally {
         if (token === renderToken.current) setRenderProgress(100);
       }
     },
-    [height, weight, muse, activeMuse],
+    [height, weight, muse, activeMuse, currentProduct.handle, fitResult.size, onRenderComplete, onRenderFailed],
   );
 
   // "Generate my look" / re-render the current focus + look at the active size.
@@ -735,6 +1003,9 @@ export default function TryOnPanel({
               usualSize={usualSize} onUsualSize={setUsualSize}
               body={fitBody}
               fitResult={fitResult}
+              fitPending={fitPending}
+              fitError={fitError}
+              authoritative={Boolean(ASSET_BASE)}
               product={currentProduct}
             />
           )}
@@ -828,9 +1099,7 @@ export default function TryOnPanel({
             <button
               onClick={() => {
                 if (step === 0) {
-                  // Step 0 is now SIZE — height/weight always have a value, so no
-                  // gate; advance to model choice (where the best-match muse is
-                  // pre-selected for them).
+                  if (!fitReady) return;
                   setStep(1);
                 } else {
                   // Step 1 is MODEL — require an explicit model pick before render.
@@ -838,13 +1107,16 @@ export default function TryOnPanel({
                   startRender();
                 }
               }}
+              disabled={step === 0 && !fitReady}
               className="sq-tt-btn sq-tt-primary"
               style={{
                 ...primaryBtn(), flex: 1,
-                ...(step === 1 && !hasSelection ? { opacity: 0.55 } : null),
+                ...((step === 1 && !hasSelection) || (step === 0 && !fitReady) ? { opacity: 0.55 } : null),
               }}
             >
-              {step === 0 ? "Choose your model →" : "Generate my look →"}
+              {step === 0
+                ? fitPending ? "Verifying your size…" : fitError ? "Sizing unavailable" : "Choose your model →"
+                : "Generate my look →"}
             </button>
           </div>
         )}
@@ -1388,14 +1660,17 @@ const USUAL_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 function StepSize({
   height, onHeight, weight, onWeight,
   age, onAge, usualSize, onUsualSize,
-  body, fitResult, product,
+  body, fitResult, fitPending, fitError, authoritative, product,
 }: {
   height: number; onHeight: (v: number) => void;
   weight: number; onWeight: (v: number) => void;
   age: number;    onAge: (v: number) => void;
   usualSize: string; onUsualSize: (v: string) => void;
   body?: MuseBody;                    // muse bust/waist/hip refine the fit map
-  fitResult: ReturnType<typeof computeFit>;
+  fitResult: StorefrontFitResult;
+  fitPending: boolean;
+  fitError: string | null;
+  authoritative: boolean;
   product: Product;
 }) {
   const nudge = (cur: number, d: number, lo: number, hi: number, set: (v: number) => void) =>
@@ -1407,6 +1682,7 @@ function StepSize({
     age: age > 0 ? age : undefined,
     usualBrandSize: usualSize !== "none" ? usualSize : undefined,
   });
+  const displayedConfidence = authoritative ? fitResult.confidence : cb.score;
 
   // Unit preference — internally we always store cm/kg, but a shopper who thinks
   // in inches/lbs needs to enter and read their measurements that way. Persist
@@ -1467,15 +1743,22 @@ function StepSize({
         }}
       >
         <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(199,184,255,0.85)" }}>
-          Your size in the {product.name}
+          {authoritative ? "Verified size" : "Your size"} in the {product.name}
         </span>
         <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 56, color: "#F4F2EE", lineHeight: 0.95 }}>
-          {fitResult.size}
+          {fitPending ? "…" : fitError ? "—" : fitResult.size}
         </span>
-        <div style={{ width: "100%", maxWidth: 240 }}>
-          <FitBar value={fitResult.confidence} />
-        </div>
-        {fitResult.alt && (
+        {!fitPending && !fitError && (
+          <div style={{ width: "100%", maxWidth: 240 }}>
+            <FitBar value={fitResult.confidence} />
+          </div>
+        )}
+        {fitError && (
+          <p role="status" style={{ fontFamily: "var(--sans)", fontSize: 12, color: "#E8A44C", margin: 0, lineHeight: 1.5 }}>
+            {fitError}
+          </p>
+        )}
+        {!fitPending && !fitError && fitResult.alt && (
           <p style={{ fontFamily: "var(--sans)", fontSize: 12, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
             {fitResult.alt.note}{" "}
             <span style={{ color: "var(--electric)" }}>You can try the {fitResult.alt.size} on the next step →</span>
@@ -1533,17 +1816,17 @@ function StepSize({
               Sizing confidence
             </span>
             <span style={{ fontFamily: "var(--mono)", fontSize: 13, color: cb.score >= 80 ? "#4EC49E" : cb.score >= 68 ? "#E8A44C" : "var(--mute)", fontWeight: 600 }}>
-              {cb.score}%
+              {displayedConfidence}%
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
-            {cb.signals.map((s) => (
+            {(authoritative ? ["Height and weight sent to the brand fit service", "Matched to this product's synced sizes"] : cb.signals).map((s) => (
               <span key={s} style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "rgba(244,242,238,0.7)" }}>
                 ✓ {s}
               </span>
             ))}
           </div>
-          {cb.score < 93 && (
+          {!authoritative && cb.score < 93 && (
             <p style={{ fontFamily: "var(--sans)", fontSize: 11, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
               {cb.upgradeMessage}
             </p>
@@ -1554,7 +1837,7 @@ function StepSize({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
             <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
-              Age <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>optional · +8%</span>
+              Age <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>{authoritative ? "optional · saved" : "optional · +8%"}</span>
             </label>
             <input
               type="number"
@@ -1574,7 +1857,7 @@ function StepSize({
           {/* Usual brand size — single strongest pre-measurement predictor */}
           <div>
             <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
-              Usual size <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>optional · +10%</span>
+              Usual size <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>{authoritative ? "optional · saved" : "optional · +10%"}</span>
             </label>
             <select
               value={usualSize}
@@ -1592,7 +1875,9 @@ function StepSize({
       </div>
 
       {/* Simplified fit breakdown — region by region (B1 / B2) */}
-      <FitSummary product={product} size={fitResult.size} height={height} weight={weight} body={body} />
+      {!fitPending && !fitError && (
+        <FitSummary product={product} size={fitResult.size} height={height} weight={weight} body={body} />
+      )}
     </div>
   );
 }

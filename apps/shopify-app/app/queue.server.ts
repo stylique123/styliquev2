@@ -111,6 +111,7 @@ export type TryonRenderJob = {
   mode: "BODY_MODEL" | "PERSONAL_PHOTO";
   providerKey: string;
   modelHint?: string | null;
+  renderContextKey?: string | null;
   garmentUrl: string;
   personImageBase64?: string;
   personImageMime?: string;

@@ -16,14 +16,6 @@ type PDPTryOnButtonProps = {
   className?: string;
 };
 
-function emitTryOnEvent(event: string, handle: string, size?: string): void {
-  fetch("/api/tryon/events", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ event, handle, size, trigger: "pdp_button" }),
-  }).catch(() => {});
-}
-
 /**
  * Standalone PDP Virtual Try-On entry point.
  * Works entirely without Mira — shoppers can try-on directly from the product
@@ -43,7 +35,6 @@ export default function PDPTryOnButton({ product, selectedSize, className }: PDP
     // Epoch seconds — avoids Date.now() in render-path logic
     const epoch = Math.floor(new Date().getTime() / 1000);
     startTryOnSession("pdp_button", product.handle, product.name, effectiveSize, epoch, []);
-    emitTryOnEvent("PDP_TRYON_CLICKED", product.handle, effectiveSize);
     setCartAdded(false);
     setShowPanel(true);
   }, [eligible, product.handle, product.name, effectiveSize]);
@@ -52,7 +43,6 @@ export default function PDPTryOnButton({ product, selectedSize, className }: PDP
     const epoch = Math.floor(new Date().getTime() / 1000);
     if (!cartAdded) {
       updateTryOnStatus("abandoned", epoch);
-      emitTryOnEvent("TRYON_ABANDONED", product.handle, effectiveSize);
     }
     setShowPanel(false);
   }, [cartAdded, product.handle, effectiveSize]);
@@ -60,8 +50,7 @@ export default function PDPTryOnButton({ product, selectedSize, className }: PDP
   const handleCartAdd = useCallback(() => {
     markTryOnCartAdded();
     setCartAdded(true);
-    emitTryOnEvent("CART_FROM_TRYON", product.handle, effectiveSize);
-  }, [product.handle, effectiveSize]);
+  }, []);
 
   if (!eligible) {
     return (
@@ -153,6 +142,7 @@ export default function PDPTryOnButton({ product, selectedSize, className }: PDP
       {showPanel && (
         <TryOnPanel
           product={product}
+          trigger="pdp_button"
           onClose={handleClose}
         />
       )}

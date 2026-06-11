@@ -489,7 +489,7 @@ function harmonyReason(anchorColor: string, type: HarmonyType): string {
 }
 
 function lookMsg(anchor: Product, ctx: MiraContext, why?: string): ChatMsg {
-  const ranked = buildLook(anchor);
+  const ranked = buildLook(anchor, activeProducts());
   const fresh = ranked.filter((e) => !ctx.shownHandles.has(e.product.handle));
   const pool = fresh.length >= 2 ? fresh : ranked;
   // RIGHT NUMBER OF PIECES (founder: "the right number of combinations"): take the
@@ -865,12 +865,13 @@ type MiraDecision = {
 // `catalog` remains ONLY as the marketing-demo fallback (when no real product was
 // returned), so the demo page keeps working. This is what ends the double system
 // on every real store.
-type RealProduct = { handle: string; name: string; category?: string | null; priceUsd?: number | null; image?: string | null; sizes?: string[]; colors?: string[] };
+type RealProduct = { id?: string; handle: string; name: string; category?: string | null; priceUsd?: number | null; image?: string | null; sizes?: string[]; colors?: string[] };
 const runtimeCatalog = new Map<string, Product>();
 const CAT_SET = new Set(["outerwear", "dress", "top", "bottom", "knitwear", "accessory"]);
 function realToProduct(a: RealProduct): Product {
   const category = (CAT_SET.has(a.category ?? "") ? a.category : "top") as Product["category"];
   return {
+    productId: a.id,
     handle: a.handle,
     name: a.name,
     collection: "the-atelier" as CollectionSlug,
@@ -1179,6 +1180,7 @@ function SizeForm({ product, onResult }: { product: Product | null; onResult: (l
   const [age, setAge] = useState<number>(prior?.age ?? 0);
   const [usualSize, setUsualSize] = useState<string>(prior?.usualBrandSize ?? "none");
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // Live BoldMatrix-style confidence breakdown — shows the shopper exactly what
   // signals they've provided and how accurate the recommendation will be.
@@ -1190,7 +1192,7 @@ function SizeForm({ product, onResult }: { product: Product | null; onResult: (l
     usualBrandSize: usualSize !== "none" ? usualSize : undefined,
   }) : null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const h = parseFloat(height), w = parseFloat(weight);
     if (!h || !w || h < 100 || h > 230 || w < 30 || w > 200) {
       onResult("Fit", "I need a valid height (cm) and weight (kg) to size you properly.", ["Size me"], "", product?.handle ?? "");
@@ -1198,6 +1200,81 @@ function SizeForm({ product, onResult }: { product: Product | null; onResult: (l
     }
     const anchor = product ?? catalog[0];
     const pref: FitPref = fitPref === "slim" ? "snug" : fitPref === "relaxed" ? "relaxed" : "true";
+
+    // The installed Shopify widget must use the tenant-aware fit service. The
+    // local calculator remains only for the standalone marketing demo.
+    if (ASSET_BASE) {
+      if (!anchor?.productId) {
+        onResult("Fit unavailable", "This product has not finished syncing its sizing data yet.", ["Show another piece"], "", anchor?.handle ?? "");
+        return;
+      }
+      setBusy(true);
+      try {
+        const apiPref =
+          fitPref === "slim" ? "FITTED" :
+          fitPref === "relaxed" ? "RELAXED" :
+          "REGULAR";
+        const res = await fetch(`${sqApi()}/api/fit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            productId: anchor.productId,
+            heightCm: Math.round(h),
+            weightKg: Math.round(w),
+            fitPreference: apiPref,
+          }),
+        });
+        const payload = (await res.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          data?: {
+            recommendedSize?: string;
+            confidence?: number;
+            rationale?: string;
+            trustLine?: string;
+            sizeUpAdvice?: string;
+          };
+        } | null;
+        const result = payload?.data;
+        if (!res.ok || !payload?.ok || !result?.recommendedSize) {
+          const unavailable = payload?.error === "invalid_input" || payload?.error === "product_not_found";
+          onResult(
+            unavailable ? "Sizing data unavailable" : "Fit unavailable",
+            unavailable
+              ? "I do not have enough verified sizing data for this piece yet."
+              : "I could not verify a size right now. Please use the product size chart.",
+            ["Show the size chart", "Show another piece"],
+            "",
+            anchor.handle,
+          );
+          return;
+        }
+        rememberBody({
+          heightCm: h,
+          weightKg: w,
+          fitPref,
+          age: age > 0 ? age : undefined,
+          usualBrandSize: usualSize !== "none" ? usualSize : undefined,
+        });
+        const confidencePct = Math.round((result.confidence ?? 0) * 100);
+        const advice = result.sizeUpAdvice ? ` ${result.sizeUpAdvice}` : "";
+        onResult(
+          `Your size · ${result.recommendedSize}`,
+          `${result.rationale ?? result.trustLine ?? "Matched against the available sizing data."} Confidence ${confidencePct}%.${advice}`,
+          ["Add to bag", "See it on you", "Build the look"],
+          result.recommendedSize,
+          anchor.handle,
+        );
+        setDone(true);
+        return;
+      } catch {
+        onResult("Fit unavailable", "I could not verify a size right now. Please use the product size chart.", ["Show the size chart"], "", anchor.handle);
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+
     const rec = recommendSize(anchor, h, w, pref, age > 0 ? age : undefined, usualSize !== "none" ? usualSize : undefined);
     const keepPct = Math.round(rec.keepRate * 100);
     const cb = confidenceBreakdown({ heightCm: h, weightKg: w, age: age > 0 ? age : undefined, usualBrandSize: usualSize !== "none" ? usualSize : undefined });
@@ -1269,7 +1346,7 @@ function SizeForm({ product, onResult }: { product: Product | null; onResult: (l
           }}>{pref === "true" ? "True fit" : pref}</button>
         ))}
       </div>
-      <button onClick={handleSubmit} style={{ background: "var(--grad)", border: "none", borderRadius: 8, padding: "10px", color: "#0E0A14", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Get my size →</button>
+      <button disabled={busy} onClick={() => void handleSubmit()} style={{ background: "var(--grad)", border: "none", borderRadius: 8, padding: "10px", color: "#0E0A14", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 13, cursor: busy ? "default" : "pointer", opacity: busy ? 0.7 : 1 }}>{busy ? "Checking fit…" : "Get my size →"}</button>
     </div>
   );
 }
@@ -1290,7 +1367,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
   // the #1 pre-purchase friction is answered before it's voiced.
   const body = loadBody();
   const bodyPref: FitPref | undefined = body ? (body.fitPref === "slim" ? "snug" : body.fitPref) : undefined;
-  const sizeRec = (body && p.sizes.length) ? recommendSizeForProduct(p, {
+  const sizeRec = (!ASSET_BASE && body && p.sizes.length) ? recommendSizeForProduct(p, {
     heightCm: body.heightCm, weightKg: body.weightKg, fitPref: bodyPref,
     age: body.age,
     usualBrandSize: body.usualBrandSize,
@@ -1982,16 +2059,23 @@ export default function MiraWidget() {
       setCartToast(`Couldn't add the look, tap to try again.`);
     };
     void addOutfitToCart(all.map((p) => ({ handle: p.handle, size: recalledSize(p.handle) })))
-      .then((r) => { if (r && r.real && !r.ok) rollbackLook(); })
+      .then((r) => {
+        if (r && r.real && !r.ok) {
+          rollbackLook();
+          return;
+        }
+        // Record only after the complete bundle succeeds. Previously each item
+        // was counted before Shopify confirmed the mutation, inflating assisted
+        // conversion and hiding partial/failed adds.
+        all.forEach((p) =>
+          void fetch(`${sqApi()}/api/mira/conversion`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productHandle: p.handle }),
+          }).catch(() => {}),
+        );
+      })
       .catch(rollbackLook);
-    // Each piece in the look is a real conversion (D60 honest bag-rate).
-    all.forEach((p) =>
-      void fetch(`${sqApi()}/api/mira/conversion`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productHandle: p.handle }),
-      }).catch(() => {}),
-    );
   }, []);
 
   // Stream a batch of Mira cards into the transcript with natural pacing,
@@ -2338,7 +2422,7 @@ export default function MiraWidget() {
 
             {showSizeForm && (
               <SizeForm
-                product={currentProduct()}
+                product={byHandle(activeProductHandle.current ?? undefined) ?? currentProduct()}
                 onResult={(label, text, replies, size, handle) => {
                   setShowSizeForm(false);
                   if (size && handle) {
@@ -2401,6 +2485,18 @@ export default function MiraWidget() {
       {tryOnProduct && (
         <TryOnPanel
           product={tryOnProduct}
+          catalogProducts={activeProducts()}
+          trigger="mira_suggest"
+          onRenderComplete={(imageUrl) => {
+            const epoch = Math.floor(new Date().getTime() / 1000);
+            tryOnCompleted.current = true;
+            tryOnAbandoned.current = false;
+            updateTryOnCtxStatus("completed", epoch, imageUrl);
+          }}
+          onRenderFailed={(errorCode) => {
+            const epoch = Math.floor(new Date().getTime() / 1000);
+            updateTryOnCtxStatus("failed", epoch, undefined, errorCode);
+          }}
           onClose={() => {
             const epoch = Math.floor(new Date().getTime() / 1000);
             if (tryOnCompleted.current) {

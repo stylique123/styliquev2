@@ -7,6 +7,8 @@
 // All image IDs below are visually verified: correct 200 status + fashion-appropriate.
 
 export type Product = {
+  /** Tenant-scoped database id. Present only for products returned by Shopify. */
+  productId?: string;
   handle: string;
   name: string;
   collection: CollectionSlug;
