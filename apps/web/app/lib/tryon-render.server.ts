@@ -284,6 +284,47 @@ const IDENTITY_LOCK =
 const GARMENT_FIDELITY =
   "GARMENT FIDELITY — render the EXACT garment shown in the garment image(s), truthfully. You MUST preserve, with zero substitution: the precise NECKLINE shape (a V-neck stays a sharp V, a crew/round neck stays round, a collar stays the same collar — never swap one neckline for another), the exact FABRIC and material (silk stays fluid silk, knit stays knit, denim stays denim, leather stays leather), the material's THICKNESS and weight, the SLEEVE length and shape, the HEM length and shape, every closure (buttons/zip/tie), any PRINT or pattern, and the exact COLOUR. Do NOT redesign, simplify, restyle, or 'improve' the garment. The ONLY thing that may differ from the product photo is how the piece DRAPES and FITS on this body at the requested size. Show the truth of the garment.";
 
+// ── ACCESSORIES (founder #11 — belts/bags/sunglasses/jewelry try-on-able in the
+// ONE flow). An accessory is ADDED to the look, never swapped for a garment, and
+// each type sits in its own place on the body. The catalog category is just
+// "accessory", so we detect the specific type from the product NAME to place it
+// correctly: a bag is carried, a belt cinches the waist, sunglasses sit on the
+// face, a necklace at the collar.
+function accessoryType(name: string): string {
+  const n = (name || "").toLowerCase();
+  if (/(sunglass|eyewear|shades|\bglasses\b)/.test(n)) return "sunglasses";
+  if (/(handbag|\bbag\b|tote|clutch|purse|backpack|crossbody|satchel|shoulder bag)/.test(n)) return "bag";
+  if (/belt/.test(n)) return "belt";
+  if (/(necklace|pendant|choker|\bchain\b)/.test(n)) return "necklace";
+  if (/earring/.test(n)) return "earrings";
+  if (/(bracelet|bangle|cuff)/.test(n)) return "bracelet";
+  if (/watch/.test(n)) return "watch";
+  if (/\bring\b/.test(n)) return "ring";
+  if (/(hat|cap|beret|fedora|beanie)/.test(n)) return "hat";
+  if (/(scarf|shawl|stole)/.test(n)) return "scarf";
+  if (/glove/.test(n)) return "gloves";
+  return "accessory";
+}
+function accessoryPlacement(name: string): string {
+  switch (accessoryType(name)) {
+    case "sunglasses": return "worn on the face, sitting over the eyes on the bridge of the nose";
+    case "bag":        return "carried naturally — held in one hand or hung from the shoulder/forearm, beside the body so it is fully visible";
+    case "belt":       return "fastened around the waist on top of the existing clothing, cinching the look";
+    case "necklace":   return "worn at the neckline, resting against the collarbone over the outfit";
+    case "earrings":   return "worn on the ears, visible beside the face";
+    case "bracelet":   return "worn on the wrist";
+    case "watch":      return "worn on the wrist";
+    case "ring":       return "worn on a finger";
+    case "hat":        return "worn on the head at a natural angle";
+    case "scarf":      return "draped around the neck and shoulders over the outfit";
+    case "gloves":     return "worn on the hands";
+    default:           return "worn or carried in its natural position on the body";
+  }
+}
+function accessoryClause(name: string): string {
+  return `This is a fashion ACCESSORY (${accessoryType(name)}) — it is ADDED to the look and does NOT replace any clothing. Keep EVERYTHING the person is already wearing EXACTLY as it appears (same garments, colours, cut, drape) and simply add this accessory, ${accessoryPlacement(name)}. Preserve the accessory's exact shape, colour, material and hardware from its product image; do not resize it as a garment or restyle any existing clothing. It MUST be clearly visible in the final image.`;
+}
+
 // Garment-type-aware replacement (founder P2a — a dress "should remove the pants
 // underneath … It's not worn with these"). Tell the model exactly which existing
 // garments to REMOVE before dressing, by the kind of the focus garment, so we
@@ -294,6 +335,10 @@ function replacementClause(kind: string | undefined, multi: boolean): string {
     return "Remove ALL of the person's original clothing first, then dress them in ONLY the supplied garments — nothing from their original outfit should remain visible underneath or alongside. EVERY supplied garment MUST be clearly visible and worn in the final image — never drop, hide, omit, or shorten a piece so it disappears. If a long dress or coat is supplied, render it at its FULL length; do not cut it off or let it vanish behind another piece.";
   }
   switch (kind) {
+    case "accessory":
+      // Safety fallback — buildPrompt's single-accessory path uses the NAMED
+      // accessoryClause(focusName); this generic one covers any other caller.
+      return accessoryClause("");
     case "dress":
       return "This is a DRESS — a single full-body garment. Remove EVERYTHING the person is currently wearing on both their upper and lower body (any top, shirt, trousers, pants, skirt or shorts) and dress them in ONLY this dress. There must be NO trousers, pants, or separate top visible — the dress is worn on its own over bare legs as a dress is normally worn.";
     case "bottom":
@@ -318,6 +363,10 @@ function replacementClause(kind: string | undefined, multi: boolean): string {
 // did not change the pant size as well … which should really look loose."
 function perPieceFitBlock(fits: GarmentFit[]): string {
   const lines = fits.map((f) => {
+    // Accessories are ADDED, not sized — no cm-ease, just correct placement.
+    if (f.kind === "accessory") {
+      return `• The ${f.name} is an ACCESSORY — ADD it to the look (it does NOT replace any garment), ${accessoryPlacement(f.name)}; preserve its exact shape, colour, material and hardware; do not resize it as a garment.`;
+    }
     const axis = fitAxis(f.kind);
     const ease = easeMagnitudeClause(f.easeCm, axis, f.bindLabel);
     const abs = absoluteFitClause(f.size, axis);
@@ -330,7 +379,7 @@ function perPieceFitBlock(fits: GarmentFit[]): string {
   ].join(" ");
 }
 
-function buildPrompt(garmentCount: number, size: string, recommended?: string, kind?: string, easeCm?: number, bindLabel?: string, garmentFits?: GarmentFit[]): string {
+function buildPrompt(garmentCount: number, size: string, recommended?: string, kind?: string, easeCm?: number, bindLabel?: string, garmentFits?: GarmentFit[], focusName?: string): string {
   const axis = fitAxis(kind);
   const ease = easeMagnitudeClause(easeCm, axis, bindLabel);
   const rel = relativeFitClause(size, recommended, axis);
@@ -351,6 +400,19 @@ function buildPrompt(garmentCount: number, size: string, recommended?: string, k
     "CRITICAL: the fit difference between sizes MUST be obvious at a glance — a small size must look noticeably tighter and a large size noticeably bigger than the true size. Never render different sizes the same. Show the HONEST fit — if it is tight, show it pulling; if it is big, show it draping and oversized. Do not tuck, pin, flatter, or hide a poor fit.",
   ].filter(Boolean).join(" ");
   if (garmentCount === 1) {
+    // ACCESSORY worn solo — ADD it to the body, keep all clothing, no cm-ease.
+    if (kind === "accessory") {
+      return [
+        "You are a virtual try-on engine for a luxury fashion store.",
+        "The FIRST image is a person (a model on a plain studio backdrop).",
+        "The SECOND image shows a fashion ACCESSORY.",
+        IDENTITY_LOCK,
+        GARMENT_FIDELITY,
+        accessoryClause(focusName ?? ""),
+        "Full-length, head-to-feet fashion lookbook photograph showing the person's whole body from head to feet, soft even studio lighting, sharp focus.",
+        "Output ONLY the edited photograph.",
+      ].join(" ");
+    }
     return [
       "You are a virtual try-on engine for a luxury fashion store.",
       "The FIRST image is a person (a model on a plain studio backdrop).",
@@ -526,7 +588,7 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
     // Miss → render the composite.
     const personB64 = await readAssetB64(req.museImage);
     const garmentB64s = await Promise.all(garmentImages.map(readAssetB64));
-    const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits);
+    const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits, req.garmentFits?.[0]?.name);
     const out = await renderImage(prompt, personB64, "image/png", garmentB64s);
     const bytes = Buffer.from(out.b64, "base64");
 
@@ -560,7 +622,7 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
   // shopper's own photo must size each garment to ITS own size (pant at the
   // pant's, top at the top's), exactly as muse mode does. Omitting garmentFits
   // here collapsed every piece to one global size on the photo path.
-  const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits);
+  const prompt = buildPrompt(garmentB64s.length, req.size, req.recommendedSize, req.garmentKind, req.easeCm, req.bindLabel, req.garmentFits, req.garmentFits?.[0]?.name);
   const out = await renderImage(prompt, personB64, personMime, garmentB64s);
   const dataUrl = `data:${out.mime};base64,${out.b64}`;
   if (photoCache.size >= PHOTO_CACHE_CAP) {

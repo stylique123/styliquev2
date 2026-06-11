@@ -433,11 +433,14 @@ export default function TryOnPanel({
       const recSize = computeFit(focus, rH, rW, muse, rBody).size;
       // Map the focus product's category to a fit axis the render understands
       // (top/bottom/dress/outerwear) so the size change reads on the right body
-      // region. knitwear/accessory fall back to "top".
+      // region. knitwear falls back to "top"; ACCESSORIES (belts/bags/sunglasses/
+      // jewelry) carry their own "accessory" kind so the render ADDS them in their
+      // natural place instead of sizing them as a garment (founder #11).
       const garmentKind =
         focus.category === "bottom" ? "bottom"
         : focus.category === "dress" ? "dress"
         : focus.category === "outerwear" ? "outerwear"
+        : focus.category === "accessory" ? "accessory"
         : "top";
       const garmentImages = garments.map((g) => g.images[0]).filter(Boolean);
       // The HONEST size signal: the real per-body ease (signed cm) and tightness
@@ -460,6 +463,7 @@ export default function TryOnPanel({
         p.category === "bottom" ? "bottom"
         : p.category === "dress" ? "dress"
         : p.category === "outerwear" ? "outerwear"
+        : p.category === "accessory" ? "accessory"
         : "top";
       const garmentFits = garments.map((g) => {
         const pieceSize = g.handle === focus.handle ? sizeForRender : computeFit(g, rH, rW, muse, rBody).size;
