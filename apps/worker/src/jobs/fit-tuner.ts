@@ -1,6 +1,6 @@
-// Stylique Fashion — nightly fit + look auto-tuner. Fashion-equivalent of the
-// shade-tuner (which sits in apps/shopify-app for on-demand admin invocation).
-// Lives in apps/worker because it runs unattended every night.
+// Stylique Fashion — nightly fit + look auto-tuner. Tunes per-shop fit and
+// look-building from real conversion signal. Lives in apps/worker because it
+// runs unattended every night.
 //
 // What it does per shop:
 //   1. Reads the last 30 days of CHAT_COMBO_PROPOSED, COMBO_ADD_ALL,
