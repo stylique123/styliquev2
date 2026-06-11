@@ -812,8 +812,41 @@ export async function runMiraAdapter(args: {
               productId: prod?.id, payload: { handle: handle ?? null },
             });
           }
+
+          // ── CATALOG-GAP / NEAR-MISS CAPTURE (P1 #5) ───────────────────────
+          // The unified brain flags unmet demand (shopper asked for something
+          // the store genuinely does NOT carry) and near-misses (served the
+          // closest real piece, one named attribute off). BEFORE this fix the
+          // storefront path persisted NEITHER — so the §1 learning-loop thesis
+          // ("brands buy demand intelligence: what to stock next") shipped on
+          // the demo (D59/D60) but the production merchant's CatalogGap table
+          // stayed empty. Now both land, shop-scoped (§3 #1), fire-and-forget.
+          const dec = payload.decision as {
+            unmet?: boolean; unmetCategory?: string;
+            nearMiss?: boolean; nearMissCategory?: string; nearMissAttribute?: string;
+          } | null;
+          const askedText = (lastUserMsg || "").slice(0, 300).trim();
+          if (askedText && (dec?.unmet || dec?.nearMiss)) {
+            const { logCatalogGap } = await import("./taste.server");
+            if (dec.unmet) {
+              await logCatalogGap({
+                shopId, shopperRowId: shopper.id, rawQuery: askedText,
+                resultCount: 0, category: dec.unmetCategory, source: "mira_proxy",
+              });
+            } else if (dec.nearMiss && handle) {
+              const np = await prisma.product.findFirst({
+                where: { shopId, handle }, select: { id: true },
+              });
+              await logCatalogGap({
+                shopId, shopperRowId: shopper.id, rawQuery: askedText,
+                resultCount: 1, category: dec.nearMissCategory,
+                source: "mira_proxy_nearmiss",
+                nearMissProductId: np?.id, nearMissAttribute: dec.nearMissAttribute,
+              });
+            }
+          }
         } catch (err) {
-          console.error("[mira-adapter] analytics emission failed", err);
+          console.error("[mira-adapter] analytics/gap emission failed", err);
         }
       })();
     }
