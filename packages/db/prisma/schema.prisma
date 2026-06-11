@@ -50,7 +50,6 @@ model Shop {
   products          Product[]
   productAudits     ProductAudit[]
   productEmbeddings ProductEmbedding[]
-  savedRoutines     SavedRoutine[]
   styleSessions     StyleSession[]
   tryOnSessions     TryOnSession[]
   usageCounters     UsageCounter[]
@@ -265,15 +264,6 @@ model ShopperSession {
   budgetMax              Float?
   budgetCurrency         String?          @default("USD")
   skinTone               String?
-  skinTypeBeauty         String?
-  skinConcernsJson       Json?
-  skinDepth              String?
-  skinUndertone          String?
-  skinHex                String?
-  skinAnalyzedAt         DateTime?
-  routinePreference      String?
-  skinRoutineSavedAt     DateTime?
-  savedBeautyRoutineJson Json?
   email                  String?
   displayName            String?
   marketingOptIn         Boolean          @default(false)
@@ -299,14 +289,12 @@ model ShopperSession {
   cartIntents            CartIntent[]
   catalogGaps            CatalogGap[]
   fits                   FitSession[]
-  savedRoutines          SavedRoutine[]
   styles                 StyleSession[]
   tryOns                 TryOnSession[]
 
   @@index([shopifyDomain, shopifyCustomerId])
   @@index([shopifyDomain])
   @@index([email])
-  @@index([shopifyDomain, skinDepth, skinUndertone])
 }
 
 model TryOnSession {
@@ -490,25 +478,6 @@ model CartIntent {
   session    ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
 
   @@index([shopId, shopperId])
-}
-
-model SavedRoutine {
-  id            String         @id @default(cuid())
-  shopId        String
-  shopifyDomain String
-  shopperId     String
-  productIds    String[]
-  stepOrder     Json
-  routineType   String?
-  status        String         @default("active")
-  miraSummary   String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  shop          Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  shopper       ShopperSession @relation(fields: [shopperId], references: [id], onDelete: Cascade)
-
-  @@index([shopId, shopperId, status])
-  @@index([shopId, routineType, createdAt])
 }
 
 model Experiment {
@@ -762,15 +731,6 @@ enum EventName {
   CHAT_STOCK_CHECKED
   CHAT_SIZE_CHART_VIEWED
   WIDGET_PLACEMENT_AUDIT
-  BEAUTY_REPLENISHMENT_TRIGGERED
-  BEAUTY_SKIN_PROFILE_CAPTURED
-  BEAUTY_SHADE_MATCHED
-  BEAUTY_ROUTINE_BUILT
-  BEAUTY_ROUTINE_ADD_ALL
-  BEAUTY_ROUTINE_ADDED_TO_CART
-  BEAUTY_SHADE_GAP_LOGGED
-  BEAUTY_INGREDIENT_CONCERN
-  BEAUTY_RESTOCK_ALL
   PRODUCT_CREATED_VIA_AI
   CHAT_NEAR_MISS
   CREATIVE_CLICKED

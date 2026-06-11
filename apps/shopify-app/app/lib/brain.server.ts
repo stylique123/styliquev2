@@ -13,7 +13,7 @@ import { reportError } from "./sentry.server";
 import { createLogger } from "./logger.server";
 import {
   Brain, ToolRegistry,
-  salesStylistVariant, defaultStylistVariant, concisedStylistVariant, beautyAdvisorVariant,
+  salesStylistVariant, defaultStylistVariant, concisedStylistVariant,
   createGeminiProvider, createAnthropicProvider, createOpenAIProvider,
   searchCatalogToolSchema, proposeComboToolSchema, navigateToolSchema,
   addToCartToolSchema, addOutfitToCartToolSchema, offerSignupToolSchema,
@@ -42,8 +42,6 @@ import { vectorSearchProducts } from "./embeddings.server";
 import { matchByReferenceImage } from "./image-match.server";
 import { detectLocale, recommendFit, analyzeColorHarmony, scoreCombo } from "@stylique/core";
 import { listRecommendations } from "./recommendations.server";
-import { buildBeautyToolHandlers, buildBeautyBrainContext } from "./beauty-brain.server";
-import { BEAUTY_TOOL_SCHEMAS } from "@stylique/ai";
 
 // ─── OI-37: Redis cache for recentBehavior ──────────────────────────────────
 // Each shopper's top-5 category engagement is stable over a 5-minute window.
@@ -276,16 +274,6 @@ export function getBrain(): Brain {
   const tools = new ToolRegistry();
   tools.registerMany(toolsWithHandlers());
 
-  // Beauty mode — register beauty tools when the shop has brandMode "beauty".
-  // We register them always (gated by requiresFeature in the schema) so the
-  // registry is ready regardless of which shop triggers the first request.
-  const beautyHandlers = buildBeautyToolHandlers();
-  const beautyToolDefs = BEAUTY_TOOL_SCHEMAS.map(schema => ({
-    ...schema,
-    handler: beautyHandlers[schema.name] ?? (async () => ({ error: "handler_not_found" })),
-  }));
-  tools.registerMany(beautyToolDefs);
-
   // ─── Hybrid AI + Rules layer (multi-model routing + fact guardrail) ──────
   //
   // Router: cheap → standard → strong. Today cheap === standard === the Gemini
@@ -341,7 +329,6 @@ export function getBrain(): Brain {
       // to the existing concise/terse stylist variant.
       concise:        concisedStylistVariant,
       terse:          concisedStylistVariant,
-      beauty:         beautyAdvisorVariant,
     },
     // Optional hybrid layer — additive. Absent any of these, the Brain runs
     // exactly as before.
@@ -2410,14 +2397,6 @@ export async function buildBrainContext(args: {
     brandSnapshot,
     activeSales,
     brandDNA,
-    brandMode: (plan.features as unknown as { brandMode?: string }).brandMode === "beauty"
-      ? "beauty"
-      : "fashion",
-    // Populate beautyContext only when this shop is in beauty mode so the
-    // Brain prompt block is non-empty only when Mira can actually act on it.
-    beautyContext: (plan.features as unknown as { brandMode?: string }).brandMode === "beauty"
-      ? await buildBeautyBrainContext(args.shopperSessionId ?? null, args.shopDomain)
-      : undefined,
     cache: new Map(),
     log: args.log,
   };

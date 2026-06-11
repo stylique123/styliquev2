@@ -45,7 +45,6 @@ export default function AppLayout() {
         <Link to="/app/settings/stylist">Stylist</Link>
         <Link to="/app/settings/tryon">Try-on</Link>
         <Link to="/app/settings/brand">Brand DNA</Link>
-        <Link to="/app/settings/beauty">Beauty</Link>
       </ui-nav-menu>
       <Outlet />
     </AppProvider>

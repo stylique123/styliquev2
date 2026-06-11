@@ -148,27 +148,3 @@ export async function enqueueSentimentExtract(job: SentimentExtractJob, opts?: {
     removeOnFail: 200,
   });
 }
-
-// ─── Replenishment-notify queue ─────────────────────────────────────────
-// Admin "Notify now" button + nightly cron in apps/worker both push here.
-// Sends restock reminder emails to opted-in shoppers with items due soon.
-export const replenishmentNotifyQueue = new Queue("replenishment-notify", { connection });
-
-export type ReplenishmentNotifyJob = {
-  shopId: string;
-  /** How many days ahead to look for due items. Defaults to 7. */
-  daysAhead?: number;
-};
-
-export async function enqueueReplenishmentNotify(
-  job: ReplenishmentNotifyJob,
-  opts?: { jobId?: string },
-) {
-  return replenishmentNotifyQueue.add("notify", job, {
-    jobId: opts?.jobId,
-    attempts: 2,
-    backoff: { type: "exponential", delay: 10_000 },
-    removeOnComplete: 50,
-    removeOnFail: 200,
-  });
-}

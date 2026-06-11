@@ -9,8 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "prisma": "prisma",
-    "seed": "tsx src/seed.ts",
-    "seed:beauty": "tsx src/seed-beauty.ts"
+    "seed": "tsx src/seed.ts"
   },
   "prisma": {
     "seed": "tsx src/seed.ts"

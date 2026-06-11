@@ -37,6 +37,3 @@ export type { SupportedLocale, TranslationKey } from "./i18n/index.js";
 export * from "./studio/index.js";
 // Shared Vertex AI auth helpers (JWT signing, OAuth token exchange, token cache).
 export * from "./vertex/auth.js";
-// Stylique Beauty — skin analysis, shade matching, routine builder, ingredient analyzer,
-// merchant intelligence dashboard. Imported by beauty-brain.server.ts + worker jobs.
-export * from "./beauty/index.js";

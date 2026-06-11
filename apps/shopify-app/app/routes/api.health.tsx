@@ -24,7 +24,6 @@ const QUEUE_NAMES = [
   "size-chart-extract",
   "brand-dna-catalog",
   "brand-instagram",
-  "replenishment-notify",
   "outcome-resolver",
   "billing-reconcile",
 ] as const;

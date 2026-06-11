@@ -192,25 +192,6 @@ export const EventNameSchema = z.enum([
   // dashboard's "Placement confidence" tile + the internal low-confidence
   // ops view that drives the Growth/Scale theme-optimization upsell.
   "WIDGET_PLACEMENT_AUDIT",
-  // ─── Beauty extension ────────────────────────────────────────────────────
-  // Shopper skin profile was collected (via widget intake or Mira chat).
-  "BEAUTY_SKIN_PROFILE_CAPTURED",
-  // A shade variant was matched to the shopper's profile via the shade engine.
-  "BEAUTY_SHADE_MATCHED",
-  // Mira (or the widget) assembled a complete AM/PM skincare or makeup routine.
-  "BEAUTY_ROUTINE_BUILT",
-  // Shopper tapped "Add routine to bag" — all routine items added in one shot.
-  "BEAUTY_ROUTINE_ADD_ALL",
-  // Shopper is predicted to be running low on a replenishable product.
-  "BEAUTY_REPLENISHMENT_TRIGGERED",
-  // A shade request could not be fulfilled — undertone/depth gap in catalog.
-  "BEAUTY_SHADE_GAP_LOGGED",
-  // Shopper flagged or asked about a specific ingredient concern.
-  "BEAUTY_INGREDIENT_CONCERN",
-  // Shopper tapped "Add all to bag" on the Routine step — individual add-to-cart signal.
-  "BEAUTY_ROUTINE_ADDED_TO_CART",
-  // Shopper tapped "Restock all" on the Restock step — all low-stock items added at once.
-  "BEAUTY_RESTOCK_ALL",
   // Brand admin used the AI "New product from image" flow (D43).
   "PRODUCT_CREATED_VIA_AI",
   // ─── Intelligence loop — measure→learn (Outcome tracking) ────────────────
@@ -496,80 +477,6 @@ export const EventPayloadSchemas = {
       id: z.string().max(60),
       passed: z.boolean(),
     })).max(20),
-  }),
-
-  // ─── Beauty extension ────────────────────────────────────────────────────
-  // Fired when Mira or the widget intake step captures the shopper's skin profile.
-  // "depth" = skin depth reading (1–6 Fitzpatrick-adjacent scale or brand's own).
-  BEAUTY_SKIN_PROFILE_CAPTURED: z.object({
-    skinType: z.string(),                           // "oily" | "dry" | "combination" | "normal" | "sensitive"
-    concerns: z.array(z.string()),                  // ["acne", "hyperpigmentation", ...]
-    depth: z.string(),                              // "fair" | "light" | "medium" | "tan" | "deep" | "rich"
-    undertone: z.string(),                          // "warm" | "cool" | "neutral" | "olive"
-    source: z.enum(["widget", "chat"]),
-  }),
-
-  // Fired when the shade-matching engine returns a variant recommendation.
-  // hexScore is 0..1 cosine similarity between shopper undertone hex and product swatch.
-  BEAUTY_SHADE_MATCHED: z.object({
-    productId: z.string(),
-    shadeVariantId: z.string(),
-    confidence: z.number().min(0).max(1),
-    undertoneMatch: z.boolean(),
-    depthMatch: z.boolean(),
-    hexScore: z.number().min(0).max(1).optional(),  // present when hex embeddings used
-  }),
-
-  // Fired when Mira or the widget builds a complete routine for the shopper.
-  // estimatedAovCents is the sum of recommended variant prices at time of build.
-  BEAUTY_ROUTINE_BUILT: z.object({
-    productIds: z.array(z.string()),
-    totalAmPm: z.enum(["am", "pm", "both"]),
-    estimatedAovCents: z.number().int(),
-  }),
-
-  // Fired when the shopper taps "Add routine to bag" (all-at-once AOV lever).
-  BEAUTY_ROUTINE_ADD_ALL: z.object({
-    productIds: z.array(z.string()),
-    variantIds: z.array(z.string()),
-    totalCents: z.number().int(),
-  }),
-
-  // Fired when a replenishment nudge is surfaced (widget or Mira).
-  // urgency "now" = estimated days exhausted; "soon" = within ~7 days.
-  BEAUTY_REPLENISHMENT_TRIGGERED: z.object({
-    productId: z.string(),
-    urgency: z.enum(["now", "soon"]),
-    daysSincePurchase: z.number().int(),
-    source: z.enum(["widget", "chat"]),
-  }),
-
-  // Fired when a shade search returns zero matches — catalog gap signal.
-  // undertone + depth identify the unserved segment; queryText captures raw intent.
-  BEAUTY_SHADE_GAP_LOGGED: z.object({
-    undertone: z.string(),
-    depth: z.string(),
-    queryText: z.string(),
-  }),
-
-  // Fired when a shopper flags or asks about an ingredient concern.
-  // resolved = true when Mira found a concern-free alternative in the catalog.
-  BEAUTY_INGREDIENT_CONCERN: z.object({
-    ingredient: z.string(),
-    concern: z.string(),
-    resolved: z.boolean(),
-  }),
-  // Fired per-item when a shopper taps individual "Add to bag" inside the Routine step.
-  // itemCount = number of items in the full routine (not just the one tapped).
-  BEAUTY_ROUTINE_ADDED_TO_CART: z.object({
-    itemCount: z.number().int(),
-    totalUsd: z.number().optional(),
-  }),
-
-  // Fired when a shopper taps "Restock all" on the Restock step — all low-stock replenishment
-  // items added to cart in one shot (the AOV lever for returning beauty shoppers).
-  BEAUTY_RESTOCK_ALL: z.object({
-    itemCount: z.number().int(),
   }),
 
   // Fired when a brand admin creates a product via the AI image-upload flow (D43).

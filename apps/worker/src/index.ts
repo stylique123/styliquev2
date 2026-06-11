@@ -28,7 +28,6 @@ import { processSentimentExtract, type SentimentJobData } from "./jobs/sentiment
 import { processSizeChartExtract, type SizeChartExtractJobData } from "./jobs/size-chart-extract.js";
 import { processBrandInstagram, type BrandInstagramJobData } from "./jobs/brand-instagram.js";
 import { processBrandDnaCatalog, type BrandDnaCatalogJobData } from "./jobs/brand-dna-catalog.js";
-import { processReplenishmentNotify, type ReplenishmentNotifyJobData } from "./jobs/replenishment-notify.js";
 import { processMonthlyReport, type MonthlyReportJob } from "./jobs/monthly-report.js";
 import { processFitTuner, type FitTunerJobData } from "./jobs/fit-tuner.js";
 import { createOutcomeResolverWorker, scheduleOutcomeResolver } from "./jobs/outcome-resolver.js";
@@ -198,20 +197,6 @@ const brandInstagramWorker = new Worker<BrandInstagramJobData>(
   { connection, concurrency: 1 },
 );
 
-// Replenishment notification worker — sends restock reminder emails to opted-in
-// shoppers whose beauty/care products are due within 7 days. Concurrency 2:
-// each run does one batch of DB reads + outbound email calls per shop, no heavy
-// compute; two concurrent runs lets us email two shops simultaneously without
-// blocking on Resend/SMTP latency.
-const replenishmentNotifyWorker = new Worker<ReplenishmentNotifyJobData>(
-  "replenishment-notify",
-  async (job) => {
-    console.log(`[replenishment-notify] shop=${job.data.shopId}`);
-    return processReplenishmentNotify(job.data);
-  },
-  { connection, concurrency: 2 },
-);
-
 // Fashion fit + look tuner — nightly closed-loop autotuner. Reads the last 30
 // days of combo + cart events, computes addAllRate / cartConvertRate /
 // per-size keep-bias, gently nudges combo scoring weights, writes back to
@@ -293,7 +278,6 @@ const recommendationsQueue = new Queue("recommendations", { connection });
 const sentimentQueue = new Queue("sentiment-extract", { connection });
 const sizeChartQueue = new Queue("size-chart-extract", { connection });
 const fitTunerQueue = new Queue("fit-tuner", { connection });
-const replenishmentNotifyQueue = new Queue("replenishment-notify", { connection });
 
 // Shared catalog-sync and catalog-maintenance queues.
 const catalogSyncQueue = new Queue("catalog-sync", { connection });
@@ -354,19 +338,6 @@ async function scheduleNightlyRecommendations() {
         removeOnFail: 100,
       },
     );
-    // Replenishment notify at 10:00 AM UTC — morning send time fits "restock
-    // before I run out today" shopper behaviour. 30-min stagger from sentiment
-    // (02:45) so the two Gemini-heavy jobs don't burst simultaneously.
-    await replenishmentNotifyQueue.add(
-      "notify",
-      { shopId: shop.id, daysAhead: 7 },
-      {
-        jobId: `replenishment-nightly:${shop.id}`,
-        repeat: { pattern: "0 10 * * *" },
-        removeOnComplete: 20,
-        removeOnFail: 100,
-      },
-    );
   }
   // ── Widget injection health-check — daily 07:00 UTC ─────────────────────
   // Not per-shop (one job checks all shops) — add outside the per-shop loop.
@@ -386,7 +357,6 @@ async function scheduleNightlyRecommendations() {
   console.log(`✓ Scheduled daily widget injection health-check (07:00 UTC)`);
   console.log(`✓ Scheduled nightly recommendations for ${shops.length} shop(s)`);
   console.log(`✓ Scheduled nightly sentiment extraction for ${shops.length} shop(s)`);
-  console.log(`✓ Scheduled nightly replenishment notifications for ${shops.length} shop(s)`);
   console.log(`✓ Scheduled nightly fashion fit + look tuner for ${shops.length} shop(s) (02:50 UTC)`);
 }
 void scheduleNightlyRecommendations().catch((e) => {
@@ -426,7 +396,6 @@ for (const [worker, name] of [
   [imageQualityWorker,         "image-quality"],
   [brandDnaCatalogWorker,      "brand-dna-catalog"],
   [brandInstagramWorker,       "brand-instagram"],
-  [replenishmentNotifyWorker,  "replenishment-notify"],
   [outcomeResolverWorker,      "outcome-resolver"],
   [billingReconcileWorker,     "billing-reconcile"],
   [retentionCleanupWorker,     "retention-cleanup"],
@@ -458,7 +427,6 @@ console.log(
     "image-quality",
     "brand-dna-catalog",
     "brand-instagram",
-    "replenishment-notify",
     "outcome-resolver",
     "billing-reconcile",
     "retention-cleanup",
@@ -488,7 +456,6 @@ const healthQueues = {
   "brand-install": new Queue("brand-install", { connection }),
   "brand-dna-catalog": new Queue("brand-dna-catalog", { connection }),
   "brand-instagram": new Queue("brand-instagram", { connection }),
-  "replenishment-notify": new Queue("replenishment-notify", { connection }),
   "outcome-resolver": new Queue("outcome-resolver", { connection }),
   "billing-reconcile": new Queue("billing-reconcile", { connection }),
   "retention-cleanup": new Queue("retention-cleanup", { connection }),
@@ -563,7 +530,6 @@ async function shutdown() {
   await sizeChartWorker.close();
   await brandDnaCatalogWorker.close();
   await brandInstagramWorker.close();
-  await replenishmentNotifyWorker.close();
   await fitTunerWorker.close();
   await outcomeResolverWorker.close();
   await billingReconcileWorker.close();
@@ -572,7 +538,6 @@ async function shutdown() {
   await recommendationsQueue.close();
   await sentimentQueue.close();
   await sizeChartQueue.close();
-  await replenishmentNotifyQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);

@@ -23,7 +23,7 @@ import type { PrismaClient } from "@stylique/db";
 
 const MONTHS_ANONYMOUS = 24;  // Art. 5(1)(e) — anonymous sessions
 const MONTHS_CLAIMED   = 36;  // Art. 5(1)(e) — claimed accounts (longer justified
-                               // by legitimate interest in continuity + replenishment)
+                               // by legitimate interest in continuity)
 
 function monthsAgo(months: number): Date {
   const d = new Date();

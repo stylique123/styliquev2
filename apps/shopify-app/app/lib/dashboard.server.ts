@@ -19,7 +19,6 @@ import { listRecommendations } from "./recommendations.server";
 import { readBenchmarksForShop, readLatestSnapshot } from "./network.server";
 import { getInsights, type StarterInsights, type GrowthInsights, type UltimateInsights } from "./insights.server";
 import { getFashionIntelligence, type FashionIntelligence } from "./fashion-intelligence.server";
-import { buildBeautyAnalyticsBlock, type IngredientTrendsResult } from "./beauty-brain.server";
 import { currentPeriodStart, type PlanFeatures } from "@stylique/core";
 import type { PlanTier } from "@stylique/types";
 
@@ -266,13 +265,6 @@ export async function buildOverview(args: {
   fashionIntelligence: FashionIntelligence;
   // Count of high-urgency items for the nav badge (red dot).
   insightsBadgeCount: number;
-  // Beauty intelligence — only present when brandMode === "beauty".
-  beauty: {
-    topConcerns: Array<{ concern: string; count: number }>;
-    replenishmentDueSoon: number;
-    shadeGapCount: number;
-    ingredientTrends: IngredientTrendsResult;
-  } | null;
 }> {
   const win = args.windowDays ?? 30;
   const since = new Date(Date.now() - win * DAY);
@@ -637,13 +629,6 @@ export async function buildOverview(args: {
     plan.tier as "STARTER" | "GROWTH" | "ULTIMATE",
   );
 
-  // ─── Beauty intelligence (beauty brandMode only) ────────────────────
-  const rawBrandMode = (rawPlan?.planFeaturesJson as { brandMode?: string } | null)?.brandMode ?? "fashion";
-  let beauty: Awaited<ReturnType<typeof buildOverview>>["beauty"] = null;
-  if (rawBrandMode === "beauty") {
-    beauty = await buildBeautyAnalyticsBlock(args.shopId);
-  }
-
   // ─── Nav badge count: high-urgency items the brand should see ────────
   // Counts: failed jobs (from usage rail) + high-urgency catalog gaps +
   // size drift alerts + stockout predictions < 7 days + URGENT recs.
@@ -699,7 +684,6 @@ export async function buildOverview(args: {
     insights,
     fashionIntelligence,
     insightsBadgeCount,
-    beauty,
   };
 }
 

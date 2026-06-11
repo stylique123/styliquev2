@@ -6,7 +6,6 @@
 // - ShopperSession: email, name, chatHistoryJson, tasteVectorJson, body measurements
 // - AnalyticsEvent: payload can contain heightCm/weightKg/bodyType (CHAT_PROFILE_CAPTURED)
 // - CatalogGap: rawQuery contains verbatim shopper search text
-// - SavedRoutine: routineName + ordered product steps
 // Scoped by shopifyDomain + shopifyCustomerId — never cross-tenant.
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
@@ -47,12 +46,10 @@ export async function action({ request }: ActionFunctionArgs) {
         // 2. Delete ALL child rows that carry personal data — in dependency order
         //    (children before the parent ShopperSession). All scoped to the collected
         //    session IDs so we NEVER touch another shopper's data.
-        // AnalyticsEvent.payload can hold body measurements, skin profile, etc.
+        // AnalyticsEvent.payload can hold body measurements, etc.
         rows += await del(() => prisma.analyticsEvent.deleteMany({ where: { shopperId: { in: sessionIds } } }));
         // CatalogGap.rawQuery holds verbatim shopper search text ("a red dress for my sister's wedding").
         rows += await del(() => prisma.catalogGap.deleteMany({ where: { shopperId: { in: sessionIds } } }));
-        // SavedRoutine holds routine name + ordered steps.
-        rows += await del(() => prisma.savedRoutine.deleteMany({ where: { shopperId: { in: sessionIds } } }));
         // TryOnSession: renderUrl may be tied to the shopper's uploaded photo key.
         rows += await del(() => prisma.tryOnSession.deleteMany({ where: { shopperId: { in: sessionIds } } }));
         // FitSession + StyleSession: body + preference data.

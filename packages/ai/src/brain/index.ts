@@ -26,7 +26,6 @@ export {
   salesStylistVariant,
   defaultStylistVariant,
   concisedStylistVariant,
-  beautyAdvisorVariant,
   type PromptVariant,
 } from "./prompts.js";
 
@@ -72,5 +71,3 @@ export {
   getSizeChartToolSchema,
   ALL_TOOL_SCHEMAS,
 } from "./tools.js";
-
-export { BEAUTY_TOOL_SCHEMAS } from "./beauty-tools.js";

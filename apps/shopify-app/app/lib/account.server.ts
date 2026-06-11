@@ -246,7 +246,6 @@ export async function getMe(args: {
   locale: SupportedLocale;
   currencyCode: string;                    // store's ISO 4217 currency so the widget formats prices in it
   stylist: { name: string; avatarUrl: string | null };
-  brandMode: "fashion" | "beauty";
 }> & { setCookie?: string | null }> {
   if (!await rateOk(args.shopDomain, args.shopperCookieId)) return { ok: false, error: "rate_limited" };
   const shopId = await shopIdFromDomain(args.shopDomain);
@@ -274,8 +273,7 @@ export async function getMe(args: {
     }).catch(() => undefined);
   }
   const me = await getShopperPublic(session.row.id);
-  const overrides = (plan?.planFeaturesJson as { stylist?: { stylistName?: string; avatarUrl?: string }; brandMode?: string } | null) ?? null;
-  const brandMode: "fashion" | "beauty" = overrides?.brandMode === "beauty" ? "beauty" : "fashion";
+  const overrides = (plan?.planFeaturesJson as { stylist?: { stylistName?: string; avatarUrl?: string } } | null) ?? null;
   return {
     ok: true,
     data: {
@@ -296,7 +294,6 @@ export async function getMe(args: {
         name: overrides?.stylist?.stylistName?.trim() || "Mira",
         avatarUrl: overrides?.stylist?.avatarUrl?.trim() || null,
       },
-      brandMode,
     },
     setCookie: session.setCookie,
   };

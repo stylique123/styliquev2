@@ -311,35 +311,6 @@ export type BrainContext = {
     trainedAt?: Date | null;
   };
 
-  // Brand mode — "fashion" (default) or "beauty". Controls which prompt
-  // variant is injected and which tools are visible. Set once at shop
-  // configuration via Plan.planFeaturesJson.brandMode.
-  // When "beauty", the Brain auto-selects the beautyAdvisorVariant prompt
-  // and makes beauty tools (shade match, routine builder, etc.) visible.
-  brandMode?: "fashion" | "beauty";
-
-  // Beauty-specific shopper context — populated when brandMode === "beauty".
-  // Read by buildBeautyBrainContext() and injected into buildBrainContext().
-  // Mira uses this to skip re-asking skin questions and to discuss the saved
-  // routine without calling build_routine every turn.
-  beautyContext?: {
-    skinType?: string;
-    concerns?: string[];
-    depth?: string;
-    undertone?: string;
-    skinHex?: string;
-    routinePreference?: string;
-    savedRoutine?: {
-      name: string;
-      timeOfDay: string;
-      stepCount: number;
-      totalPriceUsd: number;
-      /** e.g. "Cleanse (Gentle Foam Cleanser), Moisturise (Hydra Cream)" */
-      stepSummary: string;
-      savedAt: Date | null;
-    };
-  };
-
   // Cross-call cache (lives only for this turn) — tools use this to avoid
   // double-fetching products that propose_combo references after search.
   cache: Map<string, unknown>;

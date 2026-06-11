@@ -6,7 +6,7 @@
 //
 // Privacy posture (CLAUDE.md §3/§10):
 //   - chatHistoryJson (§3 invariant #4) and tasteVectorJson (§10) are NEVER exported.
-//   - Only the portable identity + body + beauty profile fields are included.
+//   - Only the portable identity + body profile fields are included.
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
@@ -37,7 +37,6 @@ export async function action({ request }: ActionFunctionArgs) {
         fitPreference: true,
         bodyType: true,
         skinTone: true,
-        savedBeautyRoutineJson: true,
         // chatHistoryJson and tasteVectorJson are intentionally omitted (§3/#4 + §10)
       },
     });
@@ -57,10 +56,7 @@ export async function action({ request }: ActionFunctionArgs) {
           weightKg: s.weightKg,
           fitPreference: s.fitPreference,
           bodyType: s.bodyType,
-        },
-        beautyProfile: {
           skinTone: s.skinTone,
-          savedBeautyRoutineJson: s.savedBeautyRoutineJson,
         },
       })),
     };

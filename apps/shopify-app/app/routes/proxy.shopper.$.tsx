@@ -23,10 +23,6 @@ import {
   postTryOnRender, postComboFeedback, postComboAddAll,
   type ApiResponse,
 } from "../lib/shopper.server";
-import {
-  getBeautyProfile, getBeautyRoutine, postBeautyProfile, postBeautyShadeMatch, postBeautyRoutine,
-} from "../lib/beauty.server";
-import { getBeautyReplenishment, postBeautyReplenishmentLog } from "../lib/replenishment.server";
 import { readShopperCookie } from "../lib/session.server";
 import { prisma } from "../db.server";
 
@@ -150,14 +146,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       }));
     case "api/shopper/social-proof":
       return respond(await getShopperSocialProof({ shopDomain, shopperCookieId: shopperCookieIdGet }));
-
-    // ─── Beauty API (GET) ──────────────────────────────────────────────
-    case "api/beauty/profile":
-      return respond(await getBeautyProfile({ shopDomain, shopperCookieId: shopperCookieIdGet }));
-    case "api/beauty/routine":
-      return respond(await getBeautyRoutine({ shopDomain, shopperCookieId: shopperCookieIdGet }));
-    case "api/beauty/replenishment":
-      return respond(await getBeautyReplenishment({ shopDomain, shopperCookieId: shopperCookieIdGet }));
 
     // OI-33 — poll render status after async enqueue.
     // SECURITY: looks up TryOnSession by (shopId, renderId) so a shopper cannot
@@ -311,16 +299,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return respond(await postComboAddAll({ shopDomain, body, shopperCookieId }));
     case "api/shopper/auth/social":
       return respondWithMaybeCookie(await postShopperAuthSocial({ shopDomain, body, shopperCookieId }));
-
-    // ─── Beauty API (POST) ─────────────────────────────────────────────
-    case "api/beauty/profile":
-      return respond(await postBeautyProfile({ shopDomain, body, shopperCookieId }));
-    case "api/beauty/replenishment":
-      return respond(await postBeautyReplenishmentLog({ shopDomain, body, shopperCookieId }));
-    case "api/beauty/shade-match":
-      return respond(await postBeautyShadeMatch({ shopDomain, body, shopperCookieId }));
-    case "api/beauty/routine":
-      return respond(await postBeautyRoutine({ shopDomain, body, shopperCookieId }));
 
     default:           return cors(json({ ok: false, error: "not_found" }, { status: 404 }));
   }

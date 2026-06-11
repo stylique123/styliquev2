@@ -133,10 +133,7 @@ export class Brain {
     const provider = this.cfg.providers[providerKey];
     if (!provider) throw new Error(`provider_unavailable: ${providerKey}`);
 
-    // Auto-select beauty variant when brandMode is "beauty" and no explicit
-    // variant was requested. Allows zero-config mode switching per shop.
-    const autoVariant = input.ctx.brandMode === "beauty" ? "beauty" : "default";
-    const variantKey = cfg.promptVariant ?? routedVariantKey ?? autoVariant;
+    const variantKey = cfg.promptVariant ?? routedVariantKey ?? "default";
     const variant = this.cfg.promptVariants[variantKey] ?? this.cfg.promptVariants.default;
 
     const visibleTools = this.cfg.tools.visibleFor(input.ctx);

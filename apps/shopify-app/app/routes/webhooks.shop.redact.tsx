@@ -23,7 +23,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Shopper PII is keyed by shopifyDomain (not shopId) — always purge it.
     const pii = await prisma.shopperSession.deleteMany({ where: { shopifyDomain: shop } });
-    await prisma.savedRoutine.deleteMany({ where: { shopifyDomain: shop } }).catch(() => undefined);
 
     let rows = pii.count;
     if (shopId) {
@@ -37,9 +36,6 @@ export async function action({ request }: ActionFunctionArgs) {
       rows += await del(() => prisma.fitSession.deleteMany({ where: { shopId } }));
       rows += await del(() => prisma.styleSession.deleteMany({ where: { shopId } }));
       rows += await del(() => prisma.cartIntent.deleteMany({ where: { shopId } }));
-      // Also purge by shopId (not just the denormalized shopifyDomain above) so a
-      // domain-drifted routine can't survive redaction (panel P1 — GDPR scope).
-      rows += await del(() => prisma.savedRoutine.deleteMany({ where: { shopId } }));
       rows += await del(() => prisma.catalogGap.deleteMany({ where: { shopId } }));
       rows += await del(() => prisma.brandRecommendation.deleteMany({ where: { shopId } }));
       rows += await del(() => prisma.brandTasteSnapshot.deleteMany({ where: { shopId } }));
