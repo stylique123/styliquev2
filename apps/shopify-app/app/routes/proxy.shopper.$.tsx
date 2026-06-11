@@ -24,6 +24,7 @@ import {
   type ApiResponse,
 } from "../lib/shopper.server";
 import { readShopperCookie } from "../lib/session.server";
+import { rateOk } from "../lib/ratelimit.server";
 import { prisma } from "../db.server";
 
 // CORS headers — even though Shopify proxies same-origin, browsers sometimes preflight
@@ -272,6 +273,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
     case "api/tryon": {
       // Exact-demo TryOnPanel render — Gemini img2img (muse/photo). Returns a
       // data: URL the widget renders directly. (Storefront port of apps/web /api/tryon.)
+      // Rate-limit BOTH shop + shopper (P1): each render is a real Gemini cost, and
+      // this case calls renderTryOn directly (no handler that gates internally), so
+      // without this an attacker could spin unmetered renders. SSRF on the supplied
+      // image URLs is blocked separately by the readAssetB64 host allowlist.
+      if (!(await rateOk(shopDomain, shopperCookieId))) {
+        return cors(json({ ok: false, error: "rate_limited" }, { status: 429 }));
+      }
       try {
         const { renderTryOn } = await import("../lib/tryon-render.server");
         const result = await renderTryOn(body as Parameters<typeof renderTryOn>[0]);

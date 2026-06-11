@@ -114,11 +114,44 @@ function resolvePublicAsset(p: string): string | null {
   return abs;
 }
 
+// SSRF guard. The storefront client supplies muse + garment image URLs in the
+// request body, so readAssetB64 must NEVER fetch an arbitrary host — otherwise an
+// attacker can point garmentImages at internal services or cloud metadata
+// (169.254.169.254) and use this render path as a blind fetch-proxy. Allow ONLY
+// our own infra (Railway) + Shopify's CDN; reject IP-literal hosts and everything
+// else. Extra hosts can be added via TRYON_ASSET_ALLOWLIST (comma-separated).
+const ASSET_HOST_SUFFIXES = [
+  ".up.railway.app",
+  ".myshopify.com",
+  ".shopifycdn.com",
+  ".shopifycdn.net",
+  ...(process.env.TRYON_ASSET_ALLOWLIST ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean)
+    .map((s) => (s.startsWith(".") ? s : `.${s}`)),
+];
+const ASSET_HOST_EXACT = new Set(["cdn.shopify.com"]);
+const IP_LITERAL_RE = /^\d{1,3}(\.\d{1,3}){3}$|:/; // IPv4 dotted-quad or any IPv6
+
+function isAllowedAssetUrl(rawUrl: string): boolean {
+  let host: string;
+  try {
+    host = new URL(rawUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (!host || IP_LITERAL_RE.test(host)) return false; // never fetch raw IPs
+  if (ASSET_HOST_EXACT.has(host)) return true;
+  return ASSET_HOST_SUFFIXES.some((suf) => host === suf.slice(1) || host.endsWith(suf));
+}
+
 async function readAssetB64(publicPath: string): Promise<string> {
   // Storefront port: muse images (Railway) + garment images (Shopify/CloudFront)
   // are REMOTE https URLs — fetch them. Only fall back to local for relative
   // /products//muses/ paths (dev). https only; block other schemes.
   if (/^https:\/\//i.test(publicPath)) {
+    if (!isAllowedAssetUrl(publicPath)) throw new Error("asset_host_blocked");
     // Bound the fetch (panel P1 — regression in EXPERT-PANEL-5's in-flight dedup):
     // the museInFlight promise only clears its key on settle, so a hung CDN fetch
     // here would leave the key forever and grow the map unboundedly. A 15s timeout
