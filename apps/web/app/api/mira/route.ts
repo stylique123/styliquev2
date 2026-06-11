@@ -733,9 +733,51 @@ function applySalesPolicy(
   activeCatalog: Product[] = catalog,
 ): MiraDecision {
   const message = body.message.toLowerCase();
+
+  // ── HALLUCINATION GUARD (Mira shopper-panel P0 — brand-trust invariant) ───
+  // The model sometimes invents a plausible handle for a piece the catalog does
+  // NOT carry ("nude-block-heel-sandal" for "do you have heels?") and writes a
+  // confident voice claiming we stock it. The old code FELL BACK to the bad
+  // handle (product?.handle ?? decision.productHandle) and shipped the lying
+  // voice — Mira recommended things that don't exist. Gate it up front: a
+  // productHandle the model named that is NOT in the live catalog is a
+  // hallucination. If the shopper asked for an out-of-catalog CATEGORY
+  // (footwear/bags/accessories), force the honest gap — never claim to stock
+  // it, flag unmet so the brand sees the demand. Otherwise the model just
+  // picked a phantom in-category handle → ground to a REAL hero so we still
+  // sell the truth, never a fiction. (Same invariant as PB19/D46/D59/D62.)
+  if (decision.productHandle && !activeCatalog.some((p) => p.handle === decision.productHandle)) {
+    const OUT_OF_CATALOG = /\b(heels?|sandals?|shoes?|boots?|sneakers?|trainers?|loafers?|pumps?|stiletto|footwear|bags?|handbags?|purses?|clutch|totes?|backpacks?|belts?|sunglasses?|jewell?ery|necklaces?|earrings?|bracelets?|rings?|watch|watches|hats?|caps?|scarf|scarves|gloves?|socks?|lingerie|swimwear|bikini)\b/i;
+    const m = body.message.match(OUT_OF_CATALOG);
+    if (m) {
+      return {
+        ...decision,
+        route: "talk_only",
+        productHandle: undefined,
+        unmet: true,
+        unmetCategory: decision.unmetCategory ?? m[0].toLowerCase(),
+        unmetReason: decision.unmetReason ?? `Shopper asked for ${m[0].toLowerCase()}; the store is clothing-only.`,
+        voice: "I'll be honest — we're a clothing edit, so no footwear or accessories here. Tell me the occasion and I'll pull the piece that anchors the whole look.",
+        quickReplies: ["What do you carry?", "Style an outfit", "Just browsing"],
+      };
+    }
+    const hero = [...activeCatalog].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
+    if (hero) {
+      return {
+        ...decision,
+        route: "reco_handle",
+        productHandle: hero.handle,
+        voice: `Let me pull something real for that — the ${hero.name} is where I'd start. Want to see it?`,
+        quickReplies: ["Show me", "Something else", "Style a look"],
+      };
+    }
+  }
+
   const handle = decision.productHandle ?? body.currentProductHandle ?? undefined;
   const product = handle ? activeCatalog.find((p) => p.handle === handle) : undefined;
-  let next = { ...decision, productHandle: product?.handle ?? decision.productHandle };
+  // Never preserve a handle the catalog can't resolve — drop to undefined so a
+  // downstream consumer never routes to a dead page (hardens validateHandle).
+  let next = { ...decision, productHandle: product?.handle };
   const inlineMeasurements =
     /(\b\d{3}\s*cm\b|\b1\.[5-9]\d?\s*m\b|\d\s*['’]\s*\d{1,2}|\b\d{2,3}\s*(kg|lb|lbs|pounds)\b|\b(?:bust|chest|waist|hip|hips)\s*(?:is|are|:)?\s*\d{2,3}\b)/i.test(body.message);
 
