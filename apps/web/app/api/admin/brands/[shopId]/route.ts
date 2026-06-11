@@ -4,7 +4,10 @@ import { PlanTier } from "@stylique/db";
 
 function checkAuth(req: Request): boolean {
   const adminSecret = process.env.STYLIQUE_ADMIN_SECRET;
-  if (!adminSecret) return true; // dev: no secret = open
+  // SECURITY (audit P0): fail CLOSED in production. With no secret set, prod
+  // denies every request (was `return true` → world-writable: anyone could
+  // suspend/terminate/retier any brand by shopId). Dev stays open.
+  if (!adminSecret) return process.env.NODE_ENV !== "production";
   const auth = req.headers.get("Authorization");
   return auth === `Bearer ${adminSecret}`;
 }

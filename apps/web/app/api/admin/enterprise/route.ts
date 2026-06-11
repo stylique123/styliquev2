@@ -4,7 +4,10 @@ import { SupportLevel } from "@stylique/db";
 
 function checkAuth(req: Request): boolean {
   const adminSecret = process.env.STYLIQUE_ADMIN_SECRET;
-  if (!adminSecret) return true;
+  // SECURITY (audit P0): fail CLOSED in production. With no secret set, prod
+  // denies every request (was `return true` → world-writable admin plane:
+  // anyone could overwrite enterprise quotas). Dev stays open for convenience.
+  if (!adminSecret) return process.env.NODE_ENV !== "production";
   const auth = req.headers.get("Authorization");
   return auth === `Bearer ${adminSecret}`;
 }
