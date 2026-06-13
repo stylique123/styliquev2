@@ -13,8 +13,7 @@
 // Gemini, supported by our backend regex."
 
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { products as catalog, buildLook, type Product } from "../../lib/catalog";
+import { products as catalog, buildLook } from "../../lib/catalog";
 import { knowledgePromptBlock } from "../../lib/mira-knowledge.server";
 import {
   recordSignal,
@@ -36,8 +35,7 @@ import {
   decideClose,
   buildClosingContextBlock,
 } from "../../lib/closing-intelligence";
-import { buildLookContextBlock } from "../../lib/active-look-memory";
-import { BodySchema, type MiraDecision, buildSystem, type BrandIdentity, callGemini, enforceExecution, applySalesPolicy, buildPrompt, buildResilientFallback, type MiraDeps } from "@stylique/mira-brain";
+import { BodySchema, applySalesPolicy, buildResilientFallback, decideMira, type BrainDeps } from "@stylique/mira-brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,7 +43,7 @@ export const dynamic = "force-dynamic";
 // Demo wiring of the brain's injected seams: the local catalog's complete-the-look
 // builder + the demo closing-intelligence trio. The demo Product is a structural
 // superset of MiraProduct, so this object is cast once at the boundary.
-const demoDeps = { buildLook, extractSignals, decideClose, buildClosingContextBlock } as unknown as MiraDeps;
+const demoDeps = { buildLook, extractSignals, decideClose, buildClosingContextBlock, defaultCatalog: catalog, knowledgeBlock: knowledgePromptBlock } as unknown as BrainDeps;
 
 
 
@@ -65,58 +63,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    // ── ONE BRAIN, THREE CATALOGS ───────────────────────────────────────────
-    // Demo path: no injection → uses the hardcoded 14-product `catalog`.
-    // Production path: mira-adapter (stylique-app) sends `injectedCatalog`
-    // (merchant's Prisma catalog mapped to Product shape) so a REAL shopper on
-    // a REAL Shopify store hits THIS brain code with THEIR products. Identical
-    // intelligence — only the catalog source differs.
-    const activeCatalog = (parsed.data.injectedCatalog && parsed.data.injectedCatalog.length > 0
-      ? (parsed.data.injectedCatalog as unknown as Product[])
-      : catalog);
-    const activeKnowledge = parsed.data.injectedKnowledge ?? await knowledgePromptBlock();
-    // Brand identity: storefront callers inject the merchant's brand POV; demo
-    // direct hit gets Stylique Maison defaults.
-    const activeBrand: BrandIdentity = parsed.data.injectedBrand ?? {};
-    const activeCurrency = parsed.data.injectedCurrency?.toUpperCase();
-    const { decision: rawDecision, model: modelUsed } = await callGemini(
-      buildPrompt(parsed.data, activeCatalog, demoDeps),
-      buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
-      activeCatalog,
-    );
-    // Deterministic navigation execution, force the route+handle when the shopper
-    // clearly asked to act on the product they're viewing but the model dead-ended.
-    let decision = rawDecision
-      ? enforceExecution(rawDecision, parsed.data.message, parsed.data.currentProductHandle, !!parsed.data.bodyOnFile || !!parsed.data.knownSize, activeCatalog, parsed.data.history?.length ?? 0)
-      : buildResilientFallback(parsed.data, activeCatalog, demoDeps);
-    decision = applySalesPolicy(decision, parsed.data, activeCatalog);
-
-    // ── ANTI-REPEAT GUARD ───────────────────────────────────────────────────
-    // Pilot found 7/20 conversations where Mira sent the exact same `voice`
-    // string on two consecutive turns ("Of course. Here are the most accessible
-    // pieces we have.", "Yes, that's for this exact Linen Relaxed Shirt…").
-    // When the model returns text byte-identical to the previous mira turn,
-    // prefix a short bridge so the shopper never sees a copy-paste. The model
-    // chose the same line because the prompt context didn't change much, NOT
-    // because that's the right behaviour — the bridge nudges + we log so we
-    // can see how often this fires in production.
-    if (decision?.voice) {
-      const history = parsed.data.history ?? [];
-      // Find the most recent mira turn (skip the user's latest message).
-      for (let i = history.length - 1; i >= 0; i--) {
-        const h = history[i];
-        if (h.from === "mira") {
-          if (h.text === decision.voice) {
-            const BRIDGES = ["Right — ", "Quick — ", "On that — ", "OK — "];
-            const pick = BRIDGES[Math.floor(history.length / 2) % BRIDGES.length];
-            decision = { ...decision, voice: pick + decision.voice };
-            console.warn("[mira] anti-repeat fired", { handle: parsed.data.currentProductHandle, len: decision.voice.length });
-          }
-          break;
-        }
-      }
-    }
-    const responseSource = rawDecision ? "gemini" : "fallback";
+    const { source: responseSource, model: modelUsed, decision } = await decideMira(parsed.data, demoDeps);
     // ── Full event mesh emission ──────────────────────────────────────────────
     // Every turn flows through the event bridge, writes to the JSON debug
     // mirror AND forwards to the production Prisma event mesh when configured.

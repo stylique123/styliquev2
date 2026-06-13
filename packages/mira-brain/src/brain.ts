@@ -5,8 +5,10 @@
 // intelligence trio. Both callers (demo route, Shopify adapter) pass their own.
 import type { MiraDecision, MiraBody } from "./schemas.js";
 import type { MiraProduct } from "./products.js";
-import { budgetFactsBlock, situationalLead } from "./policy.js";
+import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy } from "./policy.js";
 import { extractBodyContext } from "./text.js";
+import { buildSystem, type BrandIdentity } from "./system.js";
+import { callGemini } from "./gemini.js";
 
 export interface LookEntry { product: MiraProduct; reason: string; harmonyType: string; score: number; }
 export interface MiraDeps {
@@ -14,6 +16,20 @@ export interface MiraDeps {
   extractSignals: (history: { from: string; text: string }[], sizeConfirmed: boolean, tryOnCompleted: boolean, tryOnAbandoned: boolean, outfitAccepted: boolean, outfitPiecesRecommended: number, cartItemCount: number, hasCurrent: boolean) => unknown;
   decideClose: (signals: unknown) => unknown;
   buildClosingContextBlock: (decision: unknown) => string;
+}
+
+// Catalog + knowledge seams decideMira needs beyond the prompt/fallback helpers.
+// defaultCatalog is used when the caller injects no catalog (the demo's 14-piece
+// set; production always injects). knowledgeBlock supplies the demo KB fallback.
+export interface BrainDeps extends MiraDeps {
+  defaultCatalog: MiraProduct[];
+  knowledgeBlock?: () => Promise<string>;
+}
+
+export interface MiraResult {
+  source: "gemini" | "fallback";
+  model: string | null;
+  decision: MiraDecision;
 }
 
 // A model outage must degrade into a smaller salesperson, never a blank bubble.
@@ -217,4 +233,50 @@ SHOPPER'S LATEST MESSAGE:
 "${body.message}"
 
 Return the JSON decision now.`;
+}
+
+// ─── decideMira — the single brain entry point ───────────────────────────────
+// Orchestrates one turn: resolve the active catalog/knowledge/brand/currency,
+// call Gemini with the grounded prompt+system, fall back deterministically on a
+// model outage, apply the sales policy, and de-dupe a repeated voice line. The
+// analytics side-effects (recordSignal / event emission) stay in each CALLER —
+// they are surface-specific (demo event-bridge vs production Prisma mesh). Both
+// the demo route and the Shopify adapter call this; only `deps` differs.
+export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraResult> {
+  const activeCatalog = (body.injectedCatalog && body.injectedCatalog.length > 0
+    ? (body.injectedCatalog as unknown as MiraProduct[])
+    : deps.defaultCatalog);
+  const activeKnowledge = body.injectedKnowledge ?? (deps.knowledgeBlock ? await deps.knowledgeBlock() : "");
+  const activeBrand: BrandIdentity = body.injectedBrand ?? {};
+  const activeCurrency = body.injectedCurrency?.toUpperCase();
+  const { decision: rawDecision, model: modelUsed } = await callGemini(
+    buildPrompt(body, activeCatalog, deps),
+    buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
+    activeCatalog,
+  );
+  // Deterministic navigation execution, force the route+handle when the shopper
+  // clearly asked to act on the product they're viewing but the model dead-ended.
+  let decision = rawDecision
+    ? enforceExecution(rawDecision, body.message, body.currentProductHandle, !!body.bodyOnFile || !!body.knownSize, activeCatalog, body.history?.length ?? 0)
+    : buildResilientFallback(body, activeCatalog, deps);
+  decision = applySalesPolicy(decision, body, activeCatalog);
+
+  // ── ANTI-REPEAT GUARD ──────────────────────────────────────────────────────
+  // When the model returns text byte-identical to the previous mira turn, prefix
+  // a short bridge so the shopper never sees a copy-paste.
+  if (decision?.voice) {
+    const history = body.history ?? [];
+    for (let i = history.length - 1; i >= 0; i--) {
+      const h = history[i];
+      if (h.from === "mira") {
+        if (h.text === decision.voice) {
+          const BRIDGES = ["Right — ", "Quick — ", "On that — ", "OK — "];
+          const pick = BRIDGES[Math.floor(history.length / 2) % BRIDGES.length];
+          decision = { ...decision, voice: pick + decision.voice };
+        }
+        break;
+      }
+    }
+  }
+  return { source: rawDecision ? "gemini" : "fallback", model: modelUsed, decision };
 }
