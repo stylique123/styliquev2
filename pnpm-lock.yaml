@@ -56,6 +56,9 @@ importers:
       '@stylique/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@stylique/mira-brain':
+        specifier: workspace:*
+        version: link:../../packages/mira-brain
       '@stylique/types':
         specifier: workspace:*
         version: link:../../packages/types

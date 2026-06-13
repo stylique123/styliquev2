@@ -851,13 +851,27 @@ export async function runMiraAdapter(args: {
 
   try {
     const brainStartedAt = Date.now();
-    const res = await fetch(UNIFIED_BRAIN_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reqBody),
-      signal: AbortSignal.timeout(35_000),
-    });
-    const payload = (await res.json()) as { source?: string; decision?: Parameters<typeof decisionToAdapter>[0] };
+    // ── ONE BRAIN, IN-PROCESS (brain relocation Stage 2c) ─────────────────────
+    // The Mira decision core now lives in @stylique/mira-brain. Call it directly,
+    // in this process — no cross-service HTTP hop to stylique-web, no SPOF on the
+    // demo origin, lower latency. The merchant catalog is already injected via
+    // reqBody.injectedCatalog, so the brain needs no defaultCatalog and there is
+    // no demo KB fallback in production. USE_IN_PROCESS_BRAIN=0 reverts to the
+    // legacy HTTP fetch (kept as a safety valve during rollout).
+    let payload: { source?: string; model?: string | null; decision?: Parameters<typeof decisionToAdapter>[0] };
+    if (process.env.USE_IN_PROCESS_BRAIN !== "0") {
+      const { decideMira } = await import("@stylique/mira-brain");
+      const r = await decideMira(reqBody as unknown as Parameters<typeof decideMira>[0], { defaultCatalog: [] });
+      payload = { source: r.source, model: r.model, decision: r.decision as Parameters<typeof decisionToAdapter>[0] };
+    } else {
+      const res = await fetch(UNIFIED_BRAIN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reqBody),
+        signal: AbortSignal.timeout(35_000),
+      });
+      payload = (await res.json()) as { source?: string; decision?: Parameters<typeof decisionToAdapter>[0] };
+    }
     // Record the turn on the way back. Fire-and-forget; recordConsume is
     // idempotent + already swallows errors, so a Prisma blip never blocks the
     // shopper. We count attempted calls (after the LLM RT), not 200s, because
