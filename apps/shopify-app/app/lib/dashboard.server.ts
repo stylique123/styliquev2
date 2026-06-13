@@ -133,6 +133,33 @@ function canonicalGapCategory(raw: string | null | undefined): string {
   return s.length <= 28 ? s : s.slice(0, 28);
 }
 
+// Top real shopper-demand queries the store doesn't serve — grouped by the
+// normalized query, ranked by frequency. Excludes internal bookkeeping rows
+// (size_chart_extract / no_size_chart:*). This is the "what to stock next"
+// insight and is surfaced on EVERY tier (truncated to 5; full list is Growth+).
+async function topCatalogGaps(
+  shopId: string,
+  since: Date,
+): Promise<Array<{ query: string; count: number; category: string | null }>> {
+  const rows = await prisma.catalogGap
+    .groupBy({
+      by: ["normalizedQuery", "category"],
+      where: {
+        shopId,
+        createdAt: { gte: since },
+        source: { not: "size_chart_extract" },
+        NOT: { rawQuery: { startsWith: "no_size_chart" } },
+      },
+      _count: { _all: true },
+      orderBy: { _count: { normalizedQuery: "desc" } },
+      take: 5,
+    })
+    .catch(() => [] as Array<{ normalizedQuery: string; category: string | null; _count: { _all: number } }>);
+  return rows
+    .filter((r) => r.normalizedQuery && r.normalizedQuery.length > 1)
+    .map((r) => ({ query: r.normalizedQuery, count: r._count._all, category: r.category }));
+}
+
 export async function buildOverview(args: {
   shopId: string;
   windowDays?: number;
@@ -173,6 +200,9 @@ export async function buildOverview(args: {
     fitSubmitted: number;
     signupsClaimed: number;
     catalogGaps: number;
+    // Top real shopper-demand queries the store does NOT serve well — the single
+    // highest-value "what to stock next" insight, surfaced on EVERY tier.
+    topGaps: Array<{ query: string; count: number; category: string | null }>;
     windowDays: number;
   };
   stylist: {
@@ -371,10 +401,17 @@ export async function buildOverview(args: {
       ? Math.round(miraAssistedRevenueCents / assistedRows.length)
       : 0,
     repeatPurchaseRate,
-    tryOnSessions:       evt("WIDGET_OPENED"),
+    // Real try-on activity = TryOnSession rows. (Was evt("WIDGET_OPENED"), an
+    // event nothing ever emits — the tile read a permanent zero while real
+    // renders happened.)
+    tryOnSessions:       await prisma.tryOnSession.count({ where: { shopId: args.shopId, createdAt: { gte: since } } }),
     fitSubmitted:        evt("WIDGET_FIT_SUBMITTED"),
     signupsClaimed:      evt("SIGNUP_CLAIMED"),
-    catalogGaps:         await prisma.catalogGap.count({ where: { shopId: args.shopId, createdAt: { gte: since } } }),
+    // Real shopper-demand gaps ONLY — exclude internal 'size_chart_extract'
+    // (no_size_chart:<id>) bookkeeping rows that inflated the count (543 internal
+    // vs ~1806 real shopper queries). The honest "what shoppers want" number.
+    catalogGaps:         await prisma.catalogGap.count({ where: { shopId: args.shopId, createdAt: { gte: since }, source: { not: "size_chart_extract" } } }),
+    topGaps:             await topCatalogGaps(args.shopId, since),
     windowDays:          win,
   };
 
