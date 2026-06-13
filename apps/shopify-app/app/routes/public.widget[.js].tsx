@@ -18,7 +18,10 @@ export async function loader(_args: LoaderFunctionArgs) {
       return new Response(content as unknown as BodyInit, {
         headers: {
           "Content-Type": "application/javascript; charset=utf-8",
-          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          // Revalidate on every load so a new widget build reaches every store
+          // immediately (the ScriptTag URL is unversioned). A stale 1-hour cache
+          // is why a fresh deploy + hard-refresh still served the OLD widget.
+          "Cache-Control": "no-cache, must-revalidate, max-age=0",
           "Access-Control-Allow-Origin": "*",
         },
       });

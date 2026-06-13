@@ -518,6 +518,17 @@ function lookMsg(anchor: Product, ctx: MiraContext, why?: string): ChatMsg {
 // ── Main response engine ──────────────────────────────────────────────────────
 function getMiraResponse(userText: string, currentProduct: Product | null, ctx: MiraContext): ChatMsg[] {
   const t = userText.toLowerCase().trim();
+  // ONE-BRAIN: on a real storefront the regex fallback MUST operate on the
+  // merchant's real (hydrated) catalog, never the bundled demo products — else it
+  // leaks phantom demo pieces (e.g. "Onyx Silk Slip") onto a live store. On the
+  // demo page (ASSET_BASE === "") activeProducts() returns the demo catalog, so
+  // behaviour there is unchanged. If a real store hasn't hydrated yet, answer with
+  // a generic non-product line rather than inventing demo inventory. Shadows the
+  // imported `catalog` for the whole function.
+  const catalog = activeProducts();
+  if (ASSET_BASE && !catalog.length) {
+    return [{ from: "mira", kind: "say", text: "Tell me what you're after — a vibe, an occasion, a colour — and I'll pull the right piece.", quickReplies: ["A vibe in mind", "For an occasion", "Just browsing"] }];
+  }
 
   // When Mira commits to a single confident pick on a different page, she takes the
   // shopper there, never just "here it is". Mirrors applyDecision's navigate contract.
@@ -1038,6 +1049,11 @@ function interstitialFor(text: string): { line: string; skeletons: number } {
 // Turn an LLM decision into grounded cards. Voice line first (Mira's human
 // understanding), then the real product/look/insight built from the catalog.
 function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: MiraContext): ChatMsg[] {
+  // ONE-BRAIN: the brain's real per-shop products are registered BEFORE this runs,
+  // so on a real store activeProducts() holds them — shadow the bundled demo
+  // `catalog` with the real set so the hero() fallbacks here can never surface a
+  // phantom demo piece. On the demo page activeProducts() === the demo catalog.
+  const catalog = activeProducts();
   const voice: ChatMsg = { from: "mira", kind: "say", text: d.voice, quickReplies: d.quickReplies };
   const out: ChatMsg[] = [voice];
 
@@ -1914,12 +1930,11 @@ export default function MiraWidget() {
       if (sessionStorage.getItem("mira_opened")) return;
       fired = true;
       sessionStorage.setItem("mira_nudged", "1");
-      // Approach with a real piece in hand, like a floor associate, on a PDP it's
-      // the piece they're looking at; off-PDP it's a confident hero pick by name.
-      // Read the product FRESH (catalog hydration may have landed after mount).
-      const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: "", turnCount: 0, sizeAsked: false, cartValue: 0, lastLookPieces: lastLookPieces.current };
-      const cp = currentProduct();
-      setNudgeProduct(cp ?? (activeProducts()[0] ?? hero(catalog, ctx)));
+      // On a PDP, pitch the REAL piece they're viewing (read fresh — hydration
+      // may have landed after mount). Off-PDP (home/collection) leave it null →
+      // the nudge shows a generic greeting, NEVER a random or demo product. This
+      // is what stops "Onyx Silk Slip" (a demo piece) popping up on a live home page.
+      setNudgeProduct(currentProduct());
       setNudge(true);
       setTimeout(() => setNudge(false), 11000);
     };
