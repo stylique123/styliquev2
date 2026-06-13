@@ -1595,7 +1595,17 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
       <div style={{ display: "flex", gap: 6, padding: "0 12px" }}>
         {all.map((p) => (
           <button key={p.handle} onClick={() => onTryOn(p)} title={p.name} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
-            <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
+            {p.images[0] ? (
+              <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
+            ) : (
+              // No photo yet — render a tasteful name tile instead of a broken
+              // image so the card never looks empty (the "cards don't work"
+              // failure). The brain already avoids heroing photo:NO pieces.
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 6, background: "linear-gradient(150deg, rgba(139,92,246,0.14), rgba(255,255,255,0.03))" }}>
+                <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12, lineHeight: 1.2, textAlign: "center", color: "rgba(244,242,238,0.92)" }}>{p.name}</div>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--electric)" }}>{p.category ?? "piece"}</div>
+              </div>
+            )}
           </button>
         ))}
       </div>
