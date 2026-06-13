@@ -221,7 +221,10 @@ export async function renderComboTryOn(args: {
       shopperRowId: args.shopperRowId,
       productId,
       mode: "BODY_MODEL",
-      modelHint: i === 0 ? (args.modelHint ?? undefined) : undefined,
+      // Keep the CHOSEN muse on every layer (was i===0 only) so if a chained
+      // layer's base can't be used, the fallback is still the shopper's muse,
+      // not the default slip. Layers >0 normally stack on personImageDataUrl.
+      modelHint: args.modelHint ?? undefined,
       renderContextKey: `${args.renderContextKey ?? "default"}|layer:${i}`,
       forceSync: true,
       personImageDataUrl: currentPersonImageDataUrl,
@@ -321,10 +324,22 @@ export async function renderTryOn(args: {
   let museBase64: string | undefined;
   let museMime: string | undefined;
   if (args.mode === "BODY_MODEL") {
-    const muse = loadMuseImage(args.modelHint);
-    if (muse) {
-      museBase64 = muse.base64;
-      museMime = muse.mime;
+    // COMBO STACKING FIX: layers after the first pass the PREVIOUS layer's render
+    // as personImageDataUrl — the SAME body already wearing the earlier pieces.
+    // Use it as the base so garments STACK into one cumulative outfit on ONE
+    // consistent model. Before this, BODY_MODEL ignored personImageDataUrl and
+    // re-loaded a fresh muse per layer (defaulting to slim.png on layers 1+),
+    // so the model swapped mid-combo and the pieces never stacked.
+    const chained = args.personImageDataUrl?.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
+    if (chained) {
+      museMime = chained[1]!;
+      museBase64 = chained[2]!;
+    } else {
+      const muse = loadMuseImage(args.modelHint);
+      if (muse) {
+        museBase64 = muse.base64;
+        museMime = muse.mime;
+      }
     }
   }
 
