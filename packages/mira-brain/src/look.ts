@@ -354,14 +354,22 @@ export function buildLook(
       const proportion = proportionScore(current, p);              // balance volume with fit
       const desire = desirabilityOf(p);                            // real keepRate signal
       const impulse = impulseAddScore(current, p);                 // easy-add conversion math
-      const score =
+      // OCCASION COHERENCE (brand panel): a formal/evening anchor must not be
+      // paired with casual pieces — a sequin gown + denim jacket + sneakers reads
+      // as a bot, not a stylist. When the anchor is dressy (formality >= 0.6),
+      // hard-penalise low-formality candidates (denim, sweats, sneakers) so they
+      // can't surface as the "complete the look" upsell.
+      const fCand = formalityOf(p);
+      const occasionPenalty = fCur >= 0.6 && fCand < 0.45 ? 0.25 : 1;
+      const score = (
         0.30 * color.score +
         0.22 * cat +
         0.11 * formality +
         0.08 * season +
         0.11 * proportion +
         0.10 * desire +
-        0.08 * impulse;
+        0.08 * impulse
+      ) * occasionPenalty;
       return {
         product: p,
         score,
