@@ -268,7 +268,7 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   decision = guardVoiceProductNames(decision, activeCatalog);
   // Deterministic backstop: a blank colourway must never become an invented
   // "classic neutral / versatile shade" — hedge honestly when colors[] is empty.
-  decision = guardVoiceColorClaims(decision, activeCatalog);
+  decision = guardVoiceColorClaims(decision, activeCatalog, body.message);
 
   // ── ANTI-REPEAT GUARD ──────────────────────────────────────────────────────
   // When the model returns text byte-identical to the previous mira turn, prefix

@@ -430,8 +430,13 @@ const _COLOR_WORD =
   /\b(black|white|ivory|cream|off-white|beige|oat|stone|sand|taupe|tan|camel|cognac|brown|espresso|chocolate|grey|gray|charcoal|slate|ash|navy|blue|indigo|teal|cobalt|green|olive|khaki|sage|emerald|red|cardinal|burgundy|maroon|wine|pink|blush|rose|fuchsia|purple|lilac|lavender|plum|yellow|gold|mustard|orange|rust|terracotta|coral|silver|nude|neutral|monochrome)\b/i;
 const _ASSERTS =
   /\b(comes?|come in|comes in|available|available in|offered|in a|in the|in classic|in soft|in rich|in deep|in muted|it'?s|its|they'?re|are|is|looks?|feels?|a versatile|a classic|a timeless|a beautiful)\b/i;
-export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProduct[]): MiraDecision {
+const _COLOR_QUESTION = /\bcolou?rs?\b|\bcolou?rway\b|\bshades?\b|\bhue\b|what.*\bcome(s)? in\b|\bwhat colou?r/i;
+export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProduct[], message?: string): MiraDecision {
   if (!decision.voice) return decision;
+  // Only speak to colour when the shopper ASKED about colour — otherwise a stray
+  // colour word in a styling/budget line would wrongly trigger the disclaimer and
+  // derail the turn (caught in a full-journey self-test on the look + budget turns).
+  if (!message || !_COLOR_QUESTION.test(message)) return decision;
   const focal = decision.productHandle ? catalog.find((p) => p.handle === decision.productHandle) : undefined;
   const colourKnown = (focal?.colors?.filter(Boolean).length ?? 0) > 0;
   if (!focal || colourKnown) return decision;
