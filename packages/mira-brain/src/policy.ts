@@ -417,6 +417,40 @@ export function guardVoiceProductNames(decision: MiraDecision, catalog: MiraProd
   return changed ? { ...decision, voice: newVoice } : decision;
 }
 
+// ── PHANTOM-COLOUR GUARD (re-audit: "what colour is this?" → invention) ──────
+// The model, even with a blank colour field in the digest, still asserted a
+// colourway it had no data for: asked the colours of a product whose colors[] is
+// empty, it answered "available in a classic neutral... a versatile shade." Same
+// class as the phantom-name bug — a confident attribute it can't back. This
+// deterministic backstop fires ONLY when the routed product's colourway is
+// genuinely unknown (colors[] empty) AND a sentence in the voice asserts a
+// colour/shade for it; that sentence is replaced with an honest hedge. Absent =
+// unknown is the trigger, so a product WITH a real colour is never touched.
+const _COLOR_WORD =
+  /\b(black|white|ivory|cream|off-white|beige|oat|stone|sand|taupe|tan|camel|cognac|brown|espresso|chocolate|grey|gray|charcoal|slate|ash|navy|blue|indigo|teal|cobalt|green|olive|khaki|sage|emerald|red|cardinal|burgundy|maroon|wine|pink|blush|rose|fuchsia|purple|lilac|lavender|plum|yellow|gold|mustard|orange|rust|terracotta|coral|silver|nude|neutral|monochrome)\b/i;
+const _ASSERTS =
+  /\b(comes?|come in|comes in|available|available in|offered|in a|in the|in classic|in soft|in rich|in deep|in muted|it'?s|its|they'?re|are|is|looks?|feels?|a versatile|a classic|a timeless|a beautiful)\b/i;
+export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProduct[]): MiraDecision {
+  if (!decision.voice) return decision;
+  const focal = decision.productHandle ? catalog.find((p) => p.handle === decision.productHandle) : undefined;
+  const colourKnown = (focal?.colors?.filter(Boolean).length ?? 0) > 0;
+  if (!focal || colourKnown) return decision;
+  const parts = decision.voice.split(/(?<=[.?!])\s+/);
+  let hedged = false;
+  const out: string[] = [];
+  for (const s of parts) {
+    const mentionsColour = _COLOR_WORD.test(s) || /\b(shade|colou?r|tone|hue)\b/i.test(s);
+    if (mentionsColour && _ASSERTS.test(s)) {
+      // First colour-assertion → one honest hedge; drop any further ones so the
+      // line never repeats the disclaimer.
+      if (!hedged) { out.push("I don't have the exact colourway noted on this one — I can confirm it for you before you decide."); hedged = true; }
+      continue;
+    }
+    out.push(s);
+  }
+  return hedged ? { ...decision, voice: out.join(" ") } : decision;
+}
+
 // ── ELIGIBILITY ENFORCEMENT (re-audit: prompt rules ≠ enforcement) ───────────
 // The model, even with explicit catalog flags, still (a) claimed a SOLD-OUT gown
 // had sizes in stock and reached add_to_cart, (b) recommended a women's Silk Slip
