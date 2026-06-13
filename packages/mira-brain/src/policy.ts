@@ -156,6 +156,12 @@ export function enforceExecution(decision: MiraDecision, message: string, curHan
   if (/see it on me|try (it|this|them) on|on a model|on me\b/.test(m)) {
     return { ...decision, route: "try_on", productHandle: curHandle, voice: deadEnd ? `Let's see the ${product.name} on you.` : decision.voice };
   }
+  // CLOSE — when the shopper signals BUY intent on a known piece, advance to the
+  // bag and offer ONE complementary piece for AOV; never re-qualify a ready buyer
+  // (re-audit: 'OK I'm sold, what's next?' got 'what piece did you decide on?').
+  if (/\bi'?m sold\b|i'?ll take (it|this|that)|\badd (it|this|that)\b|add to (bag|cart)|let'?s do it|\bbuy (it|this|that)\b|check\s?out|i want (it|this)( one)?\b|put it in( my)? (bag|cart)|^\s*yes\b.{0,12}(add|bag|buy|take)/.test(m)) {
+    return { ...decision, route: "add_to_cart", productHandle: curHandle, voice: deadEnd ? `Done — I'll add the ${product.name} to your bag. Want the one piece that completes the look?` : decision.voice };
+  }
   return decision;
 }
 
