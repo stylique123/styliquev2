@@ -128,7 +128,7 @@ export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[]): strin
 
   // Deterministic budget facts (real prices + cheapest-look total) so Mira can't
   // fabricate "under budget". Injected first so it dominates any pricing answer.
-  const budgetFacts = budgetFactsBlock(body.message, activeCatalog);
+  const budgetFacts = budgetFactsBlock(body.message, activeCatalog, body.injectedCurrency);
   if (budgetFacts) ctxLines.push(budgetFacts);
 
   if (cur) {

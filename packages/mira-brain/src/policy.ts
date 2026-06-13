@@ -6,7 +6,7 @@
 // (demo-catalog default params dropped — callers always pass it).
 import { z } from "zod";
 import { type MiraDecision, BodySchema } from "./schemas.js";
-import { ROUTES } from "./constants.js";
+import { ROUTES, currencyPrefix } from "./constants.js";
 import { validateHandle, type MiraProduct } from "./products.js";
 
 // Deterministic BUDGET FACTS, the LLM cannot be trusted to add prices (v1 caught
@@ -18,27 +18,68 @@ export function parseBudget(msg: string): number | null {
   const nums = [...msg.matchAll(/\$?\s*(\d{2,5})/g)].map((x) => parseInt(x[1], 10)).filter((n) => n >= 50 && n <= 9000);
   return nums.length ? Math.max(...nums) : null;
 }
-export function budgetFactsBlock(message: string, activeCatalog: MiraProduct[]): string | null {
-  const budget = parseBudget(message);
-  if (budget == null) return null;
-  const floor = Math.min(...activeCatalog.map((p) => p.priceUsd));
-  const affordable = activeCatalog.filter((p) => p.priceUsd <= budget).sort((a, b) => a.priceUsd - b.priceUsd);
-  const tops = affordable.filter((p) => p.category === "top" || p.category === "knitwear");
-  const bottoms = affordable.filter((p) => p.category === "bottom" || p.category === "dress");
-  let best = Infinity, bestPair = "";
+
+// Qualitative budget FEEL — most shoppers don't give a number, they give a vibe
+// ("nothing too pricey", "I want to treat myself"). Map the vibe to a tier of
+// the brand's OWN price landscape so Mira sells at the right level.
+const _BUDGET_FEELS: Array<{ re: RegExp; tier: "value" | "mid" | "premium"; label: string }> = [
+  { re: /\b(tight|cheap(est)?|affordable|budget[- ]?friendly|sav(e|ing)|a deal|good value|economical|inexpensive|low[- ]?budget|on a budget|don'?t want to spend|keep it (low|cheap|down)|nothing too (pricey|expensive|dear)|not too much)\b/i, tier: "value", label: "value-conscious (keep it smart)" },
+  { re: /\b(splurg(e|ing)|treat( myself)?|special occasion|investment|invest in|luxe|luxury|premium|the (very )?best|top of the (line|range)|no (limit|budget)|whatever it takes|money no object|go all out|spoil( myself)?)\b/i, tier: "premium", label: "ready to invest in something special" },
+  { re: /\b(mid[- ]?range|middle|reasonable|sensible|moderate|balanced|sweet spot|nothing crazy)\b/i, tier: "mid", label: "after balanced value" },
+];
+export function parseBudgetFeel(msg: string): { tier: "value" | "mid" | "premium"; label: string } | null {
+  for (const f of _BUDGET_FEELS) if (f.re.test(msg)) return { tier: f.tier, label: f.label };
+  return null;
+}
+
+// Cheapest / dearest complete 2-piece outfit (top|knit + bottom|dress) under cap.
+function _bestLook(catalog: MiraProduct[], cap: number, pfx: string, want: "cheap" | "rich"): { total: number; text: string } | null {
+  const tops = catalog.filter((p) => p.category === "top" || p.category === "knitwear");
+  const bottoms = catalog.filter((p) => p.category === "bottom" || p.category === "dress");
+  let pick = want === "cheap" ? Infinity : -1, text = "";
   for (const t of tops) for (const b of bottoms) {
     const tot = t.priceUsd + b.priceUsd;
-    if (tot <= budget && tot < best) { best = tot; bestPair = `${t.name} ($${t.priceUsd}) + ${b.name} ($${b.priceUsd}) = $${tot}`; }
+    if (tot <= cap && (want === "cheap" ? tot < pick : tot > pick)) { pick = tot; text = `${t.name} (${pfx}${t.priceUsd}) + ${b.name} (${pfx}${b.priceUsd}) = ${pfx}${tot}`; }
   }
-  return [
-    `BUDGET FACTS, the shopper signalled a ceiling near $${budget}. Use ONLY these real numbers. NEVER call any piece or look "under"/"within"/"inside" budget unless its real price/total is ≤ $${budget}. Do the arithmetic from THESE prices, never estimate:`,
-    affordable.length
-      ? `  Pieces AT OR UNDER $${budget}: ${affordable.map((p) => `${p.name} $${p.priceUsd}`).join("; ")}.`
-      : `  HONEST GAP: nothing is at or under $${budget}, our floor is $${floor}. Say so plainly; offer the closest piece as a stretch, do NOT pretend it fits.`,
-    bestPair
-      ? `  Cheapest complete 2-piece look within budget: ${bestPair}. Any look whose real total exceeds $${budget} is OVER budget, say so with the real total, e.g. "that pairing is $X, over your $${budget}".`
-      : `  No 2-piece look fits under $${budget}; a single piece is the only in-budget option, name it with its price.`,
-  ].join("\n");
+  return text ? { total: pick, text } : null;
+}
+
+export function budgetFactsBlock(message: string, activeCatalog: MiraProduct[], currencyCode?: string): string | null {
+  const hard = parseBudget(message);
+  const feel = parseBudgetFeel(message);
+  if (hard == null && !feel) return null;
+  const pfx = currencyPrefix(currencyCode);
+  const prices = activeCatalog.map((p) => p.priceUsd).filter((n) => n > 0).sort((a, b) => a - b);
+  if (!prices.length) return null;
+  const floor = prices[0]!, ceil = prices[prices.length - 1]!, median = prices[Math.floor(prices.length / 2)]!;
+  const lines: string[] = [];
+
+  if (hard != null) {
+    const affordable = activeCatalog.filter((p) => p.priceUsd <= hard).sort((a, b) => a.priceUsd - b.priceUsd);
+    lines.push(`BUDGET FACTS — shopper signalled a ceiling near ${pfx}${hard}. Use ONLY these real numbers; never call a piece/look "within budget" unless its real total is ≤ ${pfx}${hard}. Do the arithmetic from THESE prices.`);
+    lines.push(affordable.length
+      ? `  At/under ${pfx}${hard}: ${affordable.map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`
+      : `  HONEST GAP: nothing is at/under ${pfx}${hard}; floor is ${pfx}${floor}. Say so plainly; offer the closest piece as an honest stretch, do NOT pretend it fits.`);
+    const look = _bestLook(activeCatalog, hard, pfx, "cheap");
+    lines.push(look ? `  Cheapest complete look within budget: ${look.text} — offer this as a BUNDLE so they get a whole outfit, not one piece.` : `  No 2-piece look fits under ${pfx}${hard}; a single in-budget piece is the only option.`);
+  } else if (feel) {
+    const band = feel.tier === "value"
+      ? activeCatalog.filter((p) => p.priceUsd <= median).sort((a, b) => a.priceUsd - b.priceUsd)
+      : feel.tier === "premium"
+        ? activeCatalog.filter((p) => p.priceUsd >= median).sort((a, b) => b.priceUsd - a.priceUsd)
+        : activeCatalog.slice().sort((a, b) => Math.abs(a.priceUsd - median) - Math.abs(b.priceUsd - median));
+    lines.push(`BUDGET FEEL — the shopper is ${feel.label}. Price landscape: floor ${pfx}${floor}, typical ${pfx}${median}, top ${pfx}${ceil}. Match the FEEL; never invent prices. If you don't know their feel yet, ASK once warmly ("are we keeping it smart, or is this a treat?") then sell to it.`);
+    lines.push(`  Pieces that fit "${feel.label}": ${band.slice(0, 6).map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`);
+  }
+
+  // ALWAYS give Mira 2 tiers so she can offer the shopper a CHOICE (a real
+  // salesperson presents options): a smart-value bundle and an elevated bundle.
+  const valueLook = _bestLook(activeCatalog, Infinity, pfx, "cheap");
+  const statementLook = _bestLook(activeCatalog, Infinity, pfx, "rich");
+  if (valueLook && statementLook && valueLook.text !== statementLook.text) {
+    lines.push(`  OFFER A CHOICE OF LOOKS — value bundle: ${valueLook.text}; elevated bundle: ${statementLook.text}. Present BOTH and let them pick; always name the COMBINED total of a bundle (a whole outfit converts higher than one piece). If their budget is tight, lead with the value bundle and stack WHY it's worth it (fabric, kept-rate, the cost-per-wear).`);
+  }
+  return lines.join("\n");
 }
 
 // Deterministic NAVIGATION EXECUTION, v1 found Mira NAMES routes but dead-ends
