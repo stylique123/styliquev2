@@ -140,8 +140,12 @@ function getServiceForKey(providerKey: string): TryOnService | null {
     const key = process.env.GEMINI_API_KEY;
     if (!key) return null;
     svc = createTryOnService(createGeminiImageTryOnProvider({
+      // gemini-2.5-flash-image is the image-OUTPUT model (nano-banana). The old
+      // default here was gemini-2.5-flash-preview-05-20 — a deprecated TEXT model
+      // that 404s on generateContent, so every synchronous/combo render failed
+      // (the worker async path was already on the right model). Match it.
       apiKey: key,
-      model: process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-preview-05-20",
+      model: process.env.GEMINI_IMAGE_MODEL ?? process.env.TRYON_IMAGE_MODEL ?? "gemini-2.5-flash-image",
     }));
   }
   _svcCache.set(providerKey, svc);
@@ -419,6 +423,11 @@ export async function renderTryOn(args: {
   let usedProviderKey = providerKey;
 
   let out: Awaited<ReturnType<typeof svc.render>> | undefined;
+  // OUTER GUARD (stranded-PENDING fix): render + failover + the success write all
+  // live in this one try; its catch (far below) marks the row FAILED. The failover
+  // used to re-throw OUTSIDE the FAILED-writing try, so a total render failure
+  // escaped uncaught and stranded the TryOnSession in PENDING forever.
+  try {
   try {
     out = await svc.render(renderInput);
   } catch (err) {
@@ -455,10 +464,9 @@ export async function renderTryOn(args: {
     }
   }
 
-  // If we get here, `out` is defined (either primary succeeded or fallback succeeded).
-  // If both failed, the catch block above threw and we never reach this point —
-  // fall through to the outer catch below.
-  try {
+  // If we get here, `out` is defined (either primary or fallback succeeded). If
+  // both failed, the failover threw — caught by the OUTER catch below, which
+  // marks the row FAILED (no longer stranded in PENDING).
     const latencyMs = Date.now() - t0;
 
     // OI-32: compute cache key for BODY_MODEL so the worker path and this
