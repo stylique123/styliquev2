@@ -1,0 +1,11 @@
+import { PrismaClient } from "@stylique/db";
+import { renderComboTryOn } from "../app/lib/tryon.server";
+const p = new PrismaClient();
+const shop = await p.shop.findFirst({ where: { uninstalledAt: null }, select: { id: true } });
+const sess = await p.shopperSession.findFirst({ select: { id: true } });
+const prods = await p.product.findMany({ where: { shopId: shop!.id, primaryTryonImageId: { not: null } }, take: 3, select: { id: true, title: true } });
+console.log("combo pieces:", prods.map(x=>x.title).join(" + "), "| muse: curve");
+const t0 = Date.now();
+const r = await renderComboTryOn({ shopId: shop!.id, shopperRowId: sess!.id, productIds: prods.map(x=>x.id), modelHint: "curve", mode: "BODY_MODEL" });
+console.log("RESULT::", JSON.stringify({ ok: r.ok, hasImage: r.ok ? r.imageUrl.slice(0,30)+"..."+Math.round(r.imageUrl.length/1024)+"KB" : (r as any).error, ms: Date.now()-t0 }));
+await p.$disconnect();

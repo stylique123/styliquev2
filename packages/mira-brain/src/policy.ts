@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { type MiraDecision, BodySchema } from "./schemas.js";
 import { ROUTES, currencyPrefix } from "./constants.js";
-import { validateHandle, type MiraProduct } from "./products.js";
+import { validateHandle, isSellable, type MiraProduct } from "./products.js";
 
 // Deterministic BUDGET FACTS, the LLM cannot be trusted to add prices (v1 caught
 // it pitching an $800 look as "under $600"). When the shopper signals a ceiling we
@@ -32,14 +32,24 @@ export function parseBudgetFeel(msg: string): { tier: "value" | "mid" | "premium
   return null;
 }
 
-// Cheapest / dearest complete 2-piece outfit (top|knit + bottom|dress) under cap.
+// Cheapest / dearest COHERENT, SELLABLE complete 2-piece outfit under cap. Two
+// honest pair shapes only — top|knit + bottom (the core outfit) OR dress + layer
+// (dress + coat). NEVER top + dress (incoherent) and NEVER a piece Mira can't
+// deliver: the re-audit caught the bundles naming a no-photo / out-of-stock
+// "Floral Maxi Dress" and pairing a dress with trousers. Gate at the source.
 function _bestLook(catalog: MiraProduct[], cap: number, pfx: string, want: "cheap" | "rich"): { total: number; text: string } | null {
-  const tops = catalog.filter((p) => p.category === "top" || p.category === "knitwear");
-  const bottoms = catalog.filter((p) => p.category === "bottom" || p.category === "dress");
+  const sellable = catalog.filter(isSellable);
+  const tops = sellable.filter((p) => p.category === "top" || p.category === "knitwear");
+  const bottoms = sellable.filter((p) => p.category === "bottom");
+  const dresses = sellable.filter((p) => p.category === "dress");
+  const layers = sellable.filter((p) => p.category === "outerwear");
+  const pairs: [MiraProduct, MiraProduct][] = [];
+  for (const t of tops) for (const b of bottoms) pairs.push([t, b]);   // core outfit
+  for (const d of dresses) for (const l of layers) pairs.push([d, l]); // dress + coat
   let pick = want === "cheap" ? Infinity : -1, text = "";
-  for (const t of tops) for (const b of bottoms) {
-    const tot = t.priceUsd + b.priceUsd;
-    if (tot <= cap && (want === "cheap" ? tot < pick : tot > pick)) { pick = tot; text = `${t.name} (${pfx}${t.priceUsd}) + ${b.name} (${pfx}${b.priceUsd}) = ${pfx}${tot}`; }
+  for (const [a, b] of pairs) {
+    const tot = a.priceUsd + b.priceUsd;
+    if (tot <= cap && (want === "cheap" ? tot < pick : tot > pick)) { pick = tot; text = `${a.name} (${pfx}${a.priceUsd}) + ${b.name} (${pfx}${b.priceUsd}) = ${pfx}${tot}`; }
   }
   return text ? { total: pick, text } : null;
 }
@@ -54,22 +64,28 @@ export function budgetFactsBlock(message: string, activeCatalog: MiraProduct[], 
   const floor = prices[0]!, ceil = prices[prices.length - 1]!, median = prices[Math.floor(prices.length / 2)]!;
   const lines: string[] = [];
 
+  // Named pieces must be DELIVERABLE (photographed + in stock) — the price
+  // landscape (floor/median/top) still spans the whole catalog so the range is
+  // honest, but every piece Mira is told to NAME is one she can actually sell.
+  const sellable = activeCatalog.filter(isSellable);
   if (hard != null) {
-    const affordable = activeCatalog.filter((p) => p.priceUsd <= hard).sort((a, b) => a.priceUsd - b.priceUsd);
+    const affordable = sellable.filter((p) => p.priceUsd <= hard).sort((a, b) => a.priceUsd - b.priceUsd);
     lines.push(`BUDGET FACTS — shopper signalled a ceiling near ${pfx}${hard}. Use ONLY these real numbers; never call a piece/look "within budget" unless its real total is ≤ ${pfx}${hard}. Do the arithmetic from THESE prices.`);
     lines.push(affordable.length
-      ? `  At/under ${pfx}${hard}: ${affordable.map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`
-      : `  HONEST GAP: nothing is at/under ${pfx}${hard}; floor is ${pfx}${floor}. Say so plainly; offer the closest piece as an honest stretch, do NOT pretend it fits.`);
+      ? `  At/under ${pfx}${hard} (in stock): ${affordable.map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`
+      : `  HONEST GAP: nothing deliverable is at/under ${pfx}${hard}; floor is ${pfx}${floor}. Say so plainly; offer the closest in-stock piece as an honest stretch, do NOT pretend it fits.`);
     const look = _bestLook(activeCatalog, hard, pfx, "cheap");
     lines.push(look ? `  Cheapest complete look within budget: ${look.text} — offer this as a BUNDLE so they get a whole outfit, not one piece.` : `  No 2-piece look fits under ${pfx}${hard}; a single in-budget piece is the only option.`);
   } else if (feel) {
     const band = feel.tier === "value"
-      ? activeCatalog.filter((p) => p.priceUsd <= median).sort((a, b) => a.priceUsd - b.priceUsd)
+      ? sellable.filter((p) => p.priceUsd <= median).sort((a, b) => a.priceUsd - b.priceUsd)
       : feel.tier === "premium"
-        ? activeCatalog.filter((p) => p.priceUsd >= median).sort((a, b) => b.priceUsd - a.priceUsd)
-        : activeCatalog.slice().sort((a, b) => Math.abs(a.priceUsd - median) - Math.abs(b.priceUsd - median));
+        ? sellable.filter((p) => p.priceUsd >= median).sort((a, b) => b.priceUsd - a.priceUsd)
+        : sellable.slice().sort((a, b) => Math.abs(a.priceUsd - median) - Math.abs(b.priceUsd - median));
     lines.push(`BUDGET FEEL — the shopper is ${feel.label}. Price landscape: floor ${pfx}${floor}, typical ${pfx}${median}, top ${pfx}${ceil}. Match the FEEL; never invent prices. If you don't know their feel yet, ASK once warmly ("are we keeping it smart, or is this a treat?") then sell to it.`);
-    lines.push(`  Pieces that fit "${feel.label}": ${band.slice(0, 6).map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`);
+    lines.push(band.length
+      ? `  Pieces that fit "${feel.label}" (in stock): ${band.slice(0, 6).map((p) => `${p.name} ${pfx}${p.priceUsd}`).join("; ")}.`
+      : `  HONEST GAP: nothing deliverable sits in that band right now — offer the closest in-stock piece honestly.`);
   }
 
   // ALWAYS give Mira 2 tiers so she can offer the shopper a CHOICE (a real
@@ -95,11 +111,10 @@ export function enforceExecution(decision: MiraDecision, message: string, curHan
     // Prefer pieces that are PHOTOGRAPHED and IN STOCK as the opener — a cold-open
     // hero is the first impression on a visual-first purchase, and the re-audit
     // caught a photo:NO, fully-OOS dress winning 4/4 runs. Eligible first, then keepRate.
-    const _elig = (p: MiraProduct) => (p.images?.length ?? 0) > 0 && (p.inStockSizes ?? p.sizes ?? []).length > 0;
     const heroes = activeCatalog.length
       ? [...activeCatalog]
           .sort((a, b) => {
-            const ae = _elig(a) ? 1 : 0, be = _elig(b) ? 1 : 0;
+            const ae = isSellable(a) ? 1 : 0, be = isSellable(b) ? 1 : 0;
             return ae !== be ? be - ae : (b.keepRate ?? 0) - (a.keepRate ?? 0);
           })
           .slice(0, 5)
@@ -429,10 +444,10 @@ export function enforceEligibility(
 ): MiraDecision {
   const convo = [body.message, ...(body.history ?? []).filter((h) => h.from === "user").map((h) => h.text)].join(" ");
   const maleIntent = _MALE_INTENT.test(convo) && !_NOT_MALE.test(body.message);
-  const inStock = (p: MiraProduct) => (p.inStockSizes ?? p.sizes ?? []).length > 0;
-  const hasPhoto = (p: MiraProduct) => !!(p.images && p.images.length);
   const genderOk = (p: MiraProduct) => !maleIntent || !_isWomensCoded(p);
-  const eligible = (p: MiraProduct) => inStock(p) && hasPhoto(p) && genderOk(p);
+  // isSellable = photographed + in stock (the one shared predicate); eligibility
+  // here layers gender-appropriateness on top for this conversation.
+  const eligible = (p: MiraProduct) => isSellable(p) && genderOk(p);
   const bestSwap = (like?: MiraProduct) => {
     const pool = catalog.filter(eligible);
     return (like && pool.find((p) => p.category === like.category)) ?? [...pool].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
@@ -460,7 +475,7 @@ export function enforceEligibility(
           productHandle: undefined,
           voice: maleIntent && _isWomensCoded(product)
             ? "Our menswear range is still limited here — tell me the occasion and I'll pull the closest piece we can actually show you."
-            : !inStock(product)
+            : (product.inStockSizes ?? product.sizes ?? []).length === 0
               ? "Honestly, that one's just sold out right now — tell me a bit more and I'll find one that's in stock and ready to see."
               : "Let me find you one I can actually show you properly — what's the occasion?",
           quickReplies: ["What's in stock?", "Style an outfit", "Something else"],

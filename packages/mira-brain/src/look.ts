@@ -6,7 +6,7 @@
 // pairings. (The demo-catalog `= products` default param was dropped — buildLook
 // always receives the active catalog; bodyZone got a default for unknown
 // production categories.)
-import type { MiraProduct } from "./products.js";
+import { isSellable, type MiraProduct } from "./products.js";
 
 export function colorHex(name: string): string {
   const n = name.toLowerCase();
@@ -169,17 +169,23 @@ export function analyzeColorHarmony(
 type BodyZone = "upper" | "lower" | "full" | "layer" | "accent";
 
 function bodyZone(cat: MiraProduct["category"]): BodyZone {
-  switch (cat) {
-    case "top":
-    case "knitwear":   return "upper";
-    case "bottom":     return "lower";
-    case "dress":      return "full";
-    case "outerwear":  return "layer";
-    case "accessory":  return "accent";
-    // Unknown production categories (Shopify productType outside the demo union)
-    // read as a neutral accent so they pair loosely rather than force a slot.
-    default:           return "accent";
-  }
+  const c = (cat ?? "").toLowerCase();
+  // KEYWORD-MATCH, not exact-union: the demo uses top/bottom/dress/outerwear, but
+  // a real Shopify store's category/productType is "trouser" / "shirt" / "midi
+  // dress" / "leather jacket" / "tote bag". The first version switch-matched only
+  // the demo words, so every real category fell to "accent" → a trouser read as
+  // an accessory and the coherence rule then let it pair with a dress (the
+  // self-test caught "Wide-Leg Trousers + Silk Slip Dress"). Match by keyword so
+  // affinity + proportion + coherence are all correct on a real catalog. Order:
+  // full-body first (a "dress" wins over any other token), then layer, lower,
+  // accent, upper.
+  if (/dress|gown|frock|jumpsuit|romper|playsuit|lehenga|saree|sari|anarkali|gharara|abaya|kameez|kaftan|caftan|dungaree/.test(c)) return "full";
+  if (/outerwear|coat|jacket|blazer|cardigan|trench|parka|overcoat|shrug|kimono|cape|gilet|waistcoat|\bvest\b|anorak|puffer|mac\b/.test(c)) return "layer";
+  if (/bottom|trouser|pant|jean|denim|short|skirt|legging|chino|culotte|jogger|slack|capri|trews|palazzo/.test(c)) return "lower";
+  if (/accessor|\bbag\b|tote|clutch|belt|scarf|stole|\bhat\b|\bcap\b|beanie|jewel|necklace|earring|\bring\b|bracelet|sunglass|watch|shoe|boot|sneaker|loafer|sandal|\bsock|glove|\btie\b|brooch|pendant|cufflink|wallet|purse/.test(c)) return "accent";
+  if (/\btop\b|shirt|\btee\b|t-shirt|blouse|knit|sweater|jumper|pullover|camisole|\bcami\b|tank|turtleneck|polo|hoodie|sweatshirt|bodysuit|bralette|crop|henley|tunic/.test(c)) return "upper";
+  // Truly unknown → neutral accent so it pairs loosely rather than force a slot.
+  return "accent";
 }
 
 /** How naturally two garments combine into one worn outfit (0, 1). */
@@ -342,16 +348,22 @@ export function buildLook(
   limit = 8,
 ): LookEntry[] {
   // CATEGORY COHERENCE (re-audit): a full-length dress already fills the top AND
-  // bottom — never add a top or a bottom to it (the engine returned slip dress +
-  // wide-leg trousers as one outfit). Only a layer (coat/blazer) or an accent
-  // (accessory) completes a dress. Also block two-bottoms and two-dresses.
+  // bottom — it only pairs with a layer (coat/blazer) or an accent (accessory).
+  // The rule must be SYMMETRIC: the first pass blocked a dress-ANCHOR pairing
+  // with a top/bottom but let a trouser-anchor pair with a dress slip through
+  // (the self-test returned "Wide-Leg Trousers + Floral Maxi Dress" as one
+  // outfit). So exclude when EITHER piece is a dress and the other isn't a
+  // layer/accent, plus never two bottoms. ELIGIBILITY at the source: never
+  // complete a look with a piece Mira can't show or ship (no-photo / OOS) —
+  // fixing it here means the voice can never name an undeliverable pairing.
   const curZone = bodyZone(current.category);
   const others = all.filter((p) => {
     if (p.handle === current.handle) return false;
+    if (!isSellable(p)) return false;
     const z = bodyZone(p.category);
-    if (curZone === "full" && (z === "upper" || z === "lower" || z === "full")) return false;
+    if (curZone === "full" && !(z === "layer" || z === "accent")) return false;
+    if (z === "full" && !(curZone === "layer" || curZone === "accent")) return false;
     if (curZone === "lower" && z === "lower") return false;
-    if (curZone === "upper" && z === "full") return false;
     return true;
   });
   const fCur = formalityOf(current);

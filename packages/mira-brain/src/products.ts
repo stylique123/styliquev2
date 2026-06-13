@@ -34,6 +34,21 @@ export interface MiraProduct {
   images?: string[];
 }
 
+// A piece Mira can actually SELL or SHOW: photographed (its card renders, "see
+// it on you" works) AND in stock (a size is available). This is the single
+// source of truth for "deliverable" — the look engine, the budget bundles, the
+// cold-open hero, and the eligibility enforcement layer all gate on it, so the
+// engine never CHOOSES an undeliverable piece (rather than scrubbing it from the
+// voice after). Absent images/inStockSizes (the demo's richer catalog, which is
+// fully photographed + in stock) = unknown → treated as eligible, so the demo is
+// unaffected; the production adapter projects both fields, so a bulk-imported
+// no-photo / out-of-stock SKU is excluded at the source.
+export function isSellable(p: MiraProduct): boolean {
+  const photographed = p.images ? p.images.length > 0 : true;
+  const inStock = (p.inStockSizes ?? p.sizes ?? []).length > 0;
+  return photographed && inStock;
+}
+
 // Strip hallucinated handles before they reach the client: any productHandle the
 // model returns is checked against the live catalog. If it doesn't exist we drop
 // it so applyDecision falls back to a hero pick instead of routing to a dead

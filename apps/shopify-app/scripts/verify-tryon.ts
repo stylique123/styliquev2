@@ -1,0 +1,13 @@
+import { PrismaClient } from "@stylique/db";
+import { renderTryOn } from "../app/lib/tryon.server";
+const p = new PrismaClient();
+const shop = await p.shop.findFirst({ where: { uninstalledAt: null }, select: { id: true } });
+const prod = await p.product.findFirst({ where: { shopId: shop!.id, primaryTryonImageId: { not: null } }, select: { id: true, title: true } });
+const sess = await p.shopperSession.findFirst({ select: { id: true } });
+console.log("product", prod?.title, "| session", sess?.id);
+const r = await renderTryOn({ shopId: shop!.id, shopperRowId: sess!.id, productId: prod!.id, mode: "BODY_MODEL", modelHint: "slim", forceSync: true });
+console.log("RESULT::", JSON.stringify(r).slice(0,160));
+const row = await p.tryOnSession.findFirst({ orderBy: { createdAt: "desc" }, select: { status: true, outputImageUrl: true, error: true, latencyMs: true } });
+console.log("LATEST::", JSON.stringify({ status: row?.status, hasImage: !!row?.outputImageUrl, err: row?.error, latencyMs: row?.latencyMs }));
+console.log("TOTAL_SESSIONS::", await p.tryOnSession.count());
+await p.$disconnect();
