@@ -137,13 +137,13 @@ export function enforceExecution(decision: MiraDecision, message: string, curHan
       // co-prime offset against the hero rotation guarantees pick and
       // voice never collide together.
       const leadIns = [
-        `Quick one for you: the ${hp.name}. What's the occasion, or just having a look?`,
-        `If you trust me on one piece, it's the ${hp.name}. What are we dressing for?`,
-        `Start here: the ${hp.name}. Where would you wear it?`,
-        `The one I'd pull off the rack for you, the ${hp.name}. What's it for?`,
+        `Quick one for you: the ${hp.name}. What's the vibe today, or dressing for something?`,
+        `If you trust me on one piece, it's the ${hp.name}. What mood are we going for?`,
+        `Start here: the ${hp.name}. Polished, easy, or with some edge?`,
+        `The one I'd pull off the rack for you, the ${hp.name}. What's it for, or what are you feeling?`,
       ];
       const voice = leadIns[(message.length + turn + 1) % leadIns.length]!;
-      return { ...decision, route: "reco_handle", productHandle: pick, voice, quickReplies: ["For an occasion", "Everyday", "Show me more"] };
+      return { ...decision, route: "reco_handle", productHandle: pick, voice, quickReplies: ["A vibe in mind", "For an occasion", "Just browsing"] };
     }
   }
   if (!curHandle || decision.route !== "talk_only") return decision;
