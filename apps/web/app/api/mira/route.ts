@@ -37,216 +37,19 @@ import {
   buildClosingContextBlock,
 } from "../../lib/closing-intelligence";
 import { buildLookContextBlock } from "../../lib/active-look-memory";
-import { BodySchema, type MiraDecision, validateHandle, extractBodyContext, buildSystem, type BrandIdentity, callGemini, enforceExecution, applySalesPolicy, budgetFactsBlock, situationalLead } from "@stylique/mira-brain";
+import { BodySchema, type MiraDecision, buildSystem, type BrandIdentity, callGemini, enforceExecution, applySalesPolicy, buildPrompt, buildResilientFallback, type MiraDeps } from "@stylique/mira-brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Demo wiring of the brain's injected seams: the local catalog's complete-the-look
+// builder + the demo closing-intelligence trio. The demo Product is a structural
+// superset of MiraProduct, so this object is cast once at the boundary.
+const demoDeps = { buildLook, extractSignals, decideClose, buildClosingContextBlock } as unknown as MiraDeps;
 
 
 
-// A model outage must degrade into a smaller salesperson, never a blank bubble.
-// This path is grounded entirely in the local catalog and uses no generated facts.
-function buildResilientFallback(body: z.infer<typeof BodySchema>, activeCatalog: Product[] = catalog): MiraDecision {
-  const message = body.message.toLowerCase();
-  const current = body.currentProductHandle
-    ? activeCatalog.find((p) => p.handle === body.currentProductHandle)
-    : undefined;
 
-  if (current && /\b(see it on|try.?on|on a model|on me)\b/i.test(message)) {
-    return {
-      voice: `Let's put the ${current.name} in the fitting room.`,
-      route: "try_on",
-      productHandle: current.handle,
-      quickReplies: ["What's my size?", "Build the look", "Add to bag"],
-      intent: "try_on",
-    };
-  }
-  if (current && /\b(size|fit me|measure)\b/i.test(message)) {
-    return {
-      voice: `Let's size the ${current.name} properly before you decide.`,
-      route: body.bodyOnFile || body.knownSize ? "fit" : "size_form",
-      productHandle: current.handle,
-      quickReplies: ["See it on you", "Build the look", "Add to bag"],
-      intent: "size",
-    };
-  }
-  if (current && /\b(look|outfit|style this|goes with|pairs with)\b/i.test(message)) {
-    const pair = buildLook(current, activeCatalog, 1)[0]?.product;
-    return {
-      voice: pair
-        ? `The ${current.name} works best with the ${pair.name}. I'll build the look so you can see both together.`
-        : `I'll build the strongest complete look around the ${current.name}.`,
-      route: "look",
-      productHandle: current.handle,
-      quickReplies: ["See it on you", "What's my size?", "Add all to bag"],
-      intent: "look",
-    };
-  }
-  if (current && /\b(add|bag|buy|take it|checkout|do it)\b/i.test(message)) {
-    return {
-      voice: `I'll put the ${current.name} in your bag. Want the full look too, or straight to checkout?`,
-      route: "add_to_cart",
-      productHandle: current.handle,
-      quickReplies: ["Build the look", "Checkout"],
-      intent: "specific",
-    };
-  }
-  if (/\b(return|refund|exchange)\b/i.test(message)) {
-    return {
-      voice: "Returns are accepted within 14 days when items are unworn and in their original packaging. Now let me find the piece worth trying.",
-      route: "returns",
-      quickReplies: ["Show me the best one", "Shop by occasion"],
-      intent: "support",
-    };
-  }
-  if (current) {
-    return {
-      voice: `${situationalLead(body.message)}, the ${current.name} is the piece in front of us. I'll help you size it, style it, or see it on before you decide.`,
-      route: "reco_handle",
-      productHandle: current.handle,
-      quickReplies: ["What's my size?", "See it on you", "Build the look", "Add to bag"],
-      intent: "specific",
-    };
-  }
-
-  const occasion = /\b(wedding|graduation|funeral|dinner|party|evening|date)\b/i.test(message);
-  const climate = /\b(hot|heat|summer|humid|dubai|delhi|cold|winter|scotland|chicago|rain|seattle)\b/i.test(message);
-  // Catalog-aware fallback hero: prefer merchant's relevant pieces by category;
-  // hardcoded handles are demo-only and silently miss on a real merchant store.
-  const byCat = (cats: Product["category"][]) =>
-    activeCatalog.find((p) => cats.includes(p.category));
-  const hero = (
-    climate && /\b(hot|heat|summer|humid|dubai|delhi)\b/i.test(message)
-      ? activeCatalog.find((p) => p.handle === "linen-relaxed-shirt") ?? byCat(["top"])
-      : climate
-        ? activeCatalog.find((p) => p.handle === "wrap-coat-camel") ?? byCat(["outerwear"])
-        : occasion
-          ? activeCatalog.find((p) => p.handle === "onyx-silk-slip") ?? byCat(["dress", "top"])
-          : activeCatalog.find((p) => p.handle === "tailored-blazer-double") ?? byCat(["outerwear", "top"])
-  ) ?? activeCatalog[0]!;
-
-  return {
-    voice: `${situationalLead(body.message)}, I'd start with the ${hero.name}. I'll show you why it works, then we can size it or build the full look.`,
-    route: "reco_handle",
-    productHandle: hero.handle,
-    quickReplies: ["What's my size?", "See it on you", "Build the look", "Show me another"],
-    intent: occasion ? "occasion" : "discover",
-  };
-}
-
-function buildPrompt(body: z.infer<typeof BodySchema>, activeCatalog: Product[] = catalog): string {
-  const cur = body.currentProductHandle
-    ? activeCatalog.find((p) => p.handle === body.currentProductHandle)
-    : null;
-  const history = body.history ?? [];
-  const isColdOpen = history.length === 0;
-  const ctxLines: string[] = [];
-
-  // Deterministic budget facts (real prices + cheapest-look total) so Mira can't
-  // fabricate "under budget". Injected first so it dominates any pricing answer.
-  const budgetFacts = budgetFactsBlock(body.message, activeCatalog);
-  if (budgetFacts) ctxLines.push(budgetFacts);
-
-  if (cur) {
-    ctxLines.push(
-      `CURRENT PRODUCT (shopper is viewing this PDP): ${cur.handle} | ${cur.name} | ${cur.category}/${cur.collection} | $${cur.priceUsd} | colors: ${cur.colors.join("/")} | sizes: ${cur.sizes.join(",")}`,
-    );
-    ctxLines.push(`  Fit notes: ${cur.fitNotes}`);
-    if (isColdOpen) {
-      ctxLines.push(
-        `⚠ PDP COLD OPEN: This is the very first message and the shopper is already on the ${cur.name} product page. ` +
-        `Do NOT say a generic greeting. Reference this product immediately. ` +
-        `Name it, say one useful thing about it, offer a next step (size / style / try-on).`,
-      );
-    }
-    // The same styling algorithm that powers the Try-On "complete the look"
-    // grid, surfaced here so Mira's spoken pairing advice is grounded in real
-    // color/category/formality scoring, not a guess. She references THESE picks.
-    const look = buildLook(cur, activeCatalog, 3);
-    if (look.length) {
-      ctxLines.push(
-        "STYLING, what our algorithm says goes best with this piece, ranked by how strong the pairing is (use these when they ask what pairs / to complete the look; pick from this list, in this order):",
-        ...look.map((e, i) => `  ${i + 1}. ${e.product.handle} (${e.product.name}), ${e.reason} [colour relationship: ${e.harmonyType}; ${Math.round(e.score * 100)}% match]`),
-        "WHEN YOU BUILD A LOOK, TELL THEM WHY IT'S THE BEST PAIRING in real terms: name the colour relationship in plain words (tonal/monochrome reads expensive; analogous is harmonious not matchy; complementary makes people look twice; one accent-pop draws the eye), note the proportion balance (relaxed with structured), tie it to the occasion, and give the match %, e.g. \"the ivory knit is tonal with the camel, monochrome reads quietly expensive, and at 94% it's the strongest pairing I'd make.\" NEVER say \"you may also like\". Offer the RIGHT number of pieces (usually 2, three only when each genuinely adds), not a forced three.",
-      );
-    }
-  } else {
-    ctxLines.push("CURRENT PRODUCT: none (shopper is browsing generally).");
-  }
-
-  if (body.shownHandles?.length) {
-    ctxLines.push(`ALREADY SHOWN this session: ${body.shownHandles.join(", ")} (avoid repeating, vary the pick).`);
-  }
-  if (cur && body.knownSize) {
-    ctxLines.push(
-      `KNOWN SIZE for current piece: this shopper is a ${body.knownSize} in ${cur.name}. Do NOT ask again; state it warmly ("you're a ${body.knownSize} in this one") and move toward closing (add_to_cart) or the fitting room (try_on).`,
-    );
-  }
-  if (body.bodyOnFile) {
-    const b = body.bodyOnFile;
-    ctxLines.push(
-      `BODY ON FILE this session: ${b.heightCm}cm, ${b.weightKg}kg, ${b.fitPref} fit${b.age ? `, age ${b.age}` : ""}${b.usualBrandSize ? `, usually wears ${b.usualBrandSize} in similar brands` : ""}. You have their measurements for EVERY piece — age calibration and brand-size anchor are already applied to the size recommendation. NEVER ask for measurements again and NEVER route to size_form to re-collect them. When they ask "what's my size / does it fit", ANSWER directly (route "fit", or recall the KNOWN SIZE above) — the store computes the exact size from this body. Only use size_form if there is NO body on file and NO known size.`,
-    );
-  }
-
-  // Surface any body measurements or stated sizes from earlier in the session.
-  const bodyCtx = extractBodyContext(history);
-  if (bodyCtx) ctxLines.push(bodyCtx);
-
-  // ── Active look context ──────────────────────────────────────────────────
-  if (body.activeLookSummary) {
-    ctxLines.push(body.activeLookSummary);
-  }
-
-  // Try-on context, Mira knows what happened in the fitting room
-  if (body.tryOnContextSummary) {
-    ctxLines.push(body.tryOnContextSummary);
-  }
-
-  // ── Closing intelligence ─────────────────────────────────────────────────
-  // Deterministic closing state from the conversation signals, tells the model
-  // when and how to close without it having to guess.
-  const closingSignals = extractSignals(
-    history,
-    body.sizeConfirmed ?? false,
-    body.tryOnCompleted ?? false,
-    body.tryOnAbandoned ?? false,
-    body.outfitAccepted ?? false,
-    body.outfitPiecesRecommended ?? 0,
-    body.cartItemCount ?? 0,
-    !!cur,
-  );
-  const closingDecision = decideClose(closingSignals);
-  const closingBlock = buildClosingContextBlock(closingDecision);
-  if (closingBlock) ctxLines.push(closingBlock);
-
-  // Pilot diagnosis: server-side fallback rose to 33% on cold/complex turns
-  // because both Pro and Flash burned their token budget on a giant prompt.
-  // The sticky-fallback pattern (one bad turn → next 2 turns also bad) is the
-  // tell: history kept growing, prompt kept growing, budget kept shrinking.
-  // FIX: cap history at the last 6 turns and truncate each snippet at 220
-  // chars so even a long Mira reply can't blow up the prompt. The most recent
-  // exchange is what matters; older context is already encoded in the BODY ON
-  // FILE / KNOWN SIZE / ACTIVE LOOK blocks above.
-  const hist = history
-    .slice(-6)
-    .map((h) => {
-      const txt = (h.text ?? "").slice(0, 220);
-      return `${h.from === "user" ? "Shopper" : "Mira"}: ${txt}`;
-    })
-    .join("\n");
-
-  return `${ctxLines.join("\n")}
-
-RECENT CONVERSATION:
-${hist || "(none yet)"}
-
-SHOPPER'S LATEST MESSAGE:
-"${body.message}"
-
-Return the JSON decision now.`;
-}
 
 
 export async function POST(req: Request) {
@@ -277,7 +80,7 @@ export async function POST(req: Request) {
     const activeBrand: BrandIdentity = parsed.data.injectedBrand ?? {};
     const activeCurrency = parsed.data.injectedCurrency?.toUpperCase();
     const { decision: rawDecision, model: modelUsed } = await callGemini(
-      buildPrompt(parsed.data, activeCatalog),
+      buildPrompt(parsed.data, activeCatalog, demoDeps),
       buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
       activeCatalog,
     );
@@ -285,7 +88,7 @@ export async function POST(req: Request) {
     // clearly asked to act on the product they're viewing but the model dead-ended.
     let decision = rawDecision
       ? enforceExecution(rawDecision, parsed.data.message, parsed.data.currentProductHandle, !!parsed.data.bodyOnFile || !!parsed.data.knownSize, activeCatalog, parsed.data.history?.length ?? 0)
-      : buildResilientFallback(parsed.data, activeCatalog);
+      : buildResilientFallback(parsed.data, activeCatalog, demoDeps);
     decision = applySalesPolicy(decision, parsed.data, activeCatalog);
 
     // ── ANTI-REPEAT GUARD ───────────────────────────────────────────────────
@@ -382,7 +185,7 @@ export async function POST(req: Request) {
     const fallback = BodySchema.safeParse(body);
     return NextResponse.json({
       source: "fallback",
-      decision: fallback.success ? applySalesPolicy(buildResilientFallback(fallback.data), fallback.data, catalog) : null,
+      decision: fallback.success ? applySalesPolicy(buildResilientFallback(fallback.data, catalog, demoDeps), fallback.data, catalog) : null,
     });
   }
 }

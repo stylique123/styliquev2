@@ -17,6 +17,8 @@ export interface MiraProduct {
   // Used by the policy helpers (budget facts + sales policy ranking). Optional to
   // match the demo Product (number | undefined); the adapter maps it when present.
   keepRate?: number;
+  // Fit notes surfaced into the prompt for the current PDP product. Optional.
+  fitNotes?: string;
 }
 
 // Strip hallucinated handles before they reach the client: any productHandle the
