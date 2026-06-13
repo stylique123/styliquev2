@@ -483,12 +483,18 @@ export function enforceEligibility(
 ): MiraDecision {
   const convo = [body.message, ...(body.history ?? []).filter((h) => h.from === "user").map((h) => h.text)].join(" ");
   const maleIntent = _MALE_INTENT.test(convo) && !_NOT_MALE.test(body.message);
+  // Budget objection on THIS turn → the swap should land on a genuinely cheaper
+  // eligible piece and the line should acknowledge price, not read robotic (a
+  // full-journey self-test showed a price objection swapping to a generic "let me
+  // point you to … instead — in stock and ready to see", which drops the sell).
+  const budgetObjection = /(too )?(much|expensive|pricey|costly|over\s*budget|a bit much|more than i|can'?t afford|cheaper|less expensive|on a budget|tight|keep it (cheap|sensible|low|down)|out of (my )?budget)/i.test(body.message);
   const genderOk = (p: MiraProduct) => !maleIntent || !_isWomensCoded(p);
   // isSellable = photographed + in stock (the one shared predicate); eligibility
   // here layers gender-appropriateness on top for this conversation.
   const eligible = (p: MiraProduct) => isSellable(p) && genderOk(p);
-  const bestSwap = (like?: MiraProduct) => {
-    const pool = catalog.filter(eligible);
+  const bestSwap = (like?: MiraProduct, maxPrice?: number) => {
+    let pool = catalog.filter(eligible);
+    if (maxPrice != null) { const cheaper = pool.filter((p) => p.priceUsd > 0 && p.priceUsd < maxPrice); if (cheaper.length) pool = cheaper; }
     return (like && pool.find((p) => p.category === like.category)) ?? [...pool].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
   };
 
@@ -498,14 +504,19 @@ export function enforceEligibility(
   if (next.productHandle && _SELL_ROUTES.has(next.route)) {
     const product = catalog.find((p) => p.handle === next.productHandle);
     if (product && !eligible(product)) {
-      const swap = bestSwap(product);
+      const swap = bestSwap(product, budgetObjection ? product.priceUsd : undefined);
       if (swap) {
+        const voice = budgetObjection
+          ? `Totally fair — let's keep it sensible. The ${swap.name} is a lovely option that's kinder on the budget, in stock and ready to see.`
+          : maleIntent
+            ? `Let me put you onto the ${swap.name} — it's in stock, photographed, and one I can actually show you properly.`
+            : `That exact one isn't quite ready to show right now, but the ${swap.name} is a strong pick — in stock and photographed so you can see it properly.`;
         next = {
           ...next,
           // Never auto-ADD a piece the shopper didn't choose.
           route: next.route === "add_to_cart" ? "reco_handle" : next.route,
           productHandle: swap.handle,
-          voice: `Let me point you to the ${swap.name} instead — it's in stock and ready to see.`,
+          voice,
         };
       } else {
         return {
