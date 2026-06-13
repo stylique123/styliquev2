@@ -10,19 +10,14 @@ import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
 import { buildLook } from "./look.js";
+import { extractSignals, decideClose, buildClosingContextBlock } from "./closing.js";
 
-// The complete-the-look engine is now part of the package (look.ts), so it is no
-// longer an injected seam. Only the closing-intelligence trio remains injected.
-export interface MiraDeps {
-  extractSignals: (history: { from: string; text: string }[], sizeConfirmed: boolean, tryOnCompleted: boolean, tryOnAbandoned: boolean, outfitAccepted: boolean, outfitPiecesRecommended: number, cartItemCount: number, hasCurrent: boolean) => unknown;
-  decideClose: (signals: unknown) => unknown;
-  buildClosingContextBlock: (decision: unknown) => string;
-}
-
-// Catalog + knowledge seams decideMira needs beyond the prompt/fallback helpers.
-// defaultCatalog is used when the caller injects no catalog (the demo's 14-piece
-// set; production always injects). knowledgeBlock supplies the demo KB fallback.
-export interface BrainDeps extends MiraDeps {
+// The complete-the-look engine AND the closing-intelligence are now part of the
+// package, so there are NO per-surface injected seams left. decideMira needs only
+// the catalog + knowledge fallback. defaultCatalog is used when the caller injects
+// no catalog (the demo's 14-piece set; production always injects). knowledgeBlock
+// supplies the demo KB fallback.
+export interface BrainDeps {
   defaultCatalog: MiraProduct[];
   knowledgeBlock?: () => Promise<string>;
 }
@@ -35,7 +30,7 @@ export interface MiraResult {
 
 // A model outage must degrade into a smaller salesperson, never a blank bubble.
 // This path is grounded entirely in the local catalog and uses no generated facts.
-export function buildResilientFallback(body: MiraBody, activeCatalog: MiraProduct[], deps: MiraDeps): MiraDecision {
+export function buildResilientFallback(body: MiraBody, activeCatalog: MiraProduct[]): MiraDecision {
   const message = body.message.toLowerCase();
   const current = body.currentProductHandle
     ? activeCatalog.find((p) => p.handle === body.currentProductHandle)
@@ -123,7 +118,7 @@ export function buildResilientFallback(body: MiraBody, activeCatalog: MiraProduc
   };
 }
 
-export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[], deps: MiraDeps): string {
+export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[]): string {
   const cur = body.currentProductHandle
     ? activeCatalog.find((p) => p.handle === body.currentProductHandle)
     : null;
@@ -195,7 +190,7 @@ export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[], deps: 
   // ── Closing intelligence ─────────────────────────────────────────────────
   // Deterministic closing state from the conversation signals, tells the model
   // when and how to close without it having to guess.
-  const closingSignals = deps.extractSignals(
+  const closingSignals = extractSignals(
     history,
     body.sizeConfirmed ?? false,
     body.tryOnCompleted ?? false,
@@ -205,8 +200,8 @@ export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[], deps: 
     body.cartItemCount ?? 0,
     !!cur,
   );
-  const closingDecision = deps.decideClose(closingSignals);
-  const closingBlock = deps.buildClosingContextBlock(closingDecision);
+  const closingDecision = decideClose(closingSignals);
+  const closingBlock = buildClosingContextBlock(closingDecision);
   if (closingBlock) ctxLines.push(closingBlock);
 
   // Pilot diagnosis: server-side fallback rose to 33% on cold/complex turns
@@ -251,7 +246,7 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   const activeBrand: BrandIdentity = body.injectedBrand ?? {};
   const activeCurrency = body.injectedCurrency?.toUpperCase();
   const { decision: rawDecision, model: modelUsed } = await callGemini(
-    buildPrompt(body, activeCatalog, deps),
+    buildPrompt(body, activeCatalog),
     buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
     activeCatalog,
   );
@@ -259,7 +254,7 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   // clearly asked to act on the product they're viewing but the model dead-ended.
   let decision = rawDecision
     ? enforceExecution(rawDecision, body.message, body.currentProductHandle, !!body.bodyOnFile || !!body.knownSize, activeCatalog, body.history?.length ?? 0)
-    : buildResilientFallback(body, activeCatalog, deps);
+    : buildResilientFallback(body, activeCatalog);
   decision = applySalesPolicy(decision, body, activeCatalog);
 
   // ── ANTI-REPEAT GUARD ──────────────────────────────────────────────────────

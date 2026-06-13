@@ -13,4 +13,5 @@ export * from "./system.js";
 export * from "./gemini.js";
 export * from "./policy.js";
 export * from "./look.js";
+export * from "./closing.js";
 export * from "./brain.js";

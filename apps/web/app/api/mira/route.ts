@@ -30,20 +30,15 @@ import {
   emitUnmetDemand,
   emitNearMiss,
 } from "../../lib/event-bridge.server";
-import {
-  extractSignals,
-  decideClose,
-  buildClosingContextBlock,
-} from "../../lib/closing-intelligence";
 import { BodySchema, applySalesPolicy, buildResilientFallback, decideMira, type BrainDeps } from "@stylique/mira-brain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Demo wiring of the brain's remaining injected seams (the closing-intelligence
-// trio) plus the demo catalog + knowledge fallback. buildLook is now part of the
-// package. The demo Product is a structural superset of MiraProduct, cast once.
-const demoDeps = { extractSignals, decideClose, buildClosingContextBlock, defaultCatalog: catalog, knowledgeBlock: knowledgePromptBlock } as unknown as BrainDeps;
+// The brain is now fully self-contained (buildLook + closing-intelligence live in
+// @stylique/mira-brain), so the demo only supplies the catalog + knowledge fallback.
+// The demo Product is a structural superset of MiraProduct, cast once at the boundary.
+const demoDeps = { defaultCatalog: catalog, knowledgeBlock: knowledgePromptBlock } as unknown as BrainDeps;
 
 
 
@@ -132,7 +127,7 @@ export async function POST(req: Request) {
     const fallback = BodySchema.safeParse(body);
     return NextResponse.json({
       source: "fallback",
-      decision: fallback.success ? applySalesPolicy(buildResilientFallback(fallback.data, catalog, demoDeps), fallback.data, catalog) : null,
+      decision: fallback.success ? applySalesPolicy(buildResilientFallback(fallback.data, catalog), fallback.data, catalog) : null,
     });
   }
 }
