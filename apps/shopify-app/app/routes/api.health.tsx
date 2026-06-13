@@ -30,7 +30,7 @@ const QUEUE_NAMES = [
 
 type QueueName = (typeof QUEUE_NAMES)[number];
 
-type QueueStats = { waiting: number; active: number; failed: number; error?: string };
+type QueueStats = { waiting: number; active: number; failed: number; recentFailed?: number; error?: string };
 type ComponentStatus = "ok" | "error";
 
 interface HealthPayload {
@@ -90,8 +90,15 @@ async function getQueueStats(
       q.getActiveCount(),
       q.getFailedCount(),
     ]);
+    // Recent failures only (last 6h). BullMQ's failed set is a sorted set scored
+    // by failure timestamp, so this is a cheap ZCOUNT — and it avoids flapping
+    // health to 503 forever on a cumulative pile of stale old failures.
+    const since = Date.now() - 6 * 60 * 60 * 1000;
+    const recentFailed = await connection
+      .zcount(`bull:${name}:failed`, since, "+inf")
+      .catch(() => 0);
     await q.close();
-    return { waiting, active, failed };
+    return { waiting, active, failed, recentFailed };
   } catch (err) {
     return {
       waiting: -1,
@@ -136,8 +143,23 @@ export async function loader() {
     reasons.push("queues: redis_unavailable");
   }
 
+  // Fail loud when a CRITICAL queue is backed up with failures. A 200 while
+  // catalog-sync has 41 failed jobs (panel finding) means external monitors never
+  // alert on a silently-broken pipeline. failed === -1 is the redis-unreachable
+  // sentinel (handled by the redis probe), so it never false-triggers here.
+  const CRITICAL_QUEUES = ["catalog-sync", "tryon-render", "recommendations"] as const;
+  const QUEUE_FAIL_THRESHOLD = 5;
+  const queuesHealthy = CRITICAL_QUEUES.every((q) => {
+    const f = queues[q]?.recentFailed ?? 0;
+    if (f >= QUEUE_FAIL_THRESHOLD) {
+      reasons.push(`queue ${q}: ${f} failed jobs in last 6h`);
+      return false;
+    }
+    return true;
+  });
+
   const payload: HealthPayload = {
-    ok: dbProbe.status === "ok" && redisProbe.status === "ok",
+    ok: dbProbe.status === "ok" && redisProbe.status === "ok" && queuesHealthy,
     ts,
     version,
     db: dbProbe.status,
