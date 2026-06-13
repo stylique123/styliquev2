@@ -13,7 +13,7 @@
 // Gemini, supported by our backend regex."
 
 import { NextResponse } from "next/server";
-import { products as catalog, buildLook } from "../../lib/catalog";
+import { products as catalog } from "../../lib/catalog";
 import { knowledgePromptBlock } from "../../lib/mira-knowledge.server";
 import {
   recordSignal,
@@ -40,10 +40,10 @@ import { BodySchema, applySalesPolicy, buildResilientFallback, decideMira, type 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Demo wiring of the brain's injected seams: the local catalog's complete-the-look
-// builder + the demo closing-intelligence trio. The demo Product is a structural
-// superset of MiraProduct, so this object is cast once at the boundary.
-const demoDeps = { buildLook, extractSignals, decideClose, buildClosingContextBlock, defaultCatalog: catalog, knowledgeBlock: knowledgePromptBlock } as unknown as BrainDeps;
+// Demo wiring of the brain's remaining injected seams (the closing-intelligence
+// trio) plus the demo catalog + knowledge fallback. buildLook is now part of the
+// package. The demo Product is a structural superset of MiraProduct, cast once.
+const demoDeps = { extractSignals, decideClose, buildClosingContextBlock, defaultCatalog: catalog, knowledgeBlock: knowledgePromptBlock } as unknown as BrainDeps;
 
 
 

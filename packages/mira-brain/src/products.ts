@@ -19,6 +19,12 @@ export interface MiraProduct {
   keepRate?: number;
   // Fit notes surfaced into the prompt for the current PDP product. Optional.
   fitNotes?: string;
+  // Used by the complete-the-look engine (formality + season inference). The demo
+  // Product always carries it; the production adapter projects "" — so it is
+  // required (formalityOf/seasonOf call .toLowerCase() on it).
+  fabricComposition: string;
+  // Used only inside a template literal by silhouetteOf — optional.
+  description?: string;
 }
 
 // Strip hallucinated handles before they reach the client: any productHandle the

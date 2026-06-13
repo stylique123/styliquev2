@@ -9,10 +9,11 @@ import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy }
 import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
+import { buildLook } from "./look.js";
 
-export interface LookEntry { product: MiraProduct; reason: string; harmonyType: string; score: number; }
+// The complete-the-look engine is now part of the package (look.ts), so it is no
+// longer an injected seam. Only the closing-intelligence trio remains injected.
 export interface MiraDeps {
-  buildLook: (current: MiraProduct, catalog: MiraProduct[], n: number) => LookEntry[];
   extractSignals: (history: { from: string; text: string }[], sizeConfirmed: boolean, tryOnCompleted: boolean, tryOnAbandoned: boolean, outfitAccepted: boolean, outfitPiecesRecommended: number, cartItemCount: number, hasCurrent: boolean) => unknown;
   decideClose: (signals: unknown) => unknown;
   buildClosingContextBlock: (decision: unknown) => string;
@@ -59,7 +60,7 @@ export function buildResilientFallback(body: MiraBody, activeCatalog: MiraProduc
     };
   }
   if (current && /\b(look|outfit|style this|goes with|pairs with)\b/i.test(message)) {
-    const pair = deps.buildLook(current, activeCatalog, 1)[0]?.product;
+    const pair = buildLook(current, activeCatalog, 1)[0]?.product;
     return {
       voice: pair
         ? `The ${current.name} works best with the ${pair.name}. I'll build the look so you can see both together.`
@@ -150,7 +151,7 @@ export function buildPrompt(body: MiraBody, activeCatalog: MiraProduct[], deps: 
     // The same styling algorithm that powers the Try-On "complete the look"
     // grid, surfaced here so Mira's spoken pairing advice is grounded in real
     // color/category/formality scoring, not a guess. She references THESE picks.
-    const look = deps.buildLook(cur, activeCatalog, 3);
+    const look = buildLook(cur, activeCatalog, 3);
     if (look.length) {
       ctxLines.push(
         "STYLING, what our algorithm says goes best with this piece, ranked by how strong the pairing is (use these when they ask what pairs / to complete the look; pick from this list, in this order):",
