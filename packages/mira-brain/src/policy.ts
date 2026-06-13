@@ -51,8 +51,18 @@ export function enforceExecution(decision: MiraDecision, message: string, curHan
   if (!curHandle && decision.route === "talk_only" && /^\s*(just )?(looking|browsing|nothing|idk|i dont know|i don'?t know|surprise me|not sure|hmm+|hi+|hey+|hello)\b/i.test(mlow)) {
     // Cold-open heroes: pick from injected catalog (top 5 by keepRate desc) so
     // a real merchant gets THEIR best pieces, not the demo's hardcoded handles.
+    // Prefer pieces that are PHOTOGRAPHED and IN STOCK as the opener — a cold-open
+    // hero is the first impression on a visual-first purchase, and the re-audit
+    // caught a photo:NO, fully-OOS dress winning 4/4 runs. Eligible first, then keepRate.
+    const _elig = (p: MiraProduct) => (p.images?.length ?? 0) > 0 && (p.inStockSizes ?? p.sizes ?? []).length > 0;
     const heroes = activeCatalog.length
-      ? [...activeCatalog].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0)).slice(0, 5).map((p) => p.handle)
+      ? [...activeCatalog]
+          .sort((a, b) => {
+            const ae = _elig(a) ? 1 : 0, be = _elig(b) ? 1 : 0;
+            return ae !== be ? be - ae : (b.keepRate ?? 0) - (a.keepRate ?? 0);
+          })
+          .slice(0, 5)
+          .map((p) => p.handle)
       : ["wrap-coat-camel", "onyx-silk-slip", "tailored-blazer-double", "atelier-wide-leg-trouser", "leather-trench"];
     // Live cycle-3 panel caught the brain emitting IDENTICAL T1 and T2
     // voices on the cold-opener persona (different messages, same hero +
@@ -343,4 +353,71 @@ export function guardVoiceProductNames(decision: MiraDecision, catalog: MiraProd
     return article[0] === "T" ? "This piece" : "this piece";
   });
   return changed ? { ...decision, voice: newVoice } : decision;
+}
+
+// ── ELIGIBILITY ENFORCEMENT (re-audit: prompt rules ≠ enforcement) ───────────
+// The model, even with explicit catalog flags, still (a) claimed a SOLD-OUT gown
+// had sizes in stock and reached add_to_cart, (b) recommended a women's Silk Slip
+// Dress to a man who asked for menswear, (c) heroed photo:NO / out-of-stock
+// pieces. validateHandle guards existence and guardVoiceProductNames guards
+// names; this guards SELLABILITY: for any visual/sell route the grounded product
+// must be in stock AND photographed AND gender-appropriate, or it is swapped to
+// the best eligible alternative (or an honest talk_only when none qualifies).
+const _SELL_ROUTES = new Set(["reco_handle", "navigate", "look", "try_on", "add_to_cart", "reco_category", "reco_filter"]);
+const _MALE_INTENT = /\b(menswear|men'?s\b|for men\b|i'?m a (guy|man|male|dude|bloke)|something (smart |sharp )?for me,? (a )?(guy|man)|for myself[^.]{0,15}(guy|man|male)|for him\b|my husband|my boyfriend)\b/i;
+const _NOT_MALE = /\bfor (her|my (wife|girlfriend|mum|mother|sister|daughter|fianc[ée]e|partner \(she)|a woman)\b/i;
+const _WOMENS_CODED = /\b(gown|lehenga|gharara|anarkali|abaya|saree|sari|kameez|camisole|bridesmaid|bridal|jhumka|maang|tikka|blouse|sports?\s*bra)\b/i;
+
+function _isWomensCoded(p: MiraProduct): boolean {
+  const s = `${p.category} ${p.name}`.toLowerCase();
+  if (_WOMENS_CODED.test(s)) return true;
+  // "dress/skirt/slip" are women-coded EXCEPT compounds like "dress shirt".
+  return /\b(dress|skirt|slip)\b/.test(s) && !/\bdress\s+(shirt|trouser|pant|shoe|sock)/.test(s);
+}
+
+export function enforceEligibility(
+  decision: MiraDecision,
+  body: z.infer<typeof BodySchema>,
+  catalog: MiraProduct[],
+): MiraDecision {
+  if (!decision.productHandle || !_SELL_ROUTES.has(decision.route)) return decision;
+  const product = catalog.find((p) => p.handle === decision.productHandle);
+  if (!product) return decision;
+
+  const convo = [body.message, ...(body.history ?? []).filter((h) => h.from === "user").map((h) => h.text)].join(" ");
+  const maleIntent = _MALE_INTENT.test(convo) && !_NOT_MALE.test(body.message);
+
+  const inStock = (p: MiraProduct) => (p.inStockSizes ?? p.sizes ?? []).length > 0;
+  const hasPhoto = (p: MiraProduct) => !!(p.images && p.images.length);
+  const genderOk = (p: MiraProduct) => !maleIntent || !_isWomensCoded(p);
+  const eligible = (p: MiraProduct) => inStock(p) && hasPhoto(p) && genderOk(p);
+
+  if (eligible(product)) return decision;
+
+  // Grounded product is sold out / photo-less / wrong-gender → swap to the best
+  // eligible piece (prefer same category), else be honest.
+  const pool = catalog.filter(eligible);
+  const swap = pool.find((p) => p.category === product.category) ?? [...pool].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
+  if (swap) {
+    return {
+      ...decision,
+      // Present the swap, never auto-ADD a piece the shopper didn't choose: an
+      // add_to_cart for the (ineligible) original becomes a reco for the swap.
+      route: decision.route === "add_to_cart" ? "reco_handle" : decision.route,
+      productHandle: swap.handle,
+      voice: `Let me point you to the ${swap.name} instead — it's in stock and ready to see.`,
+    };
+  }
+  const why = maleIntent && _isWomensCoded(product)
+    ? "Our menswear range is still limited here — tell me the occasion and I'll pull the closest piece we can actually show you."
+    : !inStock(product)
+      ? "Honestly, that one's just sold out right now — tell me a bit more and I'll find one that's in stock and ready to see."
+      : "Let me find you one I can actually show you properly — what's the occasion?";
+  return {
+    ...decision,
+    route: "talk_only",
+    productHandle: undefined,
+    voice: why,
+    quickReplies: ["What's in stock?", "Style an outfit", "Something else"],
+  };
 }

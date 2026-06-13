@@ -5,7 +5,7 @@
 // intelligence trio. Both callers (demo route, Shopify adapter) pass their own.
 import type { MiraDecision, MiraBody } from "./schemas.js";
 import type { MiraProduct } from "./products.js";
-import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames } from "./policy.js";
+import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames, enforceEligibility } from "./policy.js";
 import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
@@ -256,6 +256,12 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
     ? enforceExecution(rawDecision, body.message, body.currentProductHandle, !!body.bodyOnFile || !!body.knownSize, activeCatalog, body.history?.length ?? 0)
     : buildResilientFallback(body, activeCatalog);
   decision = applySalesPolicy(decision, body, activeCatalog);
+  // Enforce SELLABILITY (re-audit P0): a visual/sell route must ground to a piece
+  // that's in stock + photographed + gender-appropriate, or swap to one that is —
+  // the model claimed sold-out sizes were available and pushed women's pieces to
+  // men despite the catalog flags. Runs before the name guard so the voice guard
+  // sees the final (possibly swapped) product.
+  decision = enforceEligibility(decision, body, activeCatalog);
   // Deterministic backstop: rewrite any phantom product name the model spoke in
   // its voice that isn't a real catalog title (validateHandle only guards the
   // route target, not the copy).
