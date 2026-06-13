@@ -52,19 +52,29 @@ export async function action({ request }: ActionFunctionArgs) {
     const p = payload as FulfilledOrderPayload;
     const orderId = p.id != null ? String(p.id) : null;
     const customerId = p.customer?.id != null ? String(p.customer.id) : null;
+    const customerEmail = p.customer?.email ? String(p.customer.email).toLowerCase() : null;
 
-    if (!customerId || !orderId) return new Response(null, { status: 200 });
+    // Need an order id + SOME way to identify the shopper (customer id OR email).
+    if (!orderId || (!customerId && !customerEmail)) return new Response(null, { status: 200 });
 
-    // 2. Find shopper by shopifyCustomerId, scoped to this shop's domain.
-    const shopper = await prisma.shopperSession.findFirst({
-      where: {
-        shopifyDomain: shop,
-        shopifyCustomerId: customerId,
-      },
-      select: { id: true },
-    });
+    // 2. Find the shopper — by shopifyCustomerId first, then by EMAIL. Almost no
+    //    live session carries a shopifyCustomerId yet (the theme-block linkage is
+    //    not populating), so email is the practical attribution key; without this
+    //    fallback every order short-circuits and CART_CONFIRMED never fires.
+    let shopper = customerId
+      ? await prisma.shopperSession.findFirst({
+          where: { shopifyDomain: shop, shopifyCustomerId: customerId },
+          select: { id: true },
+        })
+      : null;
+    if (!shopper && customerEmail) {
+      shopper = await prisma.shopperSession.findFirst({
+        where: { shopifyDomain: shop, email: customerEmail },
+        select: { id: true },
+      });
+    }
     if (!shopper) {
-      // Guest checkout or shopper not yet linked — skip silently.
+      // Guest checkout or shopper not yet linked (no matching customer id/email).
       return new Response(null, { status: 200 });
     }
 
@@ -136,6 +146,25 @@ export async function action({ request }: ActionFunctionArgs) {
     // If yes, that line item was Mira-assisted.
     const orderProductIds = resolvedLineItems.map(r => r.productId);
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
+
+    // ── Resolve CartIntents → confirmed ─────────────────────────────────────
+    // postComboAddAll writes a CartIntent (status "pending") when the shopper
+    // adds a Mira combo; nothing advanced it, so combo-to-purchase conversion was
+    // never measured. Mark this shopper's pending intents that overlap the order
+    // as confirmed. Best-effort — never blocks the webhook.
+    if (orderProductIds.length > 0) {
+      await prisma.cartIntent
+        .updateMany({
+          where: {
+            shopId: shopRecord.id,
+            shopperId: shopper.id,
+            status: "pending",
+            productIds: { hasSome: orderProductIds },
+          },
+          data: { status: "confirmed" },
+        })
+        .catch(() => undefined);
+    }
 
     if (orderProductIds.length > 0) {
       const assistEvents = await prisma.analyticsEvent.findMany({
