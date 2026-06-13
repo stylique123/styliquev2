@@ -892,6 +892,58 @@ function registerRealProducts(products?: RealProduct[]): void {
   for (const p of products) if (p?.handle) runtimeCatalog.set(p.handle, realToProduct(p));
 }
 
+// STOREFRONT CATALOG HYDRATION (founder: "Mira doesn't understand the product").
+// The runtimeCatalog was populated LAZILY — only after Mira's first API turn —
+// so on PDP load byHandle() returned null and Mira fell to a generic greeting,
+// never recognising the piece the shopper is standing on, and reco cards had no
+// real images until the shopper typed. Shopify exposes the whole catalog at the
+// same-origin `/products.json` (and the current piece at `/products/<handle>.js`)
+// on EVERY storefront, theme-agnostic. We fetch it once on mount so Mira knows
+// the merchant's real pieces (name, price, image, sizes, colours) immediately.
+// Demo (ASSET_BASE === "") keeps its bundled catalog and skips this.
+async function hydrateMerchantCatalog(): Promise<number> {
+  if (typeof window === "undefined" || !ASSET_BASE) return 0;
+  const opt = (p: { options?: { name?: string; values?: string[] }[] }, re: RegExp) =>
+    (p.options ?? []).find((o) => re.test(o.name ?? ""))?.values ?? [];
+  const toReal = (p: {
+    handle: string; title: string; product_type?: string;
+    variants?: { price?: string }[]; images?: { src?: string }[];
+    options?: { name?: string; values?: string[] }[];
+  }): RealProduct => ({
+    handle: p.handle,
+    name: p.title,
+    category: p.product_type || undefined,
+    priceUsd: p.variants?.[0]?.price ? Math.round(parseFloat(p.variants[0].price)) : 0,
+    image: p.images?.[0]?.src ?? null,
+    sizes: opt(p, /size/i),
+    colors: opt(p, /colou?r/i),
+  });
+  try {
+    const res = await fetch("/products.json?limit=250", { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = (await res.json()) as { products?: Parameters<typeof toReal>[0][] };
+    const reals = (data.products ?? []).filter((p) => p?.handle).map(toReal);
+    registerRealProducts(reals);
+    return reals.length;
+  } catch {
+    // Fallback: at least hydrate the CURRENT product so the PDP opener works.
+    const h = (window.location.pathname.replace(/^\/[a-z]{2}(-[a-z]{2})?(?=\/)/i, "").match(/\/products?\/([^/?#]+)/i) ?? [])[1];
+    if (!h) return 0;
+    try {
+      const r = await fetch(`/products/${h}.js`, { headers: { Accept: "application/json" } });
+      if (!r.ok) return 0;
+      const p = (await r.json()) as { handle: string; title: string; product_type?: string; price?: number; featured_image?: string; images?: string[]; options?: { name?: string; values?: string[] }[] };
+      registerRealProducts([{
+        handle: p.handle, name: p.title, category: p.product_type || undefined,
+        priceUsd: typeof p.price === "number" ? Math.round(p.price / 100) : 0,
+        image: p.featured_image ?? p.images?.[0] ?? null,
+        sizes: opt(p, /size/i), colors: opt(p, /colou?r/i),
+      }]);
+      return 1;
+    } catch { return 0; }
+  }
+}
+
 function byHandle(h?: string): Product | null {
   if (!h) return null;
   const k = h.trim().toLowerCase();
@@ -1653,6 +1705,15 @@ export default function MiraWidget() {
   }, []);
   // Last product Mira has "approached"; drives re-approach on navigation.
   const approachedHandle = useRef<string | null>(null);
+  // Hydrate the merchant's real catalog from Shopify on mount (storefront only)
+  // so Mira recognises the PDP piece + shows real product cards from turn one.
+  // The bump forces a re-render once the (module-level) runtimeCatalog is filled.
+  const [, setHydrated] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    hydrateMerchantCatalog().then((n) => { if (alive && n > 0) setHydrated((x) => x + 1); });
+    return () => { alive = false; };
+  }, []);
   const [messages, setMessages]   = useState<ChatMsg[]>([]);
   const [input, setInput]         = useState("");
   const [typing, setTyping]       = useState(false);
@@ -1846,7 +1907,7 @@ export default function MiraWidget() {
     if (typeof window === "undefined") return;
     if (sessionStorage.getItem("mira_opened")) return;
     if (sessionStorage.getItem("mira_nudged")) return;
-    const pdpProduct = currentProduct();
+    const onPdp = /\/products?\//.test(window.location.pathname);
     let fired = false;
     const fire = () => {
       if (fired) return;
@@ -1855,8 +1916,10 @@ export default function MiraWidget() {
       sessionStorage.setItem("mira_nudged", "1");
       // Approach with a real piece in hand, like a floor associate, on a PDP it's
       // the piece they're looking at; off-PDP it's a confident hero pick by name.
+      // Read the product FRESH (catalog hydration may have landed after mount).
       const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: "", turnCount: 0, sizeAsked: false, cartValue: 0, lastLookPieces: lastLookPieces.current };
-      setNudgeProduct(pdpProduct ?? hero(catalog, ctx));
+      const cp = currentProduct();
+      setNudgeProduct(cp ?? (activeProducts()[0] ?? hero(catalog, ctx)));
       setNudge(true);
       setTimeout(() => setNudge(false), 11000);
     };
@@ -1870,7 +1933,7 @@ export default function MiraWidget() {
       if (depth > 0.4) fire();
     };
     window.addEventListener("scroll", onScroll, { passive: true });
-    const fallback = setTimeout(fire, pdpProduct ? 13000 : 18000);
+    const fallback = setTimeout(fire, onPdp ? 13000 : 18000);
     return () => { window.removeEventListener("scroll", onScroll); clearTimeout(fallback); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1999,7 +2062,7 @@ export default function MiraWidget() {
     } else {
       greeting = [
         { from: "mira", kind: "say", text: "Hi, I'm Mira. I'll find you the right piece, not a hundred." },
-        { from: "mira", kind: "say", text: "What are you after today?", quickReplies: ["For an occasion", "Everyday", "Just looking"] },
+        { from: "mira", kind: "say", text: "What's the vibe today — or dressing for something?", quickReplies: ["A vibe in mind", "For an occasion", "Just browsing"] },
       ];
     }
     if (cp) {

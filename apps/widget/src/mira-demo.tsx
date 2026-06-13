@@ -102,38 +102,27 @@ function injectTryOnButton() {
   btn.id = "sq-tryon-pdp-btn";
   btn.type = "button";
   btn.innerHTML = 'TRY-ON HERE&nbsp;&nbsp;<span style="font-size:12px;line-height:1">&#9654;</span>';
+  // Anchor with pure CSS to the host's BOTTOM-LEFT. The old version computed `top`
+  // from the image's rect, but ran before the image had loaded (io.height === 0 →
+  // early return), so the pill got stuck at the host's TOP-LEFT, floating up over
+  // the photo ("the try-on is a head very much up"). `bottom`/`left` need no
+  // load-timing and never cover the image — it's a small pill in the corner.
   btn.style.cssText = [
-    "position:absolute", "z-index:50",
+    "position:absolute", "z-index:50", "left:16px", "bottom:16px",
     "display:inline-flex", "align-items:center", "gap:4px",
-    "padding:13px 22px", "background:#0E0E10", "color:#fff", "border:0", "border-radius:12px",
-    "font-family:ui-sans-serif,system-ui,-apple-system,sans-serif", "font-size:14px", "font-weight:700",
-    "letter-spacing:.05em", "cursor:pointer", "box-shadow:0 8px 22px rgba(0,0,0,.38)",
+    "padding:11px 18px", "background:#0E0E10", "color:#fff", "border:0", "border-radius:999px",
+    "font-family:ui-sans-serif,system-ui,-apple-system,sans-serif", "font-size:13px", "font-weight:700",
+    "letter-spacing:.05em", "cursor:pointer", "box-shadow:0 6px 18px rgba(0,0,0,.34)",
     "transition:transform .15s,box-shadow .15s", "-webkit-tap-highlight-color:transparent",
   ].join(";");
   btn.onmouseenter = () => { btn.style.transform = "translateY(-2px)"; btn.style.boxShadow = "0 12px 30px rgba(0,0,0,.48)"; };
-  btn.onmouseleave = () => { btn.style.transform = ""; btn.style.boxShadow = "0 8px 22px rgba(0,0,0,.38)"; };
+  btn.onmouseleave = () => { btn.style.transform = ""; btn.style.boxShadow = "0 6px 18px rgba(0,0,0,.34)"; };
   btn.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     document.dispatchEvent(new CustomEvent("stylique:open-tryon"));
   });
   host.appendChild(btn);
-  // Anchor to the BOTTOM-LEFT CORNER OF THE IMAGE itself — the container is often
-  // taller than the image (thumbnails, zoom layers), which pushed the button too
-  // high before. We compute the image's box inside the host and reposition on
-  // resize/scroll so it always sits on the image's bottom-left.
-  const place = () => {
-    const ho = host.getBoundingClientRect();
-    const io = img.getBoundingClientRect();
-    if (!io.height) return;
-    btn.style.left = Math.max(0, io.left - ho.left + 16) + "px";
-    btn.style.top = (io.bottom - ho.top - btn.offsetHeight - 16) + "px";
-  };
-  place();
-  setTimeout(place, 200);
-  window.addEventListener("resize", place, { passive: true });
-  if ((img as HTMLImageElement).complete) place();
-  else img.addEventListener("load", place);
   return true;
 }
 
