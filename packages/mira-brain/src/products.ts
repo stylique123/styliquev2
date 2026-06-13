@@ -25,6 +25,13 @@ export interface MiraProduct {
   fabricComposition: string;
   // Used only inside a template literal by silhouetteOf — optional.
   description?: string;
+  // In-stock sizes (the adapter projects these from inventoryQuantity /
+  // availableForSale). Absent = unknown → treat as fully in stock (the demo).
+  // Drives sold-out honesty so Mira never sells a size that isn't there.
+  inStockSizes?: string[];
+  // Image URLs (the adapter projects them). Absent/empty = NO photo — Mira must
+  // not hero it or offer "see it on you", because the card would render blank.
+  images?: string[];
 }
 
 // Strip hallucinated handles before they reach the client: any productHandle the
@@ -41,9 +48,20 @@ export function validateHandle(handle: string | undefined, activeCatalog: MiraPr
 export function catalogDigest(activeCatalog: MiraProduct[], currencyCode?: string): string {
   const pfx = currencyPrefix(currencyCode);
   return activeCatalog
-    .map(
-      (p) =>
-        `- ${p.handle} | ${p.name} | ${p.category}/${p.collection} | ${pfx}${p.priceUsd} | ${p.colors.join("/")} | sizes ${p.sizes.join(",")}`,
-    )
+    .map((p) => {
+      // Stock: unknown inStockSizes → treat as fully available (demo). Mark
+      // sold-out sizes / fully-out pieces so Mira sells only what's deliverable.
+      const inStock = p.inStockSizes ?? p.sizes;
+      const soldOut = p.sizes.filter((s) => !inStock.includes(s));
+      const stockNote =
+        inStock.length === 0
+          ? "OUT OF STOCK"
+          : soldOut.length
+            ? `in stock: ${inStock.join(",")} (sold out: ${soldOut.join(",")})`
+            : "in stock";
+      // Photo: no image → the card renders blank, so Mira must not hero it.
+      const photoNote = p.images && p.images.length ? "photo:yes" : "photo:NO";
+      return `- ${p.handle} | ${p.name} | ${p.category}/${p.collection} | ${pfx}${p.priceUsd} | ${p.colors.join("/")} | sizes ${p.sizes.join(",")} | ${stockNote} | ${photoNote}`;
+    })
     .join("\n");
 }

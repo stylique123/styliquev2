@@ -307,3 +307,40 @@ export function situationalLead(message: string): string {
   ];
   return patterns.find(([pattern]) => pattern.test(message))?.[1] ?? "Here's the strongest place to start";
 }
+
+// ── VOICE-NAME GUARD (brand-panel P0) ────────────────────────────────────────
+// validateHandle guards the ROUTE target, but the model can still NAME a product
+// in its spoken voice that does not exist ("...I'd put you in the Midnight Silk
+// Gown") even when the route handle is clean — a confident pitch for a phantom,
+// which destroys trust on the closing step. This is the symmetric guard for the
+// COPY: detect specific "the <Title-Case…> <garment>" references and, if the
+// named piece is not a real catalog title, rewrite it to the grounded product's
+// real name (or a neutral phrase). Title-case + the "the " prefix keep it to
+// SPECIFIC product references, not generic category mentions ("a linen shirt").
+const _GARMENT_NOUN =
+  "(Gown|Dress|Coat|Trench|Shirt|Blouse|Skirt|Trousers|Pants|Jeans|Jacket|Blazer|Top|Camisole|Slip|Suit|Sweater|Cardigan|Hoodie|Tee|Maxi|Midi|Lehenga|Abaya|Anarkali|Gharara|Sari|Saree|Kurta|Kaftan|Romper|Jumpsuit|Bodysuit|Tunic|Vest|Waistcoat|Scarf|Wrap|Shawl|Heels|Trainers|Sneakers|Boots|Loafers|Bag|Clutch|Tote)";
+// [Tt]he so sentence-initial "The …" is caught too; the product name itself
+// stays Title-Case (case-sensitive) so generic lowercase phrases don't match.
+const _NAMED_PRODUCT = new RegExp(
+  `\\b([Tt]he)\\s+([A-Z][\\w'-]+(?:\\s+[A-Z][\\w'-]+){0,4}\\s+${_GARMENT_NOUN})\\b`,
+  "g",
+);
+
+export function guardVoiceProductNames(decision: MiraDecision, catalog: MiraProduct[]): MiraDecision {
+  if (!decision.voice) return decision;
+  const titles = catalog.map((p) => p.name.toLowerCase().trim()).filter(Boolean);
+  const grounded = decision.productHandle ? catalog.find((p) => p.handle === decision.productHandle) : undefined;
+  let changed = false;
+  const newVoice = decision.voice.replace(_NAMED_PRODUCT, (full: string, article: string, name: string) => {
+    const lc = name.toLowerCase().trim();
+    // Real if it matches a catalog title in either direction (handles "Champagne
+    // Sequin Gown" vs the fuller "Champagne Sequin Evening Gown").
+    const isReal = titles.some((t) => t === lc || t.includes(lc) || lc.includes(t));
+    if (isReal) return full;
+    changed = true;
+    // Preserve the article's case ("The …" at a sentence start stays "This …").
+    if (grounded) return `${article} ${grounded.name}`;
+    return article[0] === "T" ? "This piece" : "this piece";
+  });
+  return changed ? { ...decision, voice: newVoice } : decision;
+}

@@ -5,7 +5,7 @@
 // intelligence trio. Both callers (demo route, Shopify adapter) pass their own.
 import type { MiraDecision, MiraBody } from "./schemas.js";
 import type { MiraProduct } from "./products.js";
-import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy } from "./policy.js";
+import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames } from "./policy.js";
 import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
@@ -256,6 +256,10 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
     ? enforceExecution(rawDecision, body.message, body.currentProductHandle, !!body.bodyOnFile || !!body.knownSize, activeCatalog, body.history?.length ?? 0)
     : buildResilientFallback(body, activeCatalog);
   decision = applySalesPolicy(decision, body, activeCatalog);
+  // Deterministic backstop: rewrite any phantom product name the model spoke in
+  // its voice that isn't a real catalog title (validateHandle only guards the
+  // route target, not the copy).
+  decision = guardVoiceProductNames(decision, activeCatalog);
 
   // ── ANTI-REPEAT GUARD ──────────────────────────────────────────────────────
   // When the model returns text byte-identical to the previous mira turn, prefix
