@@ -14,6 +14,9 @@ export interface MiraProduct {
   priceUsd: number;
   colors: string[];
   sizes: string[];
+  // Used by the policy helpers (budget facts + sales policy ranking). Optional to
+  // match the demo Product (number | undefined); the adapter maps it when present.
+  keepRate?: number;
 }
 
 // Strip hallucinated handles before they reach the client: any productHandle the
