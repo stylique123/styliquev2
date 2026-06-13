@@ -421,44 +421,72 @@ export function enforceEligibility(
   body: z.infer<typeof BodySchema>,
   catalog: MiraProduct[],
 ): MiraDecision {
-  if (!decision.productHandle || !_SELL_ROUTES.has(decision.route)) return decision;
-  const product = catalog.find((p) => p.handle === decision.productHandle);
-  if (!product) return decision;
-
   const convo = [body.message, ...(body.history ?? []).filter((h) => h.from === "user").map((h) => h.text)].join(" ");
   const maleIntent = _MALE_INTENT.test(convo) && !_NOT_MALE.test(body.message);
-
   const inStock = (p: MiraProduct) => (p.inStockSizes ?? p.sizes ?? []).length > 0;
   const hasPhoto = (p: MiraProduct) => !!(p.images && p.images.length);
   const genderOk = (p: MiraProduct) => !maleIntent || !_isWomensCoded(p);
   const eligible = (p: MiraProduct) => inStock(p) && hasPhoto(p) && genderOk(p);
-
-  if (eligible(product)) return decision;
-
-  // Grounded product is sold out / photo-less / wrong-gender → swap to the best
-  // eligible piece (prefer same category), else be honest.
-  const pool = catalog.filter(eligible);
-  const swap = pool.find((p) => p.category === product.category) ?? [...pool].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
-  if (swap) {
-    return {
-      ...decision,
-      // Present the swap, never auto-ADD a piece the shopper didn't choose: an
-      // add_to_cart for the (ineligible) original becomes a reco for the swap.
-      route: decision.route === "add_to_cart" ? "reco_handle" : decision.route,
-      productHandle: swap.handle,
-      voice: `Let me point you to the ${swap.name} instead — it's in stock and ready to see.`,
-    };
-  }
-  const why = maleIntent && _isWomensCoded(product)
-    ? "Our menswear range is still limited here — tell me the occasion and I'll pull the closest piece we can actually show you."
-    : !inStock(product)
-      ? "Honestly, that one's just sold out right now — tell me a bit more and I'll find one that's in stock and ready to see."
-      : "Let me find you one I can actually show you properly — what's the occasion?";
-  return {
-    ...decision,
-    route: "talk_only",
-    productHandle: undefined,
-    voice: why,
-    quickReplies: ["What's in stock?", "Style an outfit", "Something else"],
+  const bestSwap = (like?: MiraProduct) => {
+    const pool = catalog.filter(eligible);
+    return (like && pool.find((p) => p.category === like.category)) ?? [...pool].sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
   };
+
+  let next = decision;
+
+  // 1. Sell-route grounded product must be sellable → swap or be honest.
+  if (next.productHandle && _SELL_ROUTES.has(next.route)) {
+    const product = catalog.find((p) => p.handle === next.productHandle);
+    if (product && !eligible(product)) {
+      const swap = bestSwap(product);
+      if (swap) {
+        next = {
+          ...next,
+          // Never auto-ADD a piece the shopper didn't choose.
+          route: next.route === "add_to_cart" ? "reco_handle" : next.route,
+          productHandle: swap.handle,
+          voice: `Let me point you to the ${swap.name} instead — it's in stock and ready to see.`,
+        };
+      } else {
+        return {
+          ...next,
+          route: "talk_only",
+          productHandle: undefined,
+          voice: maleIntent && _isWomensCoded(product)
+            ? "Our menswear range is still limited here — tell me the occasion and I'll pull the closest piece we can actually show you."
+            : !inStock(product)
+              ? "Honestly, that one's just sold out right now — tell me a bit more and I'll find one that's in stock and ready to see."
+              : "Let me find you one I can actually show you properly — what's the occasion?",
+          quickReplies: ["What's in stock?", "Style an outfit", "Something else"],
+        };
+      }
+    }
+  }
+
+  // 2. compare route: drop any ineligible piece from the comparison set.
+  if (next.route === "compare" && Array.isArray(next.compareHandles)) {
+    const keep = next.compareHandles.filter((h) => { const p = catalog.find((x) => x.handle === h); return !!p && eligible(p); });
+    if (keep.length !== next.compareHandles.length) next = { ...next, compareHandles: keep };
+  }
+
+  // 3. VOICE leak (re-audit): the model can NAME an ineligible piece in voice-only
+  //    copy (e.g. a compare turn pitching an OOS, unphotographed gown as
+  //    "unforgettable") with no route handle to guard. Rewrite any catalog product
+  //    named in the voice that is NOT sellable to an eligible same-category piece.
+  if (next.voice) {
+    let voice = next.voice;
+    let changed = false;
+    for (const p of catalog) {
+      if (eligible(p) || p.name.length < 5) continue;
+      const re = new RegExp(`\\b${p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g");
+      if (re.test(voice)) {
+        const alt = bestSwap(p);
+        voice = voice.replace(re, alt ? alt.name : "a piece that's in stock");
+        changed = true;
+      }
+    }
+    if (changed) next = { ...next, voice };
+  }
+
+  return next;
 }

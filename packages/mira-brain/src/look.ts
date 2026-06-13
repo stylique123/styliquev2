@@ -341,7 +341,19 @@ export function buildLook(
   all: MiraProduct[],
   limit = 8,
 ): LookEntry[] {
-  const others = all.filter((p) => p.handle !== current.handle);
+  // CATEGORY COHERENCE (re-audit): a full-length dress already fills the top AND
+  // bottom — never add a top or a bottom to it (the engine returned slip dress +
+  // wide-leg trousers as one outfit). Only a layer (coat/blazer) or an accent
+  // (accessory) completes a dress. Also block two-bottoms and two-dresses.
+  const curZone = bodyZone(current.category);
+  const others = all.filter((p) => {
+    if (p.handle === current.handle) return false;
+    const z = bodyZone(p.category);
+    if (curZone === "full" && (z === "upper" || z === "lower" || z === "full")) return false;
+    if (curZone === "lower" && z === "lower") return false;
+    if (curZone === "upper" && z === "full") return false;
+    return true;
+  });
   const fCur = formalityOf(current);
   const sCur = seasonOf(current);
 
