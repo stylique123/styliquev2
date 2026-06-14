@@ -609,7 +609,7 @@ export default function TryOnPanel({
         : focus.category === "outerwear" ? "outerwear"
         : focus.category === "accessory" ? "accessory"
         : "top";
-      const garmentImages = garments.map((g) => g.images[0]).filter(Boolean);
+      const garmentImages = garments.map((g) => g.images[0]).filter(Boolean).map(resolveAsset);
       // The HONEST size signal: the real per-body ease (signed cm) and tightness
       // (−1..+1) of THIS size on THIS shopper, from the brand-exact size map. The
       // render uses these concrete numbers so S/M/L look genuinely different and
@@ -662,7 +662,7 @@ export default function TryOnPanel({
       const body = {
         mode: "muse" as const,
         museId: muse!,
-        museImage: activeMuse.img,
+        museImage: resolveAsset(activeMuse.img),
         garmentImages,
         size: sizeForRender,
         recommendedSize: recSize,
@@ -676,38 +676,18 @@ export default function TryOnPanel({
       };
 
       try {
-        const productionIds = garments
-          .map((g) => g.productId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0);
-        if (ASSET_BASE && productionIds.length !== garments.length) {
-          setRenderedUrl(null);
-          setRenderErrCode("product_not_synced");
-          setRenderError(true);
-          onRenderFailed?.("product_not_synced");
-          return;
-        }
-
-        const productionBody = productionIds.length > 1
-          ? {
-              productIds: productionIds,
-              mode: "BODY_MODEL" as const,
-              modelHint: muse!,
-              selectedSize: sizeForRender,
-              bodyProfile: `${Math.round(rH)}:${Math.round(rW)}`,
-            }
-          : {
-              productId: productionIds[0],
-              mode: "BODY_MODEL" as const,
-              modelHint: muse!,
-              selectedSize: sizeForRender,
-              bodyProfile: `${Math.round(rH)}:${Math.round(rW)}`,
-            };
+        // ONE TRY-ON PATH: the storefront now uses the SAME synchronous /api/tryon
+        // render as the demo (verified working end-to-end). The async worker path
+        // (/api/tryon/render + status polling) queued jobs that never completed, so
+        // the panel ALWAYS ended in "the try-on didn't come through". renderTryOn runs
+        // Gemini in-process and returns the composited data: URL directly; the muse +
+        // garment URLs are absolutised above so the backend host-allowlist fetch works.
         const res = await fetch(
-          ASSET_BASE ? `${shopperApi()}/api/tryon/render` : `${SQ_TRYON_API}/api/tryon`,
+          `${ASSET_BASE ? shopperApi() : SQ_TRYON_API}/api/tryon`,
           {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ASSET_BASE ? productionBody : body),
+          body: JSON.stringify(body),
           },
         );
         if (token !== renderToken.current) return; // superseded
@@ -747,7 +727,7 @@ export default function TryOnPanel({
           return;
         }
 
-        let raw = ASSET_BASE ? (payload.data?.imageUrl ?? null) : (payload.imageUrl ?? null);
+        let raw = payload.imageUrl ?? payload.data?.imageUrl ?? null;
         if (ASSET_BASE && payload.data?.status === "PENDING" && payload.data.renderId) {
           const renderId = payload.data.renderId;
           const deadline = Date.now() + 70_000;
