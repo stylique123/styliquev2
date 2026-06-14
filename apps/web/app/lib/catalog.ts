@@ -626,13 +626,76 @@ export function recommendSizeForProduct(
     hip: input.hip ?? est.hip,
   };
 
-  // Fallback when a product somehow lacks a chart: middle size.
+  // Fallback when a product has no size chart yet — body-driven, NEVER "middle size".
+  // Maps the shopper's body to an industry-default S–XXL anchor table, picks the
+  // closest. The moment a real chart is extracted for this product, the exact
+  // math above takes over and this branch is never hit.
   if (!chart) {
-    const size = sizes[Math.floor(sizes.length / 2)] ?? product.sizes[0];
+    const sizeList = product.sizes.length ? product.sizes : ["XS", "S", "M", "L", "XL"];
+
+    // Primary circumference: bottoms are waist-sized, everything else (tops,
+    // dresses, outerwear, abayas, gowns, knitwear) is bust-sized.
+    const cat = (product.category ?? "").toLowerCase();
+    const nm = (product.name ?? "").toLowerCase();
+    const isBottom = /trouser|jean|skirt|short|pant|legging|gharara|sharara|palazzo/.test(cat + " " + nm);
+    const primary: "waist" | "bust" = isBottom ? "waist" : "bust";
+    const bodyValue = primary === "waist" ? body.waist : body.bust;
+
+    // Industry-average womenswear anchors (cm). Calibrated against the
+    // 14–42 BMI band that estimateBody produces, so 172/35 lands on XS
+    // and 175/85 lands on L — not L for everyone.
+    const bustAnchors: Record<string, number> = { XS: 80, S: 84, M: 88, L: 94, XL: 100, XXL: 106 };
+    const waistAnchors: Record<string, number> = { XS: 62, S: 66, M: 70, L: 76, XL: 82, XXL: 88 };
+    const anchors = primary === "waist" ? waistAnchors : bustAnchors;
+
+    // Only consider sizes the product offers AND we have an anchor for.
+    const usable = sizeList.filter((s) => s.toUpperCase() in anchors);
+
+    // One-Size / Free-Size / non-standard labels (One Size, OS, Free): single choice.
+    if (usable.length === 0) {
+      const size = sizeList[0] ?? "M";
+      return {
+        size, confidence: 60,
+        reasoning: `${product.name} comes in ${size} only — fits a broad range of frames.`,
+        primaryLabel: primary === "waist" ? "Waist" : "Bust",
+        bodyValue: Math.round(bodyValue), garmentValue: 0,
+      };
+    }
+
+    // Pick the size whose anchor is closest to the shopper's body measurement.
+    // Honors fit preference (snug pulls down, relaxed pulls up).
+    const prefShift = fitPref === "snug" ? -3 : fitPref === "relaxed" ? +5 : 0;
+    const target = bodyValue + prefShift;
+    let best = usable[0]!;
+    let bestDist = Infinity;
+    for (const s of usable) {
+      const anchor = anchors[s.toUpperCase()]!;
+      const dist = Math.abs(anchor - target);
+      if (dist < bestDist) { bestDist = dist; best = s; }
+    }
+
+    // Brand-anchor pull (same logic as the chart path).
+    const anchor = input.usualBrandSize && input.usualBrandSize !== "none" ? input.usualBrandSize : null;
+    if (anchor && usable.includes(anchor)) {
+      const aIdx = usable.indexOf(anchor);
+      const bIdx = usable.indexOf(best);
+      if (Math.abs(aIdx - bIdx) <= 1) best = anchor;
+    }
+
+    // Confidence: honest about being an estimate. Tops out at 78 (chart path can hit 97).
+    const inputBonus = (input.bust || input.waist || input.hip) ? 10 : 0;
+    const ageBonus = input.age && input.age > 0 ? 5 : 0;
+    const brandBonus = anchor && usable.includes(anchor) ? 6 : 0;
+    const confidence = Math.max(45, Math.min(78, Math.round(72 - bestDist * 2.2 + inputBonus + ageBonus + brandBonus)));
+
+    const primaryLabel = primary === "waist" ? "Waist" : "Bust";
+    const garmentValue = anchors[best.toUpperCase()]!;
     return {
-      size, confidence: 62,
-      reasoning: `Most shoppers your frame land on the ${size} in this piece.`,
-      primaryLabel: "Fit", bodyValue: 0, garmentValue: 0,
+      size: best, confidence,
+      reasoning:
+        `Your ${primary} runs around ${Math.round(bodyValue)}cm; the ${best} is cut for that frame. ` +
+        `Sizing is estimated from category averages — the exact chart for this piece isn't on file yet.`,
+      primaryLabel, bodyValue: Math.round(bodyValue), garmentValue,
     };
   }
 
