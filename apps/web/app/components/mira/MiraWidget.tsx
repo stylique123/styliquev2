@@ -1090,15 +1090,13 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
     case "fit": {
       const anchor = byHandle(d.productHandle) ?? currentProduct;
       if (anchor) {
-        out.push({ from: "mira", kind: "insight", label: "Fit", text: anchor.fitNotes });
         const sizeAlreadyAnswered =
           /\b(?:you(?:'re| are)|your size(?: is)?|i(?:'d| would) put you in)\s+(?:an?\s+)?(?:XXS|XS|S|M|L|XL|XXL|XXXL|small|medium|large|\d{1,2})\b/i.test(d.voice);
         out.push({
           from: "mira",
-          kind: "say",
-          text: sizeAlreadyAnswered
-            ? "Want to see that size on you, add it to the bag, or build the look?"
-            : "Give me your height and weight, I'll give you a single size, not a range.",
+          kind: "insight",
+          label: "Fit",
+          text: anchor.fitNotes,
           quickReplies: sizeAlreadyAnswered
             ? ["See it on me", "Add to bag", "Show the look"]
             : ["Size me", "Add to bag", "Show the look"],
@@ -1120,8 +1118,7 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
     case "suitability": {
       const anchor = byHandle(d.productHandle) ?? currentProduct;
       if (anchor) {
-        out.push({ from: "mira", kind: "insight", label: "My honest read", text: candidTake(anchor) });
-        out.push({ from: "mira", kind: "say", text: "What makes or breaks it is the size. Height and weight and I'll name the exact one for your frame.", quickReplies: ["Size me", "What's it made of?", "Show the look"] });
+        out.push({ from: "mira", kind: "insight", label: "My honest read", text: candidTake(anchor), quickReplies: ["Size me", "What's it made of?", "Show the look"] });
       }
       return out;
     }
@@ -1144,24 +1141,16 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
         if (lookPieces.length > 0) {
           const all = [anchor, ...lookPieces.filter((p) => p.handle !== anchor.handle)];
           const total = all.reduce((s, p) => s + p.priceUsd, 0);
+          // Collapse to 2 bubbles: voice (with quickReplies) + one bundle cart chip
+          out[0] = { ...voice, text: `Done, the full look is in your bag. ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`, quickReplies: ["Go to checkout", "Keep shopping"] };
           out.push({ from: "mira", kind: "cart", productName: `${all.length} pieces, ${anchor.name} look` });
-          out.push({
-            from: "mira", kind: "say",
-            text: `Done, the full look is in your bag. ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`,
-            quickReplies: ["Go to checkout", "Keep shopping"],
-          });
-          all.slice(1).forEach((p) => out.push({ from: "mira", kind: "cart", productName: p.name }));
           return out;
         }
       }
 
-      // SINGLE item add (standard path)
+      // SINGLE item add (standard path) — 2 bubbles: voice (with quickReplies) + cart
+      out[0] = { ...voice, text: `${anchor.name} is in your bag. Want me to complete the look before you check out?`, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Complete the look", "Keep shopping"] };
       out.push({ from: "mira", kind: "cart", productName: anchor.name });
-      out.push({
-        from: "mira", kind: "say",
-        text: `The ${anchor.name} is in your bag. Want me to complete the look before you check out?`,
-        quickReplies: ["Complete the look", "Keep shopping"],
-      });
       return out;
     }
 
@@ -1201,8 +1190,12 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
 
     case "reco_category": {
       const set = d.category ? categorySet(d.category) : catalog;
-      out.push(recoMsg(hero(set.length ? set : catalog, ctx), { relativeTo: currentProduct }));
-      out.push({ from: "mira", kind: "say", text: "Want the full look around it, or another option?", quickReplies: ["Build the look", "Another option", "Size me"] });
+      const picks = fresh(set.length ? set : catalog, ctx).slice(0, 3);
+      // Put quickReplies on the voice bubble so there's only 1 text bubble + N card bubbles
+      out[0] = { ...voice, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Build the look", "Another option", "Size me"] };
+      (picks.length ? picks : [hero(set.length ? set : catalog, ctx)]).forEach((p) =>
+        out.push(recoMsg(p, { relativeTo: currentProduct }))
+      );
       return out;
     }
 
@@ -1499,7 +1492,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
         ["--sq-gy" as string]: "50%",
       }}
     >
-      <div onClick={goToProduct} role="link" tabIndex={0} aria-label={`View ${p.name}`} className="sq-mira-field sq-reco-card__img" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToProduct(); } }} style={{ position: "relative", width: "100%", height: 232, background: "var(--surface)", cursor: "pointer", overflow: "hidden" }}>
+      <div onClick={goToProduct} role="link" tabIndex={0} aria-label={`View ${p.name}`} className="sq-mira-field sq-reco-card__img" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToProduct(); } }} style={{ position: "relative", width: "100%", height: 160, background: "var(--surface)", cursor: "pointer", overflow: "hidden" }}>
         <Image src={p.images[0]} alt={p.name} fill sizes="380px" style={{ objectFit: "cover", objectPosition: "center 28%" }} />
         {p.lowStock && (
           <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(14,10,20,0.82)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F8A0A0" }}>Low stock</div>
@@ -2436,7 +2429,7 @@ export default function MiraWidget() {
 
       {/* Stylist sidebar, a side panel, never full-screen. The store stays visible. */}
       {open && (
-        <div style={{ position: "fixed", bottom: 96, right: 28, zIndex: 89, width: "min(400px, calc(100vw - 40px))", maxHeight: "78dvh", background: "#12101A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.7)", animation: "miraPanelIn 320ms var(--ease-spring) both" }}>
+        <div style={{ position: "fixed", bottom: 96, right: 28, zIndex: 89, width: "min(400px, calc(100vw - 40px))", maxHeight: "88dvh", background: "#12101A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.7)", animation: "miraPanelIn 320ms var(--ease-spring) both" }}>
           {/* Header */}
           <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.02)" }}>
             <MiraFace size={38} />
@@ -2500,7 +2493,7 @@ export default function MiraWidget() {
 
           {/* Editorial feed */}
           {/* aria-live='polite' + role='log' ensures screen readers announce new Mira messages (WCAG SC 4.1.3) */}
-          <div role="log" aria-live="polite" aria-label="Mira conversation" data-stylique-widget="1" style={{ flex: 1, overflowY: "auto", padding: "18px 14px", display: "flex", flexDirection: "column", gap: 18, scrollbarWidth: "none" }}>
+          <div role="log" aria-live="polite" aria-label="Mira conversation" data-stylique-widget="1" style={{ flex: 1, overflowY: "auto", padding: "18px 14px", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none" }}>
             {messages.map((msg, i) => {
               if (msg.from === "user") {
                 return (
