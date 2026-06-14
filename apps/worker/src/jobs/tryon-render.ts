@@ -33,6 +33,7 @@ import {
   createVertexNanaBananaProvider,
   createLiteLocalProvider,
   computeTryOnCacheKey,
+  currentPeriodStart,
 } from "@stylique/core";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -370,6 +371,18 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
       completedAt: new Date(),
     },
   });
+
+  // Count this NEW render against the monthly cap — mirrors the sync path's
+  // recordConsume. A cache hit returned early above and is NOT counted, so this
+  // only meters genuine provider calls. Without it the async path would never
+  // increment the counter and the per-brand render limit would leak. Direct
+  // upsert because the worker can't import the Remix entitlement lib.
+  const usageMetric = mode === "PERSONAL_PHOTO" ? "TRYON_PERSONAL" : "TRYON_BODY";
+  await prisma.usageCounter.upsert({
+    where: { shopId_metric_periodStart: { shopId, metric: usageMetric, periodStart: currentPeriodStart() } },
+    create: { shopId, metric: usageMetric, periodStart: currentPeriodStart(), count: 1 },
+    update: { count: { increment: 1 } },
+  }).catch(() => undefined);
 
   // Fire analytics — fire-and-forget, never blocks the render result.
   await prisma.analyticsEvent.create({

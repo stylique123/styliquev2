@@ -68,6 +68,50 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ ok: true, message: `Tier updated to ${tier}` });
   }
 
+  // Comp / un-comp a brand — grants full paid access under BILLING_ENFORCED
+  // without a subscription (pilot / grandfathered). Read-merge-write so other
+  // planFeaturesJson keys survive.
+  if (intent === "set_comp") {
+    const on = formData.get("comp") === "1";
+    const existing = await prisma.plan.findUnique({ where: { shopId }, select: { planFeaturesJson: true } });
+    const pf = ((existing?.planFeaturesJson as Record<string, unknown> | null) ?? {}) as Record<string, unknown>;
+    pf.comp = on;
+    await prisma.plan.upsert({
+      where: { shopId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      update: { planFeaturesJson: pf as any },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: { shopId, planFeaturesJson: pf as any },
+    });
+    return json({ ok: true, message: on ? "Brand comp'd — full access" : "Comp removed" });
+  }
+
+  // Per-brand monthly body-render ceiling. Empty → clear the override (tier
+  // default applies). Merged into planFeaturesJson.widget so resolveFeatures
+  // surfaces it through capForMetric.
+  if (intent === "set_render_cap") {
+    const raw = ((formData.get("cap") as string | null) ?? "").trim();
+    const existing = await prisma.plan.findUnique({ where: { shopId }, select: { planFeaturesJson: true } });
+    const pf = ((existing?.planFeaturesJson as Record<string, unknown> | null) ?? {}) as Record<string, unknown>;
+    const widget = ((pf.widget as Record<string, unknown> | undefined) ?? {}) as Record<string, unknown>;
+    if (raw === "") {
+      delete widget.monthlyTryOnBody;
+    } else {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0) return json({ ok: false, error: "Cap must be a non-negative number" }, { status: 400 });
+      widget.monthlyTryOnBody = Math.round(n);
+    }
+    pf.widget = widget;
+    await prisma.plan.upsert({
+      where: { shopId },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      update: { planFeaturesJson: pf as any },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      create: { shopId, planFeaturesJson: pf as any },
+    });
+    return json({ ok: true, message: raw === "" ? "Render cap reset to tier default" : `Render cap set to ${Math.round(Number(raw))}/mo` });
+  }
+
   return json({ ok: false, error: "unknown intent" }, { status: 400 });
 }
 
@@ -229,9 +273,36 @@ function PlanFeaturesEditor({ current, shopId, csrf }: { current: unknown; shopI
   const [value, setValue] = useState(JSON.stringify(current ?? {}, null, 2));
   const fetcher = useFetcher<{ ok: boolean; message?: string; error?: string }>();
   const result = fetcher.data;
+  const cur = (current ?? {}) as { comp?: boolean; billingActive?: boolean; widget?: { monthlyTryOnBody?: number } };
+  const comped = cur.comp === true || cur.billingActive === true;
+  const curCap = cur.widget?.monthlyTryOnBody;
+
+  const ctrlBtn = { padding: "6px 12px", fontSize: 12, fontWeight: 600, border: "1px solid #ccc", borderRadius: 5, background: "#fff", color: "#111", cursor: "pointer" } as const;
 
   return (
     <div>
+      {/* Manual billing + limit controls (founder: "give me the option to
+          manually allot this from my dashboard"). Both read-merge-write into
+          planFeaturesJson — comp = full access under BILLING_ENFORCED; the cap
+          overrides this brand's monthly body-render ceiling. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 18, alignItems: "flex-end", marginBottom: 16, padding: 12, background: "#f5f5f5", borderRadius: 6 }}>
+        <fetcher.Form method="post" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="hidden" name="intent" value="set_comp" />
+          <input type="hidden" name="comp" value={comped ? "0" : "1"} />
+          <input type="hidden" name="csrf" value={csrf} />
+          <span style={{ fontSize: 12, color: "#555" }}>Billing: <b style={{ color: comped ? "#166534" : "#b45309" }}>{comped ? "comp'd (full access)" : "standard"}</b></span>
+          <button type="submit" style={ctrlBtn}>{comped ? "Remove comp" : "Comp this brand"}</button>
+        </fetcher.Form>
+        <fetcher.Form method="post" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input type="hidden" name="intent" value="set_render_cap" />
+          <input type="hidden" name="csrf" value={csrf} />
+          <label style={{ fontSize: 12, color: "#555" }}>Try-on render limit / mo
+            <input name="cap" type="number" min={0} defaultValue={curCap ?? ""} placeholder="tier default"
+              style={{ width: 110, marginLeft: 8, padding: "5px 8px", fontSize: 12, border: "1px solid #ccc", borderRadius: 5 }} />
+          </label>
+          <button type="submit" style={ctrlBtn}>Set limit</button>
+        </fetcher.Form>
+      </div>
       <p style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
         ⚠ Direct JSON edit. Changes take effect immediately on next request.
       </p>

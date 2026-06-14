@@ -345,6 +345,22 @@ export async function renderTryOn(args: {
     }
   }
 
+  // 2c. LIMIT GATE (body-model). Only a NEW render reaches here — a cache hit
+  //     already returned above — so this caps genuine provider calls (the real
+  //     cost), never a free repeat. Per-tier ceiling in PLAN_FEATURES, with a
+  //     per-brand override the founder sets from the ops dashboard. Over the cap
+  //     → graceful "limit reached"; the brand's already-rendered looks keep
+  //     serving from cache. (Founder: "they should not use more than the limit.")
+  if (args.mode === "BODY_MODEL") {
+    const gate = await canConsume({ shopId: args.shopId, metric: "TRYON_BODY" });
+    if (!gate.allowed) {
+      track("TRYON_RENDER_FAILED", args.productId, {
+        productId: args.productId, mode: args.mode, providerKey: "n/a", errorReason: "quota_reached",
+      });
+      return { ok: false, error: "quota_reached" };
+    }
+  }
+
   // 3. Validate person image (PERSONAL_PHOTO only). Same rules as chat (§3.5).
   let personBase64: string | undefined;
   let personMime: string | undefined;

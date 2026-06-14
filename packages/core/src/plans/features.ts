@@ -103,7 +103,7 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
     widget: {
       enabled: true,
       monthlyTryOnPersonal: 300,
-      monthlyTryOnBody: null,                  // body-model preview always free
+      monthlyTryOnBody: 3000,                  // cost ceiling — only NEW renders count (cache hits are free); raise per-brand from the ops dashboard
       monthlyFitRecs: 500,
       monthlyStyleRecs: 300,
       bodyModels: 4,
@@ -159,7 +159,7 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
     widget: {
       enabled: true,
       monthlyTryOnPersonal: 3000,
-      monthlyTryOnBody: null,
+      monthlyTryOnBody: 30000,                 // cost ceiling — new renders only (cache hits free); per-brand override in ops dashboard
       monthlyFitRecs: 8000,
       monthlyStyleRecs: 5000,
       bodyModels: 6,
@@ -221,7 +221,7 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
     widget: {
       enabled: true,
       monthlyTryOnPersonal: null,
-      monthlyTryOnBody: null,
+      monthlyTryOnBody: 200000,                // abuse ceiling only — effectively unlimited for any real store; per-brand override in ops dashboard
       monthlyFitRecs: null,
       monthlyStyleRecs: null,
       bodyModels: 6,
