@@ -1074,6 +1074,9 @@ export default function TryOnPanel({
               <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", color: "var(--mute)", margin: "6px 0 0" }}>
                 Watch the fitting room on the left.
               </p>
+              <p style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "rgba(244,242,238,0.5)", margin: "2px 0 0", lineHeight: 1.5 }}>
+                The first render takes a few seconds — every size you try after is instant.
+              </p>
             </div>
           )}
           {step === 2 && !isRendering && (
@@ -1682,6 +1685,23 @@ function StepSize({
   });
   const displayedConfidence = authoritative ? fitResult.confidence : cb.score;
 
+  // Plain-English fit honesty (panel: "put one plain warning on screen when a
+  // region binds — 'runs snug at the hip, size up' earns more trust than a bare
+  // confidence %"). Driven by the SAME binding-region math the render uses
+  // (renderEaseOf), so the words on the size step and the picture on the result
+  // step always agree. Only speaks up when a region genuinely binds — a true fit
+  // stays quiet.
+  const fitNote = (() => {
+    if (fitPending || fitError) return null;
+    const bind = renderEaseOf(fitBreakdown(product, fitResult.size, height, weight, body));
+    if (!bind.bindLabel || !Number.isFinite(bind.easeCm)) return null;
+    const region = bind.bindLabel.toLowerCase();
+    const cm = Math.round(bind.easeCm);
+    if (cm <= -4) return { tone: "#E8A44C", text: `Runs snug at the ${region}${fitResult.alt ? ` — size up to ${fitResult.alt.size} for more room` : " — size up if you prefer more room"}.` };
+    if (cm >= 8)  return { tone: "#8FB8FF", text: `Roomy through the ${region}${fitResult.alt ? ` — size down to ${fitResult.alt.size} for a closer line` : " — size down for a closer line"}.` };
+    return null;
+  })();
+
   // Unit preference — internally we always store cm/kg, but a shopper who thinks
   // in inches/lbs needs to enter and read their measurements that way. Persist
   // the choice so they only flip the toggle once.
@@ -1750,6 +1770,16 @@ function StepSize({
           <div style={{ width: "100%", maxWidth: 240 }}>
             <FitBar value={fitResult.confidence} />
           </div>
+        )}
+        {!fitPending && !fitError && (
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgba(199,184,255,0.92)" }}>
+            {fitResult.confidence}% confident in this pick
+          </span>
+        )}
+        {fitNote && (
+          <p role="note" style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: fitNote.tone, margin: 0, lineHeight: 1.5, display: "flex", alignItems: "center", gap: 6, maxWidth: 280 }}>
+            <span aria-hidden="true" style={{ flexShrink: 0 }}>●</span>{fitNote.text}
+          </p>
         )}
         {fitError && (
           <p role="status" style={{ fontFamily: "var(--sans)", fontSize: 12, color: "#E8A44C", margin: 0, lineHeight: 1.5 }}>
@@ -1921,6 +1951,10 @@ function StepRendering({ progress, phase, bodyImg }: { progress: number; phase: 
       <div style={{ width: "100%", height: 4, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
         <div style={{ width: `${progress}%`, height: "100%", background: "var(--grad)", borderRadius: 999, transition: "width 220ms ease" }} />
       </div>
+
+      <p style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "rgba(244,242,238,0.5)", margin: 0, textAlign: "center", maxWidth: 260, lineHeight: 1.5 }}>
+        The first render takes a few seconds — every size you try after is instant.
+      </p>
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
         {PHASES.map((p, i) => (
