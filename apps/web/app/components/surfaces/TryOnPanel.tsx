@@ -252,6 +252,15 @@ export default function TryOnPanel({
   // "Try the look on" button appears whenever the live selection diverges. (Fix #3)
   const [renderedSig,    setRenderedSig   ] = useState<string | null>(null);
   const [saved,          setSaved         ] = useState(false);
+  // Per-size render memo for the CURRENT body + worn set. Every size this shopper
+  // has actually rendered this session is kept here keyed by size → its composite
+  // URL. Tapping a size that's already in the memo shows it INSTANTLY (no Gemini
+  // call, no progress wait), so the shopper can flip S↔M↔L and genuinely SEE how
+  // each size sits on the body — the whole point of size try-on (founder: "I have
+  // to see how each size looks on it … how large is really the large, how tight").
+  // Cleared whenever the body, muse or worn set changes, since each of those
+  // invalidates the cached fit — a render of "M" on one body ≠ "M" on another.
+  const [renderedBySize, setRenderedBySize] = useState<Record<string, string>>({});
   // Monotonic token so a superseded in-flight render never overwrites a newer one.
   const renderToken = useRef(0);
   const renderStartedRef = useRef(false);
@@ -302,6 +311,14 @@ export default function TryOnPanel({
       }
     };
   }, [initialProduct, trigger, emitStorefrontEvent]);
+
+  // Invalidate the per-size render memo whenever an input OTHER than size changes
+  // the fit (body, muse, focus piece, or the worn-look set) — those make every
+  // cached size render stale, so we drop them and let the next tap re-render.
+  const lookKey = lookItems.map((p) => p.handle).join(",");
+  useEffect(() => {
+    setRenderedBySize({});
+  }, [muse, height, weight, fitAge, usualSize, currentProduct.handle, lookKey]);
 
   const isRendering = renderProgress > 0 && renderProgress < 100;
   // null until the shopper picks one.
@@ -760,6 +777,9 @@ export default function TryOnPanel({
         setRenderedUrl(abs);
         setRenderError(!abs);
         if (abs) {
+          // Remember this size's composite for the current body + worn set so the
+          // shopper can flip back to it instantly (no re-render) and compare sizes.
+          setRenderedBySize((prev) => ({ ...prev, [sizeForRender]: abs }));
           renderCompletedRef.current = true;
           onRenderComplete?.(abs);
         }
@@ -789,6 +809,21 @@ export default function TryOnPanel({
   // Tap a size pill → PREVIEW only (updates the fit map). The render waits for the
   // explicit "Try on this size →" button. (founder: "tap previews, button re-renders")
   const previewSizeTap = (sz: string) => {
+    // If we already have this size's composite for the current body + look, flip
+    // to it INSTANTLY — no Gemini call, no progress wait. This is what lets the
+    // shopper actually compare how each size looks ON the body (founder: "I have
+    // to see how each size looks on it"). Committing it (not just previewing)
+    // keeps the badge, fit map and "now showing" dot all in agreement.
+    const cached = renderedBySize[sz];
+    if (cached && sz !== effectiveSize) {
+      setChosenSize(sz);
+      setPreviewSize(null);
+      setRenderError(false);
+      setRenderErrCode(null);
+      setRenderedUrl(cached);
+      setRenderedSig(sigOf([currentProduct, ...lookItems], sz));
+      return;
+    }
     setPreviewSize(sz === effectiveSize ? null : sz);
   };
 
@@ -1065,6 +1100,7 @@ export default function TryOnPanel({
               rateInfo={rateInfo}
               errCode={renderErrCode}
               onRetry={startRender}
+              renderedBySize={renderedBySize}
               isDesktop={isDesktop}
             />
           )}
@@ -1931,7 +1967,7 @@ function StepResult({
   product, muse, height, weight, body, fitResult, outfit, lookItems,
   onToggleLook, onFocus, onRemoveLook, onTryTheLook, lookDirty, onRetry,
   size, previewSize, onPreviewSize, onTryThisSize,
-  renderedUrl, renderError, rateInfo, errCode, isDesktop,
+  renderedUrl, renderError, rateInfo, errCode, renderedBySize, isDesktop,
 }: {
   product: Product;
   muse: (typeof MUSES)[number] | null;
@@ -1954,10 +1990,30 @@ function StepResult({
   renderError: boolean;               // true → show an explicit error, never the bare product
   rateInfo: number | null;            // P4 — non-null → abuse cap hit, retry after N seconds
   errCode: string | null;             // specific failure code for honest per-code copy
+  renderedBySize: Record<string, string>; // size → already-rendered composite (instant flip + compare)
   isDesktop: boolean;                 // desktop → image + fit-telling live in the LEFT pane
 }) {
   const museLabel = muse?.label ?? "your model";
   const sizeRun = product.sizes;
+  // Deterministic fit magnitude per size — the signed ease (cm) of THIS size's
+  // binding region on THIS body, with a tag for colour. Computed from the brand
+  // chart, NOT from Gemini, so EVERY size shows its true tightness/looseness at a
+  // glance instantly (founder: "how large is really the large, how tight is tight")
+  // — the size pills themselves become an honest size-comparison ladder.
+  const sizeFits = useMemo(() => {
+    const map: Record<string, { tag: keyof typeof TAG_COLOR; label: string; cm: number }> = {};
+    for (const sz of sizeRun) {
+      const { easeCm } = renderEaseOf(fitBreakdown(product, sz, height, weight, body));
+      const cm = Math.round(easeCm);
+      const tag: keyof typeof TAG_COLOR = cm <= -3 ? "tight" : cm < 4 ? "true" : cm < 10 ? "relaxed" : "loose";
+      const label = tag === "true" ? "true" : cm > 0 ? `+${cm}cm` : `${cm}cm`;
+      map[sz] = { tag, label, cm };
+    }
+    return map;
+  }, [product, height, weight, body, sizeRun]);
+  // The sizes this shopper has actually rendered, in size order — drives the
+  // side-by-side "compare on you" strip so two real renders sit next to each other.
+  const renderedSizes = sizeRun.filter((sz) => renderedBySize[sz]);
   // displaySize = what the fit map / badge reflect right now. A tapped (preview)
   // size updates the map instantly; the actual re-render waits for the button.
   const displaySize = previewSize ?? size;
@@ -2176,27 +2232,44 @@ function StepResult({
             const isPreview = sz === displaySize;   // the size the map currently reflects
             const isWorn = sz === size;             // the size the render was produced at
             const rec = sz === fitResult.size;
+            const info = sizeFits[sz];              // deterministic ease + tag for THIS size
+            const cached = !!renderedBySize[sz];    // already rendered → tap shows it instantly
             return (
               <button
                 key={sz}
                 onClick={() => onPreviewSize(sz)}
                 className="sq-tt-btn"
+                title={cached ? `See the ${sz} on the body` : `Preview the ${sz} fit`}
                 style={{
-                  flex: 1, padding: "11px 4px", borderRadius: 10,
+                  flex: 1, padding: "8px 3px 6px", borderRadius: 10,
                   border: isPreview ? "1.5px solid rgba(139,92,246,0.9)" : "1px solid rgba(255,255,255,0.1)",
                   background: isPreview ? "rgba(139,92,246,0.2)" : "transparent",
+                  // A faint inner ring marks sizes already rendered this session —
+                  // tapping them flips the body image instantly (no wait).
+                  boxShadow: cached && !isPreview ? "inset 0 0 0 1px rgba(139,92,246,0.3)" : undefined,
                   color: isPreview ? "#F4F2EE" : "var(--mute)",
-                  fontFamily: "var(--mono)", fontSize: 12, fontWeight: isPreview ? 700 : 400,
-                  cursor: "pointer", position: "relative",
+                  fontFamily: "var(--mono)", cursor: "pointer", position: "relative",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
                 }}
               >
-                {sz}
-                {rec && <span style={{ position: "absolute", top: 3, right: 5, fontSize: 7, color: "var(--electric)" }} title="Recommended">★</span>}
-                {isWorn && !isPreview && <span style={{ position: "absolute", bottom: 3, left: "50%", transform: "translateX(-50%)", width: 4, height: 4, borderRadius: "50%", background: "var(--electric)" }} title="Now showing" />}
+                <span style={{ fontSize: 12, fontWeight: isPreview ? 700 : 400, lineHeight: 1 }}>{sz}</span>
+                {info && (
+                  <span style={{ fontSize: 8.5, letterSpacing: "0.01em", lineHeight: 1, color: TAG_COLOR[info.tag], fontWeight: isPreview ? 700 : 500 }}>
+                    {info.label}
+                  </span>
+                )}
+                {rec && <span style={{ position: "absolute", top: 2, right: 4, fontSize: 7, color: "var(--electric)" }} title="Recommended">★</span>}
+                {isWorn && !isPreview && <span style={{ position: "absolute", top: 4, left: 5, width: 4, height: 4, borderRadius: "50%", background: "var(--electric)" }} title="Now showing on the body" />}
               </button>
             );
           })}
         </div>
+        {/* The numbers are the honest ease ladder: −cm = tighter, +cm = roomier,
+            "true" = your fit. It tells the size story for EVERY size at a glance,
+            before any render — then tap one to see it actually on the body. */}
+        <p style={{ fontFamily: "var(--sans)", fontSize: 10.5, color: "var(--mute)", margin: "8px 0 0", lineHeight: 1.5 }}>
+          Each number is cm of room vs your body — <span style={{ color: TAG_COLOR.tight }}>−tighter</span>, <span style={{ color: TAG_COLOR.loose }}>+roomier</span>. Tap a size to see it on you.
+        </p>
 
         {/* The explicit re-render button — only shown when a different size is previewed */}
         {previewing ? (
@@ -2215,6 +2288,56 @@ function StepResult({
           </p>
         )}
       </div>
+
+      {/* ── Compare on you — appears once the shopper has rendered 2+ sizes, so the
+              actual composites sit SIDE BY SIDE and "how large is large vs small"
+              is visible at once, not one-at-a-time (founder: "they can actually
+              see how large the large is, how tight the tight is"). Tapping a frame
+              flips the hero to it instantly — these are already rendered. ── */}
+      {renderedSizes.length >= 2 && (
+        <div>
+          <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "#C7B8FF", margin: "0 0 8px" }}>
+            Compare on you · {renderedSizes.length} sizes
+          </p>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 2 }}>
+            {renderedSizes.map((sz, i) => {
+              const info = sizeFits[sz];
+              const isShown = sz === displaySize;
+              const rec = sz === fitResult.size;
+              return (
+                <button
+                  key={sz}
+                  onClick={() => onPreviewSize(sz)}
+                  aria-label={`Show size ${sz} on the body`}
+                  className="sq-tt-card"
+                  style={{
+                    flex: `0 0 ${LOOK_CARD_W}px`, padding: 0, background: "transparent",
+                    border: "none", cursor: "pointer",
+                    animation: LOOK_ANIM, animationDelay: lookCardStagger(i),
+                  }}
+                >
+                  <div style={{
+                    width: "100%", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden",
+                    backgroundImage: `url(${renderedBySize[sz]})`, backgroundSize: "cover", backgroundPosition: "top center",
+                    border: isShown ? "2px solid rgba(139,92,246,0.9)" : "1px solid rgba(255,255,255,0.12)",
+                    boxShadow: isShown ? "0 0 16px rgba(139,92,246,0.4)" : "none",
+                  }} />
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 5, marginTop: 6 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: isShown ? "#F4F2EE" : "rgba(255,255,255,0.7)" }}>
+                      {rec ? "★ " : ""}{sz}
+                    </span>
+                    {info && (
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 9, color: TAG_COLOR[info.tag] }}>
+                        {info.label}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Complete the look — tap a piece to ADD it to your look (selection only,
               no render). Press "Try the look on" to render them all together on the
