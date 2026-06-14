@@ -1182,21 +1182,24 @@ function DesktopVisual({
   displaySize: string;
 }) {
   const onResult = step === 2;
-  // The body the garment is shown on: the chosen muse. Null when nothing's chosen yet.
-  const bodyImg = muse?.img ? resolveAsset(muse.img) : null;
-  // No muse picked yet → a clean "choose a model" state.
-  const awaitingPhoto = !onResult && !muse;
+  const onChoose = step === 1; // 1 = MODEL picker
+  // Founder fix: step 0 is SIZE — showing the muse already (with her name in the
+  // caption) read as "the model is already picked, before I picked anything."
+  // The piece itself goes on the left at step 0; the muse only appears once the
+  // shopper has actually chosen one (step 1+) or the render is back (step 2).
+  const showMuse = onChoose || onResult;
+  const bodyImg = showMuse && muse?.img ? resolveAsset(muse.img) : null;
   // The composited render. On the result step, if it failed we DON'T silently
   // swap to the studio shot here — StepResult owns the explicit error banner;
   // this pane just holds the last body image so the layout stays stable.
   const img = onResult && renderedUrl && !renderError
     ? renderedUrl                                         // the real worn render
-    : bodyImg ?? product.images[0];                       // body, or product as last resort
+    : bodyImg ?? product.images[0];                       // muse at step 1+, product at step 0
   const caption = onResult
     ? product.name
-    : muse
+    : showMuse && muse
       ? `${muse.label} · ${muse.silhouette}`
-      : "Choose a model";
+      : product.name;
 
   // On the result step the left pane owns the fit-telling: the live fit map over
   // the worn render + a per-region "tight / true / loose" strip below it. Driven
@@ -1232,38 +1235,16 @@ function DesktopVisual({
         aspectRatio: "3 / 4", maxWidth: "100%", maxHeight: "100%",
         overflow: "hidden",
       }}>
-        {awaitingPhoto ? (
-          <div style={{
-            position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center", gap: 16, padding: 28,
-            background: "radial-gradient(120% 90% at 50% 30%, rgba(139,92,246,0.16) 0%, rgba(14,11,20,0) 60%)",
-          }}>
-            <div style={{
-              width: 92, height: 92, borderRadius: "50%",
-              border: "1.5px dashed rgba(199,184,255,0.45)",
-              display: "grid", placeItems: "center",
-              background: "rgba(139,92,246,0.08)",
-            }}>
-              <UploadGlyph size={34} />
-            </div>
-            <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 21, color: "rgba(244,242,238,0.92)", margin: 0, textAlign: "center", lineHeight: 1.25 }}>
-              See it on you.
-            </p>
-            <p style={{ fontFamily: "var(--sans)", fontSize: 12.5, color: "var(--mute)", margin: 0, textAlign: "center", maxWidth: 230, lineHeight: 1.5 }}>
-              Drop a full-length photo on the right — we render the look on your own frame.
-            </p>
-          </div>
-        ) : (
-          <img
-            key={img}
-            src={img} alt={caption}
-            style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover", objectPosition: "top center",
-              animation: "sqFadeSlide 360ms ease both",
-            }}
-          />
-        )}
+        <img
+          key={img}
+          src={img} alt={caption}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "cover", objectPosition: "top center",
+            animation: "sqFadeSlide 360ms ease both",
+          }}
+        />
+        {/* PHOTO-REMOVED: the "drop a photo" upload UI lived here; muse-only flow now. */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(14,11,20,0.92) 0%, rgba(14,11,20,0.05) 50%)", pointerEvents: "none" }} />
 
         {/* Fit-map markers — move/relabel with the previewed size (result step only) */}
@@ -1310,16 +1291,15 @@ function DesktopVisual({
         </div>
       )}
 
-      {!awaitingPhoto && (
-        <div style={{ position: "absolute", left: 20, right: 20, bottom: 20 }}>
+      <div style={{ position: "absolute", left: 20, right: 20, bottom: 20 }}>
           <p style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 22, color: "#F4F2EE", margin: 0, lineHeight: 1.2 }}>
             {caption}
           </p>
-          {!onResult && (
+          {/* Sub-caption: only when a muse is showing — i.e. step 1+ (model picker) or result.
+              At step 0 (SIZE) the LEFT pane shows the product, no muse meta. */}
+          {!onResult && showMuse && muse && (
             <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(199,184,255,0.7)", margin: "8px 0 0" }}>
-              {muse
-                ? `${muse.silhouette} · ${muse.hint}`
-                : "Pick the model closest to you"}
+              {`${muse.silhouette} · ${muse.hint}`}
             </p>
           )}
 
@@ -1357,7 +1337,6 @@ function DesktopVisual({
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }
@@ -1456,15 +1435,18 @@ function StepDots({ step }: { step: number }) {
           </Fragment>
         ))}
       </div>
+      {/* Labels centered in equal-width columns. Was left/center/right which left
+          "SIZE" hugging the left edge of the panel while dot 1 sat 16px in →
+          the label looked like it belonged to nothing. */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", marginTop: 6 }}>
         {labels.map((label, i) => (
           <span
             key={label}
             style={{
-              fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.25em",
-              textTransform: "uppercase",
+              fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.22em",
+              textTransform: "uppercase", whiteSpace: "nowrap",
               color: i <= step ? "#F4F2EE" : "var(--mute)",
-              textAlign: i === 0 ? "left" : i === 1 ? "center" : "right",
+              textAlign: "center",
               transition: "color 300ms",
             }}
           >
@@ -1784,77 +1766,12 @@ function StepSize({
         </div>
       </div>
 
-      {/* Optional signals — BoldMatrix-style progressive disclosure */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* Confidence score trail — shows the shopper exactly how each signal helps */}
-        <div style={{
-          background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 12, padding: "12px 14px",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.15em", color: "var(--electric)", textTransform: "uppercase" }}>
-              Sizing confidence
-            </span>
-            <span style={{ fontFamily: "var(--mono)", fontSize: 13, color: cb.score >= 80 ? "#4EC49E" : cb.score >= 68 ? "#E8A44C" : "var(--mute)", fontWeight: 600 }}>
-              {displayedConfidence}%
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 8 }}>
-            {(authoritative ? ["Height and weight sent to the brand fit service", "Matched to this product's synced sizes"] : cb.signals).map((s) => (
-              <span key={s} style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "rgba(244,242,238,0.7)" }}>
-                ✓ {s}
-              </span>
-            ))}
-          </div>
-          {!authoritative && cb.score < 93 && (
-            <p style={{ fontFamily: "var(--sans)", fontSize: 11, color: "var(--mute)", margin: 0, lineHeight: 1.5 }}>
-              {cb.upgradeMessage}
-            </p>
-          )}
-        </div>
-
-        {/* Age — improves waist estimate for 30+ (body composition shift) */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
-              Age <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>{authoritative ? "optional · saved" : "optional · +8%"}</span>
-            </label>
-            <input
-              type="number"
-              value={age > 0 ? age : ""}
-              placeholder="e.g. 34"
-              min={16} max={90}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                onAge(isNaN(v) ? 0 : Math.max(0, Math.min(90, v)));
-              }}
-              className="sq-mira-field"
-              aria-label="Your age (optional, improves sizing accuracy)"
-              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "#F4F2EE", fontFamily: "var(--mono)", fontSize: 12, outline: "none" }}
-            />
-          </div>
-
-          {/* Usual brand size — single strongest pre-measurement predictor */}
-          <div>
-            <label style={{ display: "block", fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", color: "var(--mute)", textTransform: "uppercase", marginBottom: 6 }}>
-              Usual size <span style={{ color: "rgba(139,92,246,0.7)", fontWeight: 400 }}>{authoritative ? "optional · saved" : "optional · +10%"}</span>
-            </label>
-            <select
-              value={usualSize}
-              onChange={(e) => onUsualSize(e.target.value)}
-              aria-label="Your usual size in a similar brand"
-              style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: usualSize === "none" ? "rgba(244,242,238,0.4)" : "#F4F2EE", fontFamily: "var(--mono)", fontSize: 12, outline: "none", cursor: "pointer" }}
-            >
-              <option value="none">In similar brands…</option>
-              {USUAL_SIZES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Simplified fit breakdown — region by region (B1 / B2) */}
+      {/* Per-region fit breakdown — the bars the shopper needs to SEE.
+          The old "Sizing confidence" trail + Age + Usual-size inputs were
+          pushing this below the fold and added noise without changing the
+          recommendation in the moment — cut. Both signals still feed the
+          recommender when present in the saved body (passed through props),
+          and chest/waist/hip overrides remain available in StepChoose. */}
       {!fitPending && !fitError && (
         <FitSummary product={product} size={fitResult.size} height={height} weight={weight} body={body} />
       )}
