@@ -1516,7 +1516,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
         </div>
         {/* WHY IT'S FOR YOU — the hero line, readable, personalised. */}
         {why && (
-          <div style={{ fontFamily: "var(--sans)", fontSize: 13.5, lineHeight: 1.55, color: "#F4F2EE" }}>
+          <div style={{ fontFamily: "var(--sans)", fontSize: 14.5, lineHeight: 1.5, color: "#F4F2EE" }}>
             <span style={{ color: "var(--electric)", fontWeight: 600 }}>Why it&apos;s right for you: </span>{why}
           </div>
         )}
@@ -2504,7 +2504,7 @@ export default function MiraWidget() {
             {messages.map((msg, i) => {
               if (msg.from === "user") {
                 return (
-                  <div key={i} style={{ alignSelf: "flex-end", maxWidth: "78%", background: "rgba(139,92,246,0.16)", border: "1px solid rgba(139,92,246,0.24)", borderRadius: 12, padding: "8px 13px", fontFamily: "var(--sans)", fontSize: 13, lineHeight: 1.5, color: "#F4F2EE" }}>{msg.text}</div>
+                  <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "rgba(139,92,246,0.16)", border: "1px solid rgba(139,92,246,0.24)", borderRadius: 12, padding: "9px 14px", fontFamily: "var(--sans)", fontSize: 14.5, lineHeight: 1.5, color: "#F4F2EE" }}>{msg.text}</div>
                 );
               }
               if (msg.kind === "reco") return <RecoCard key={i} reco={msg.reco} onTryOn={(p) => setTryOn(p)} onAddToBag={addToBag} />;
@@ -2520,7 +2520,7 @@ export default function MiraWidget() {
               // read as one run-on block.
               return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{ alignSelf: "flex-start", maxWidth: "88%", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "4px 14px 14px 14px", padding: "10px 14px", fontFamily: "var(--sans)", fontSize: 14, lineHeight: 1.55, color: "#F4F2EE" }}>{renderText(msg.text)}</div>
+                  <div style={{ alignSelf: "flex-start", maxWidth: "90%", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "4px 14px 14px 14px", padding: "11px 15px", fontFamily: "var(--sans)", fontSize: 15.5, lineHeight: 1.5, color: "#F4F2EE" }}>{renderText(msg.text)}</div>
                   {msg.quickReplies && <QuickReplies replies={msg.quickReplies} onPick={sendMessage} />}
                 </div>
               );

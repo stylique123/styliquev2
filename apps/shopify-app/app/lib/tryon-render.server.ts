@@ -73,6 +73,8 @@ export interface TryOnRequest {
   tightness?: number;
   /** The region that binds (e.g. "Waist") so the render names where it pulls/drapes. */
   bindLabel?: string;
+  /** Shop domain/slug for per-store cache partitioning (e.g. "my-store.myshopify.com"). */
+  shopSlug?: string;
   /**
    * Per-garment fit descriptors for a COMBINED look, in the same order as
    * garmentImages. Each piece carries its OWN size + ease so the render shows
@@ -418,7 +420,7 @@ function easeBucket(easeCm?: number): string {
   return `e${b >= 0 ? "p" : "m"}${Math.abs(b)}`;
 }
 
-function museCacheKey(museId: string, handle: string, size: string, lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[]): string {
+function museCacheKey(shop: string, museId: string, handle: string, size: string, lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[]): string {
   const look = lookHandles.length ? `_look-${[...lookHandles].sort().join("-")}` : "";
   // Combined looks: fold each non-focus piece's size + ease bucket into the key
   // so the same look rendered at different per-piece fits caches as distinct
@@ -433,7 +435,10 @@ function museCacheKey(museId: string, handle: string, size: string, lookHandles:
         .sort()
         .join("");
   }
-  return `m-${museId}-${handle}-${size.toLowerCase()}-${easeBucket(easeCm)}${look}${perPiece}`;
+  // PER-STORE cache (founder: "the tryon cache is specific to a store, not
+  // everyone"): namespace by shop so two tenants with the same handle (e.g.
+  // "cotton-crew-tee") never serve each other's render. "_" = the demo.
+  return `s-${shop || "_"}-m-${museId}-${handle}-${size.toLowerCase()}-${easeBucket(easeCm)}${look}${perPiece}`;
 }
 
 export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
@@ -450,7 +455,7 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
       .map((g) => g.split("/").pop()?.replace(/-\d+\.png$|-[a-z]+\.png$/i, "") ?? "");
     // Storefront port: muse renders are returned as data URLs (cross-origin
     // safe) and cached IN MEMORY by deterministic key. No disk, no static URL.
-    const key = museCacheKey(req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
+    const key = museCacheKey(req.shopSlug ?? "", req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
     const memHit = photoCache.get(key);
     if (memHit) return { imageUrl: memHit, cached: true, ms: Date.now() - t0 };
     // Collapse a cache stampede: if a render for this exact key is already in
