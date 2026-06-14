@@ -302,6 +302,49 @@ export async function renderTryOn(args: {
   const garmentUrl = product.images[0]?.preppedUrl ?? product.images[0]?.url;
   if (!garmentUrl) return { ok: false, error: "no_garment_image" };
 
+  // 2b. CROSS-SHOPPER CACHE HIT (per-brand, persistent). A BODY_MODEL render is
+  //     byte-identical for (brand × product × muse × size+body), so if ANY prior
+  //     shopper of THIS brand already rendered this exact combination we reuse it
+  //     here — instant, $0, no provider call. This is what makes the 2nd/3rd
+  //     shopper's size/look click load in ~1s without burning another render.
+  //     • Per-brand by construction: shopId is in the cache key + the WHERE — a
+  //       render NEVER leaks across brands.
+  //     • Persistent + shared: the row + its stored image live in Postgres, so
+  //       the hit survives restarts and is shared across every instance/shopper.
+  //     The async worker already did this lookup (tryon-render.ts); doing it here
+  //     too closes the SYNC path — which combos (forceSync) + the no-Redis
+  //     fallback always take — so complete-the-look renders (3× cost) stop
+  //     re-rendering for every shopper.
+  if (args.mode === "BODY_MODEL") {
+    const hitKey = computeTryOnCacheKey({
+      shopId: args.shopId,
+      productId: args.productId,
+      mode: args.mode,
+      modelHint: args.modelHint,
+      renderContextKey: args.renderContextKey,
+    });
+    if (hitKey) {
+      const hit = await prisma.tryOnSession.findFirst({
+        where: { shopId: args.shopId, cacheKey: hitKey, status: "SUCCEEDED", outputImageUrl: { not: null } },
+        select: { id: true, outputImageUrl: true, providerKey: true },
+        orderBy: { completedAt: "desc" },
+      });
+      if (hit?.outputImageUrl) {
+        track("TRYON_RENDER_COMPLETED", args.productId, {
+          productId: args.productId, mode: args.mode,
+          providerKey: hit.providerKey ?? "cache", cached: true, latencyMs: Date.now() - t0,
+        });
+        // No recordConsume — a cache hit cost us nothing, so it isn't a billable
+        // render. Return the brand's existing image directly (served by the
+        // /api/tryon/image/<renderId> route, which reads the stored output).
+        return {
+          ok: true,
+          data: { renderId: hit.id, imageUrl: hit.outputImageUrl, providerKey: hit.providerKey ?? "cache", latencyMs: Date.now() - t0, status: "SUCCEEDED" },
+        };
+      }
+    }
+  }
+
   // 3. Validate person image (PERSONAL_PHOTO only). Same rules as chat (§3.5).
   let personBase64: string | undefined;
   let personMime: string | undefined;
