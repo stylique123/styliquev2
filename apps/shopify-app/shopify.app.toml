@@ -11,9 +11,9 @@ client_id = "5d64194b12c927c4cbe2507fd4824250"
 name = "stylique-fashion"
 application_url = "https://stylique-app-production.up.railway.app"
 embedded = true
-# Required for App Store submission — without this, Shopify auto-rejects (panel P0)
-privacy_policy_url = "https://stylique-app-production.up.railway.app/privacy"
-terms_of_service_url = "https://stylique-app-production.up.railway.app/terms"
+# NOTE: privacy/terms URLs are set in the Partner Dashboard, not the toml — the
+# CLI rejects them as top-level keys (blocked deploy). The /privacy + /terms
+# routes still exist and serve the policies.
 
 [build]
 automatically_update_urls_on_dev = false
@@ -50,19 +50,14 @@ uri = "/webhooks/orders/fulfilled"
 topics = ["refunds/create"]
 uri = "/webhooks/orders/returned"
 
-# Mandatory Shopify privacy/GDPR compliance webhooks. Required for App Store
-# listing; handlers HMAC-verify via authenticate.webhook and hard-delete data.
-[[webhooks.subscriptions]]
-topics = ["customers/data_request"]
-uri = "/webhooks/customers/data-request"
-
-[[webhooks.subscriptions]]
-topics = ["customers/redact"]
-uri = "/webhooks/customers/redact"
-
-[[webhooks.subscriptions]]
-topics = ["shop/redact"]
-uri = "/webhooks/shop/redact"
+# Mandatory Shopify privacy/GDPR compliance webhooks. These are NOT regular
+# subscriptions — they must live in [webhooks.privacy_compliance] with their own
+# URL keys (declaring them as topics is what failed the deploy). Handlers
+# HMAC-verify via authenticate.webhook and hard-delete data.
+[webhooks.privacy_compliance]
+customer_data_request_url = "https://stylique-app-production.up.railway.app/webhooks/customers/data-request"
+customer_deletion_url = "https://stylique-app-production.up.railway.app/webhooks/customers/redact"
+shop_deletion_url = "https://stylique-app-production.up.railway.app/webhooks/shop/redact"
 
 [access_scopes]
 scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products,write_script_tags"
