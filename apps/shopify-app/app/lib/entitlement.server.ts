@@ -42,6 +42,27 @@ export type EffectivePlan = {
 
 // ─── Plan resolution ─────────────────────────────────────────────────────
 
+// ─── Billing enforcement (env-gated, DEFAULT OFF) ──────────────────────────
+// CFO panel finding: paid tiers ($199–$849/mo) currently work without an active
+// subscription. Founder decision: "build it, env-gated off." When BILLING_ENFORCED
+// is set, a PAID-UP tier (GROWTH/ULTIMATE) is only honored if the shop is actually
+// paying OR explicitly comp'd; otherwise the effective plan degrades to the STARTER
+// floor so higher-tier features + quotas aren't served for free. Read at call time
+// so it can be flipped via env at go-live with only a restart (no code change).
+function billingEnforced(): boolean {
+  const v = process.env.BILLING_ENFORCED;
+  return v === "1" || v === "true";
+}
+
+// A shop counts as billing-active when an admin/internal-dashboard sets either
+// flag on Plan.planFeaturesJson — `billingActive` (real subscription confirmed)
+// or `comp` (grandfathered / pilot brand). Absent both → not active.
+function isBillingActive(planFeaturesJson: unknown): boolean {
+  if (!planFeaturesJson || typeof planFeaturesJson !== "object") return false;
+  const j = planFeaturesJson as Record<string, unknown>;
+  return j.billingActive === true || j.comp === true;
+}
+
 export async function getEffectivePlan(shopId: string): Promise<EffectivePlan | null> {
   const plan = await prisma.plan.findUnique({
     where: { shopId },
@@ -49,11 +70,18 @@ export async function getEffectivePlan(shopId: string): Promise<EffectivePlan | 
   });
   if (!plan) return null;
 
-  const features = resolveFeatures(
-    plan.tier as PlanTier,
-    (plan.planFeaturesJson as Partial<PlanFeatures> | null) ?? null,
-  );
-  return { tier: plan.tier as PlanTier, features, analyticsLevel: features.analytics.level };
+  const override = (plan.planFeaturesJson as Partial<PlanFeatures> | null) ?? null;
+  let tier = plan.tier as PlanTier;
+
+  // Single point of enforcement: canConsume() resolves through here, so quotas
+  // degrade with the tier, and the internal change_tier path can no longer hand
+  // out paid features for free while enforcement is ON. DEFAULT OFF = unchanged.
+  if (billingEnforced() && tier !== "STARTER" && !isBillingActive(plan.planFeaturesJson)) {
+    tier = "STARTER";
+  }
+
+  const features = resolveFeatures(tier, override);
+  return { tier, features, analyticsLevel: features.analytics.level };
 }
 
 // ─── Feature gate ────────────────────────────────────────────────────────
