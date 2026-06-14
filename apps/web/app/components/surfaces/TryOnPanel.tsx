@@ -363,8 +363,10 @@ export default function TryOnPanel({
     setStorefrontFit(null);
     setFitError(null);
     if (!productId) {
+      // No tenant fit row yet → fall back to the on-device estimate (computeFit
+      // from height/weight + category; fitResult already === localFitResult when
+      // storefrontFit is null). NEVER show a null / "not synced" state.
       setFitPending(false);
-      setFitError("This product has not finished syncing its sizing data.");
       return;
     }
 
@@ -413,12 +415,10 @@ export default function TryOnPanel({
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
-          const code = error instanceof Error ? error.message : "fit_unavailable";
-          setFitError(
-            code === "product_not_found" || code === "invalid_input"
-              ? "Verified sizing data is not available for this product yet."
-              : "Sizing could not be verified right now. Please use the product size chart.",
-          );
+          // Service unavailable / product not synced → silently fall back to the
+          // on-device estimate (fitResult === localFitResult when storefrontFit is
+          // null). NEVER surface a null / "unavailable" / "not synced" state — the
+          // shopper always gets a real size from their measurements + the category.
         })
         .finally(() => {
           if (!controller.signal.aborted) setFitPending(false);
@@ -1005,7 +1005,7 @@ export default function TryOnPanel({
               fitResult={fitResult}
               fitPending={fitPending}
               fitError={fitError}
-              authoritative={Boolean(ASSET_BASE)}
+              authoritative={Boolean(ASSET_BASE && storefrontFit)}
               product={currentProduct}
             />
           )}

@@ -460,7 +460,18 @@ function recoScore(p: Product, relativeTo?: Product | null): RecoScore {
   const keepPct = p.keepRate != null ? Math.round(p.keepRate * 100) : undefined;
   if (relativeTo && relativeTo.handle !== p.handle) {
     const h = analyzeColorHarmony(relativeTo.colors, p.colors);
-    return { matchPct: Math.round(h.score * 100), keepPct, harmonyLabel: HARMONY_BADGE[h.type] };
+    // Colour harmony returns 0 when either piece has no colour data — which is the
+    // norm on a real storefront (single-colour products carry no "Color" option),
+    // and shipping a misleading "0% match" is exactly the null-result the store
+    // must never show. Fall back to the FULL look-engine score (category affinity +
+    // proportion + formality + season — none of which need colour). Only surface a
+    // match% when it's a genuine, > 0 signal; otherwise omit it entirely.
+    let pct = Math.round(h.score * 100);
+    if (pct <= 0) {
+      const ranked = buildLook(relativeTo, [p], 1);
+      pct = ranked.length ? Math.round(ranked[0].score * 100) : 0;
+    }
+    return pct > 0 ? { matchPct: pct, keepPct, harmonyLabel: HARMONY_BADGE[h.type] } : { keepPct };
   }
   return { keepPct };
 }
@@ -1493,7 +1504,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
         {p.lowStock && (
           <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(14,10,20,0.82)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F8A0A0" }}>Low stock</div>
         )}
-        {score?.matchPct != null && (
+        {score?.matchPct != null && score.matchPct > 0 && (
           <div style={{ position: "absolute", top: 10, right: 10, background: "rgba(14,10,20,0.82)", border: "1px solid rgba(139,92,246,0.5)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--electric)" }}>{score.matchPct}% match</div>
         )}
       </div>
@@ -1656,7 +1667,7 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
       <div style={{ padding: "12px 15px 8px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--electric)", marginBottom: 3 }}>The edit{look.score?.harmonyLabel ? ` · ${look.score.harmonyLabel}` : ""}</div>
-          {look.score && <Stat label={`${look.score.harmonyPct}% match`} tone="accent" />}
+          {look.score && look.score.harmonyPct > 0 && <Stat label={`${look.score.harmonyPct}% match`} tone="accent" />}
         </div>
         <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17 }}>{look.title}</div>
       </div>
