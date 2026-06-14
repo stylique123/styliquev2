@@ -102,19 +102,23 @@ function injectTryOnButton() {
   btn.id = "sq-tryon-pdp-btn";
   btn.type = "button";
   btn.innerHTML = 'TRY-ON HERE&nbsp;&nbsp;<span style="font-size:12px;line-height:1">&#9654;</span>';
-  // Anchor with pure CSS to the host's BOTTOM-LEFT. The old version computed `top`
-  // from the image's rect, but ran before the image had loaded (io.height === 0 →
-  // early return), so the pill got stuck at the host's TOP-LEFT, floating up over
-  // the photo ("the try-on is a head very much up"). `bottom`/`left` need no
-  // load-timing and never cover the image — it's a small pill in the corner.
-  btn.style.cssText = [
-    "position:absolute", "z-index:50", "left:16px", "bottom:16px",
-    "display:inline-flex", "align-items:center", "gap:4px",
-    "padding:11px 18px", "background:#0E0E10", "color:#fff", "border:0", "border-radius:999px",
-    "font-family:ui-sans-serif,system-ui,-apple-system,sans-serif", "font-size:13px", "font-weight:700",
-    "letter-spacing:.05em", "cursor:pointer", "box-shadow:0 6px 18px rgba(0,0,0,.34)",
-    "transition:transform .15s,box-shadow .15s", "-webkit-tap-highlight-color:transparent",
-  ].join(";");
+  // Anchor to the host's BOTTOM-LEFT as a small pill. CRITICAL: the host is the
+  // theme's `.product__media`, whose CSS forces absolutely-positioned children to
+  // `top:0; width/height:100%` (for the cover/zoom image) WITH !important — which
+  // stretched our pill to 614×822 and, with border-radius:999px, rendered it as a
+  // giant BLACK ELLIPSE over the photo (founder: "it's all black"). So we set the
+  // geometry with setProperty(...,'important') to win against the theme: explicit
+  // top:auto/right:auto/width:auto/height:auto keeps it a content-sized corner pill.
+  const imp = (k: string, v: string) => btn.style.setProperty(k, v, "important");
+  imp("position", "absolute"); imp("z-index", "50");
+  imp("left", "16px"); imp("bottom", "16px"); imp("top", "auto"); imp("right", "auto");
+  imp("width", "auto"); imp("height", "auto"); imp("max-width", "none"); imp("min-width", "0"); imp("max-height", "none"); imp("min-height", "0");
+  imp("margin", "0"); imp("inset", "auto auto 16px 16px");
+  imp("display", "inline-flex"); imp("align-items", "center"); imp("gap", "6px");
+  imp("padding", "11px 18px"); imp("background", "#0E0E10"); imp("color", "#fff"); imp("border", "0"); imp("border-radius", "999px");
+  imp("font", "700 13px/1 ui-sans-serif,system-ui,-apple-system,sans-serif"); imp("letter-spacing", ".05em");
+  imp("cursor", "pointer"); imp("box-shadow", "0 6px 18px rgba(0,0,0,.34)");
+  imp("-webkit-tap-highlight-color", "transparent");
   btn.onmouseenter = () => { btn.style.transform = "translateY(-2px)"; btn.style.boxShadow = "0 12px 30px rgba(0,0,0,.48)"; };
   btn.onmouseleave = () => { btn.style.transform = ""; btn.style.boxShadow = "0 6px 18px rgba(0,0,0,.34)"; };
   btn.addEventListener("click", (e) => {
