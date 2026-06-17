@@ -1061,3 +1061,125 @@ UI/API/code references remain:
   exact flow. It will show the correct fabric card + no cart claim (verified live). If — and only
   if — it still fails in Incognito, authorize clearing the dev `.next` cache, then capture the
   Network-tab `/api/mira` response so we have the exact server payload.
+
+---
+
+## Pricing-fix — voice/card price contradiction (durable)
+
+**Symptom (founder):** on a "build the look" turn, Mira's voice said "…for a total of
+$1950" while the card below said "Add entire look · US$3,540" — two totals = "it's lying."
+
+**Root cause:** `applyDecision` (MiraWidget.tsx) pushes the raw LLM `d.voice` (free text that
+names its own pieces+price) AND, separately, a card rebuilt from the catalog with the
+AUTHORITATIVE total (`lookMsg`/`buildLook`). The two are built independently and never
+reconciled.
+
+**Fix:** added `stripSpokenPrice()` near `money()` and call it on `voice.text` ONLY for
+card/cart-bearing routes (`CARD_PRICE_ROUTES` = look, add_to_cart, reco_handle,
+reco_category, reco_filter, navigate, search). The CARD is now the single source of price
+truth; the voice can never contradict it. Budget/talk_only routes keep their prices (Mira
+must still answer "how much" plainly). Scrubber strips lead-in clauses ("for a total of $X",
+"Together, those two pieces are $X"), tidies leftover punctuation, and re-capitalises.
+
+**Verified:** `npx tsc --noEmit` exit 0; pure-function tested against the real failing voices
+(clean output, non-price sentences untouched, prices preserved on budget turns).
+
+---
+
+## Step 2H — Product Runtime UX Fix Sprint — 2026-06-17
+
+### Why this sprint was run
+Founder retested the real local widget (apps/web port 3002) and the visible shopping
+experience was still unacceptable: build-look returned a wall of text, recommended pieces
+weren't navigable, Mira didn't notice product switches, size wording over-claimed ("saved"),
+and Mira wasn't observant. This sprint fixed the ACTUAL runtime, verified in a live browser
+(Claude_Preview, port 3002) — not from API tests.
+
+### Runtime failures observed (live, port 3002)
+- `Build the look` → card rendered WITH product thumbnails, but a long ~280-char "Why it's
+  the strongest pairing…" paragraph (wall of text) and the pieces were NOT clickable to a PDP.
+- `See them on me` → fitting room DID open with the correct product ("THE FITTING ROOM …
+  Atelier Wide-Leg Trouser", h:934). This task was already working in current code.
+- Product switch (trouser → turtleneck, full reload) → Mira did NOT notice: on a full-reload
+  navigation the widget remounts, `approachedHandle` starts null, the SPA re-approach effect
+  treats the new PDP as a fresh first approach, so no "you moved to X" line ever fired.
+- Size wording → "I've got it saved" / "I've got it saved" at two sites, but the store is
+  `sessionStorage` (genuinely session-scoped) — over-claims persistence.
+
+### Product context refresh fix (Task C) — VERIFIED LIVE
+`ConvoSnapshot` gains `lastProductHandle` (persisted from `approachedHandle.current`). On
+restore, if the current PDP differs from the snapshot's last product, Mira opens with a
+compare-aware line + chip. Live proof (trouser → turtleneck): *"You moved to the Merino
+Ribbed Turtleneck — want me to compare it with the Atelier Wide-Leg Trouser, or style this
+one?"* + a "Compare with the Trouser" chip. `activeProductHandle` is also re-pointed to the
+new PDP so "it" means the current piece. The SPA-navigation re-approach effect got the same
+compare-aware upgrade.
+
+### Recommendation cards / navigation fix (Task D) — VERIFIED LIVE
+LookCard pieces are now navigable buttons (`aria-label="View {name}"`, title shows price) →
+click navigates to that piece's PDP. Live proof: clicking "View Merino Ribbed Turtleneck"
+navigated to `/product/merino-ribbed-turtleneck`. Added a "Tap any piece to view" affordance
+line. Whole-look try-on stays on the "Try the look ↗" button.
+
+### Build-look visual output fix (Task E) — VERIFIED LIVE
+Shortened the look reason at source (dropped the redundant "% match, the best of everything…"
+tail — the % already shows as a Stat chip) and capped the rendered reason to 2 lines
+(`-webkit-line-clamp:2`). Live: reason is now one clamped sentence (~139 chars vs ~280),
+card still shows title + match chip + 4 product thumbnails + total + Add/Try actions.
+
+### Try-on action fix (Task F) — VERIFIED working (no change needed)
+`See them on me` opens the real TryOnPanel ("THE FITTING ROOM") for the correct product. The
+earlier symptom was a stale browser bundle; current code is correct.
+
+### Size memory wording fix (Task G) — code-verified
+Both over-claiming strings changed to honest session-scoped wording:
+- openMira recall → "…I'll keep that while you're browsing."
+- SizeForm result → "…I'll keep it for this session."
+(Store is `sessionStorage`; no consented persistent/account save exists, so no "saved for next
+time" claim is made.)
+
+### Agentic navigation layer (Task H) — existing executor documented
+Client actions execute only via the whitelisted sentinels interpreted in `emitResponses`:
+`NAV_TRIGGER` (navigate_to_product), `TRYON_TRIGGER` (open_tryon), `SIZE_FORM_TRIGGER`
+(open_fit_helper), plus look/add-to-bag via card callbacks. Unknown text fails closed (shown
+as a bubble, no action). LookCard piece navigation (Task D) extends this. No new abstraction
+was introduced (lower risk than a rewrite).
+
+### Proactive behavior (Task I) — 2 triggers added/verified
+- #2 product-changed → compare offer (Task C above). VERIFIED LIVE.
+- #3 size-chart opened → "Checking the size chart? Let me size the {piece} for you…" + "Size
+  this one" chip, once per product, suppressed if already sized. VERIFIED LIVE by toggling the
+  PDP SIZE GUIDE disclosure with the panel open.
+- #1 PDP dwell nudge → pre-existing. #4 try-on-abandon → NOT added this sprint (remaining).
+
+### Chat clutter reduction (Task J) — pre-existing, confirmed
+Quick-reply chips render only on the latest turn (`i === lastChipIdx`), deduped + capped at 3
+(commit 9e029c0). The shortened look reason + 2-line clamp further reduce text density.
+
+### Runtime regression results (live, port 3002)
+1. Build the look → outfit card with thumbnails + short reason: PASS
+2. See them on me → TryOnPanel opens (correct product): PASS
+3. Recommended look piece click → navigates to PDP: PASS
+4. Product change (full reload) → Mira notices + offers compare: PASS
+5. Size wording → "for this session" / "while you're browsing" (no fake save): code-verified
+6. Size-chart open → proactive size offer (once/product): PASS
+
+### Verification results
+- `pnpm typecheck` (root): 11/11 successful.
+- anti-chatbot-eval: 15/15 passed (no brain regression).
+- size-ladder-harness: PASS (distinct cache key per size; honest classification).
+- Live browser verification on port 3002 for Tasks C/D/E/F/I.
+- (Also includes the prior voice/card pricing-truth fix in the same file.)
+
+### Remaining blockers / not done this sprint
+- Task I #4 (try-on opened → abandoned → offer different size/colour): not added.
+- Task H formal action-executor abstraction: intentionally not built (existing sentinel
+  whitelist covers it; a rewrite is higher risk).
+- Task K formal runtime regression test file: live-verified instead; an automated DOM test
+  harness for the widget is not yet added.
+- Task G live click-through of the size form wording: code-verified only (pure string swap).
+
+### Next action
+Founder: reload port 3002 (cache disabled), run the exact flow (build look → tap a piece →
+switch product → open size guide). If anything still reads wrong, capture the rendered bubble
+text so we fix the exact string. Then decide whether to add Task I #4 + a Task K DOM test.

@@ -64,6 +64,32 @@ function money(amount: number): string {
 }
 const PRODUCT_SEG = ASSET_BASE ? "products" : "product"; // Shopify plural vs demo singular
 function productUrl(handle: string): string { return `/${PRODUCT_SEG}/${handle}`; }
+
+// ── Price-truth guard ────────────────────────────────────────────────────────
+// The LLM `voice` line is free text and sometimes names its OWN total
+// ("…for a total of $1950"), while the card/look below it is rebuilt from the
+// catalog with the AUTHORITATIVE total ("Add entire look · $3,540"). Two
+// different numbers on one turn read as Mira lying. On card-bearing routes we
+// strip any spoken price from the voice so the CARD is the single source of
+// price truth; budget/talk_only routes keep their prices (Mira must answer
+// "how much" plainly). Verified against the real failing voices — see the
+// pricing-fix log.
+const PRICE_ATOM = "(?:US\\$|USD\\s?|\\$)\\s?\\d[\\d,]*(?:\\.\\d{1,2})?";
+function stripSpokenPrice(text: string): string {
+  if (!text || !/\$|\bUSD\b/i.test(text)) return text;
+  let out = text
+    .replace(new RegExp("\\s*[,;:—-]?\\s*(?:and\\s+)?(?:for\\s+|at\\s+|that(?:'s| is)\\s+)?(?:a\\s+)?(?:combined\\s+|grand\\s+)?(?:the\\s+(?:two|three|pieces?|set|look)\\s+)?(?:together\\s+)?(?:those\\s+(?:two|three)\\s+(?:pieces?\\s+)?)?(?:are\\s+|is\\s+|come(?:s)?\\s+to\\s+|total(?:ling|s)?\\s+|total\\s+of\\s+)?(?:just\\s+|only\\s+|around\\s+|about\\s+|roughly\\s+)?\\(?" + PRICE_ATOM + "\\)?", "gi"), "")
+    .replace(new RegExp("\\(?" + PRICE_ATOM + "\\)?", "gi"), "");
+  out = out.split(/(?<=[.!?])\s+/).filter((s) => !/^\s*(?:and\s+)?(?:the\s+(?:two|three|pieces?|set)\s+)?(?:those\s+(?:two|three)\s+(?:pieces?\s+)?)?(?:together\s*,?\s*)?(?:are|is|come(?:s)?\s+to|total[a-z]*)?\s*[.!?,]*\s*$/i.test(s)).join(" ");
+  out = out.replace(/\s+([,.!?;:])/g, "$1").replace(/,\s*([.!?])/g, "$1").replace(/\s{2,}/g, " ").replace(/\(\s*\)/g, "").replace(/[,;:—-]\s*$/, "").replace(/^[\s,;:—-]+/, "").trim();
+  // Re-capitalise if the strip left a lowercase lead-in.
+  if (out && /^[a-z]/.test(out)) out = out[0].toUpperCase() + out.slice(1);
+  return out.length ? out : text;
+}
+// Routes where a card/cart-line carries the authoritative total → scrub voice.
+const CARD_PRICE_ROUTES = new Set([
+  "look", "add_to_cart", "reco_handle", "reco_category", "reco_filter", "navigate", "search",
+]);
 import TryOnPanel from "../surfaces/TryOnPanel";
 import {
   emptyMemory, updateFromLookCard, updateFromVoice, updateFromReco,
@@ -318,6 +344,9 @@ type ConvoSnapshot = {
   cartCount: number;
   cartValue: number;
   open: boolean;
+  // The product Mira last "approached" — lets her notice a product switch across
+  // a full page reload (every PDP click on the demo + Shopify storefront).
+  lastProductHandle?: string;
 };
 
 function loadConvo(): ConvoSnapshot | null {
@@ -538,7 +567,10 @@ function lookMsg(anchor: Product, ctx: MiraContext, why?: string): ChatMsg {
   const harmonyLabel = chosen[0] ? HARMONY_BADGE[topType] : "Curated";
   // STATE THE LIKELIHOOD + the color-theory reason (why it's the best).
   const anchorColor = anchor.colors[0] ?? "neutral";
-  const reasoning = why ?? `Why it's the strongest pairing: ${harmonyReason(anchorColor, topType)}, and the relaxed and structured pieces balance the silhouette. ${harmonyPct}% match, the best of everything I'd put with the ${anchor.name}.`;
+  // Short, ≤2-line reason (founder: cut the wall of text). The % match already
+  // shows as a Stat chip, so don't repeat it; the card carries the visual story.
+  const r0 = harmonyReason(anchorColor, topType);
+  const reasoning = why ?? `${r0.charAt(0).toUpperCase()}${r0.slice(1)} — the pieces balance the silhouette.`;
   return { from: "mira", kind: "look", look: { title: editName(anchor), anchor, pieces, why: reasoning, total, score: { harmonyPct, harmonyLabel, pieces: pieces.length } } };
 }
 
@@ -1082,6 +1114,10 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
   // phantom demo piece. On the demo page activeProducts() === the demo catalog.
   const catalog = activeProducts();
   const voice: ChatMsg = { from: "mira", kind: "say", text: d.voice, quickReplies: d.quickReplies };
+  // Price-truth guard: on card/cart routes the card below is the authoritative
+  // total, so strip any price the LLM spoke in `voice` to prevent the
+  // "$1950 voice vs $3,540 card" contradiction. Budget/talk routes keep prices.
+  if (CARD_PRICE_ROUTES.has(d.route)) voice.text = stripSpokenPrice(voice.text);
   const out: ChatMsg[] = [voice];
 
   switch (d.route) {
@@ -1682,7 +1718,9 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
       </div>
       <div style={{ display: "flex", gap: 6, padding: "0 12px" }}>
         {all.map((p) => (
-          <button key={p.handle} onClick={() => onTryOn(p)} title={p.name} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
+          // Tap a piece → navigate to its PDP (founder: "navigate to recommended
+          // products"). Whole-look try-on lives on the "Try the look" button below.
+          <button key={p.handle} onClick={() => { if (typeof window !== "undefined") window.location.href = productUrl(p.handle); }} title={`${p.name} · ${money(p.priceUsd)} — view`} aria-label={`View ${p.name}`} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
             {p.images[0] ? (
               <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
             ) : (
@@ -1698,11 +1736,12 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
         ))}
       </div>
       <div style={{ padding: "11px 15px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ fontFamily: "var(--sans)", fontSize: 12.5, lineHeight: 1.55, color: "rgba(244,242,238,0.78)" }}>{look.why}</div>
+        <div style={{ fontFamily: "var(--sans)", fontSize: 12.5, lineHeight: 1.55, color: "rgba(244,242,238,0.78)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{look.why}</div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => onAddLook(look.anchor, look.pieces)} style={primaryBtn()}>Add entire look · {money(look.total)}</button>
           <button onClick={() => onTryOn(look.anchor)} style={secondaryBtn()}>Try the look ↗</button>
         </div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--mute)" }}>Tap any piece to view it</div>
       </div>
     </div>
   );
@@ -1813,17 +1852,43 @@ export default function MiraWidget() {
     shownHandles.current = new Set(snap.shownHandles ?? []);
     lastTopic.current = snap.lastTopic ?? "";
     sizeAsked.current = snap.sizeAsked ?? false;
+    // Seed the approached product from the snapshot so the re-approach effect
+    // (which runs right after this on mount) can tell the shopper moved from the
+    // last product to the current PDP across a full page reload — instead of
+    // silently treating the new PDP as a fresh first approach.
+    if (snap.lastProductHandle) approachedHandle.current = snap.lastProductHandle;
     lastLookPieces.current = (snap.lastLookHandles ?? [])
       .map((h) => catalog.find((p) => p.handle === h))
       .filter((p): p is Product => Boolean(p));
     if (snap.messages.length) {
-      setMessages(snap.messages);
+      // PRODUCT-SWITCH NOTICE across a full reload (founder #3 "Mira doesn't notice
+      // product switching"). Every PDP click reloads the page, so this — not the
+      // SPA re-approach effect — is where a real switch is caught. If the shopper
+      // moved to a different PDP than the conversation's last product, Mira opens
+      // with a compare-aware line so she's never grounded on the stale piece.
+      const curHandle = detectCurrentProductHandle();
+      const cur = curHandle ? byHandle(curHandle) : null;
+      const prev = snap.lastProductHandle ? byHandle(snap.lastProductHandle) : null;
+      const switched = cur && prev && cur.handle !== prev.handle;
+      let restoredMsgs = snap.messages;
+      if (switched) {
+        approachedHandle.current = cur.handle;
+        activeProductHandle.current = cur.handle;
+        restoredMsgs = [...snap.messages, {
+          from: "mira", kind: "say",
+          text: `You moved to the ${cur.name} — want me to compare it with the ${prev.name}, or style this one?`,
+          quickReplies: [`Compare with the ${prev.name.split(" ").slice(-1)[0]}`, "Style the look", "Will it fit me?"],
+        }];
+      }
+      setMessages(restoredMsgs);
       setTurnCount(snap.turnCount ?? 0);
       setCartCount(snap.cartCount ?? 0);
       setCartValue(snap.cartValue ?? 0);
       // Mid-conversation shopper, don't fire the cold nudge again.
       try { sessionStorage.setItem("mira_opened", "1"); } catch { /* ignore */ }
-      if (snap.open) setOpen(true);
+      // Open when the panel was open OR when she just noticed a product switch
+      // (so the notice is actually seen, not buried behind the launcher).
+      if (snap.open || switched) setOpen(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1840,6 +1905,7 @@ export default function MiraWidget() {
       cartCount,
       cartValue,
       open,
+      lastProductHandle: approachedHandle.current ?? undefined,
     });
   }, [messages, turnCount, cartCount, cartValue, open]);
 
@@ -1937,6 +2003,40 @@ export default function MiraWidget() {
     return () => document.removeEventListener("stylique:open-tryon", onOpen as EventListener);
   }, [currentProduct]);
 
+  // PROACTIVE — size-chart behavior (founder #7: "observe ... size-chart
+  // behavior"). When the shopper opens the PDP SIZE GUIDE, that's a fit-doubt
+  // signal — Mira offers to size this exact piece. Once per product, never if she
+  // already sized it. If the panel is open she drops the offer inline; if closed
+  // she nudges. Listens for the native <details> `toggle` on a size disclosure.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onToggle = (e: Event) => {
+      const el = e.target as HTMLElement;
+      if (!(el instanceof HTMLDetailsElement) || !el.open) return;
+      if (!/size\s*(guide|chart)/i.test(el.querySelector("summary")?.textContent ?? "")) return;
+      const cp = currentProduct();
+      if (!cp) return;
+      if (recalledSize(cp.handle)) return; // already sized this piece
+      const key = `mira_sizenudge_${cp.handle}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      activeProductHandle.current = cp.handle;
+      if (open) {
+        setMessages((prev) => [...prev, {
+          from: "mira", kind: "say",
+          text: `Checking the size chart? Let me size the ${cp.name} for you — it's quicker than the table.`,
+          quickReplies: ["Size this one", "What's my size?", "I'm just looking"],
+        }]);
+      } else if (!sessionStorage.getItem("mira_opened")) {
+        setNudgeProduct(cp);
+        setNudge(true);
+        window.setTimeout(() => setNudge(false), 9000);
+      }
+    };
+    document.addEventListener("toggle", onToggle, true);
+    return () => document.removeEventListener("toggle", onToggle, true);
+  }, [open, currentProduct]);
+
   // Passive proactivity: a quiet nudge after real PDP dwell. Never auto-opens the
   // panel, never fires on home/collection pages.
   useEffect(() => {
@@ -1985,12 +2085,20 @@ export default function MiraWidget() {
     // conversation owns product #1. Only ACTUAL changes re-approach.
     if (approachedHandle.current === null) { approachedHandle.current = handle; return; }
     if (!handle || handle === approachedHandle.current) return;
+    const prev = byHandle(approachedHandle.current);
     approachedHandle.current = handle;
     const p = byHandle(handle);
     if (!p) return;
+    // The new PDP is now the conversation's active subject ("it" = this piece).
+    activeProductHandle.current = handle;
     if (open) {
-      const line: ChatMsg = { from: "mira", kind: "say", text: contextualOpener(p), quickReplies: ["Style the look", "Will it fit me?", "See it on me"] };
-      setMessages((prev) => [...prev, line]);
+      // Notice the switch out loud and offer the compare (founder: "Mira does not
+      // notice product switching" + "compare this with the last one"). If we know
+      // the piece they came from, name it and lead with the compare.
+      const line: ChatMsg = prev && prev.handle !== p.handle
+        ? { from: "mira", kind: "say", text: `You moved to the ${p.name} — want me to compare it with the ${prev.name}, or style this one?`, quickReplies: [`Compare with the ${prev.name.split(" ").slice(-1)[0]}`, "Style the look", "Will it fit me?"] }
+        : { from: "mira", kind: "say", text: contextualOpener(p), quickReplies: ["Style the look", "Will it fit me?", "See it on me"] };
+      setMessages((prev2) => [...prev2, line]);
     } else if (!sessionStorage.getItem("mira_opened")) {
       setNudgeProduct(p);
       setNudge(true);
@@ -2086,7 +2194,7 @@ export default function MiraWidget() {
       greeting = known
         ? [
             // We've sized this exact piece before, recall it and move to closing.
-            { from: "mira", kind: "say", text: isReturn ? `Back on the ${cp.name}, and you're a ${known} in this one, I remember.` : `That's the ${cp.name}, you're a ${known} in this one, I've got it saved.` },
+            { from: "mira", kind: "say", text: isReturn ? `Back on the ${cp.name}, and you're a ${known} in this one — I remember.` : `That's the ${cp.name}, you're a ${known} in this one — I'll keep that while you're browsing.` },
             { from: "mira", kind: "say", text: "Want it in your bag, or shall I put it on you first?", quickReplies: ["Add to bag", "See it on me", "What goes with it?"] },
           ]
         : [
@@ -2565,7 +2673,7 @@ export default function MiraWidget() {
                   setTimeout(() => setMessages((prev) => [
                     ...prev,
                     { from: "mira", kind: "insight", label, text },
-                    { from: "mira", kind: "say", text: size ? `That's your size in this one, I've got it saved. Want it in your bag, or on you first?` : "Want me to take it from here?", quickReplies: replies },
+                    { from: "mira", kind: "say", text: size ? `That's your size in this one — I'll keep it for this session. Want it in your bag, or on you first?` : "Want me to take it from here?", quickReplies: replies },
                   ]), 300);
                 }}
               />
