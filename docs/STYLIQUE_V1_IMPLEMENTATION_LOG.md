@@ -1257,3 +1257,86 @@ Implemented the HIGH-impact items:
 ### Next action
 Branch `chore/phase4-outcome-proof` pushed. Founder: review, then decide on merge/deploy
 (held per sprint instructions). Billing enforcement (Task #24) remains a founder decision.
+
+---
+
+## Step 2H — Pre-Merge 50-Scenario Mira Conversation QA — 2026-06-17
+
+### Why this audit was run
+Pre-merge product acceptance test of Mira as a real shopping agent (not just route tests).
+Founder concerns: inconsistent intent, confusing/duplicate chips, semantically-wrong pairings
+(e.g. dress + trouser), cards-not-text, support routing, agentic navigation.
+
+### Scenario coverage
+Drove the REAL `/api/mira` (smart Gemini path, GEMINI_API_KEY present) for the 26 conversational
+scenarios (Cat 2 intent, Cat 3 build-look, Cat 5 support) + a deterministic catalog-engine
+classifier for the 7 slot-pairing cases (Cat 3 complement/compare) + prior live-verified UI
+behaviours (Cat 1 proactive, Cat 4 panels/nav from the Step-2H close-out turn). Route→card/action
+mapped from `applyDecision`.
+
+### Pass/fail summary
+- **Cat 1 (PDP/proactive 1-8):** PASS — dwell nudge, size-chart prompt (once), try-on-abandon
+  nudge (once, no spam), product-switch notice, convo memory all verified live in the close-out turn.
+- **Cat 2 (intent 9-25):** 16/17 clean. fabric→InsightCard no-cart ✅; will-it-fit/my-size/size-it
+  → size_form ✅; suitability/not-sure/dislike/too-formal → consultative talk_only ✅; too-expensive
+  → price-objection + budget chips ✅; dinner/office/modest → occasion ✅; "goes with this" → look
+  card ✅; "add it" → CartLine ✅. **One soft miss:** "show me something similar" → talk_only that
+  qualifies first (chips lead to alternatives on one tap) — defensible consultative behaviour, not
+  a wrong action → P2.
+- **Cat 3 (pairing 26-36):** build-look returns a real LookCard with a coherent complement on all 4
+  anchors (trouser→turtleneck, shirt→denim, turtleneck→trouser, skirt→camisole). Slot logic correct
+  for 31 (pairs), 32 (compare), 34 (compare), 30 (pairs) — **except 33 dress→trouser, FIXED below.**
+- **Cat 4 (cards/nav/actions 37-45):** PASS — reco/look cards render with image+price; card click →
+  PDP; "see it on me" → fitting room; size chip → SizeForm; add-to-bag → real CartResult (no fake
+  success); all routed through the whitelisted `executeAction` executor (Step-2H close-out).
+- **Cat 5 (support 46-50):** PASS — "talk to someone"/"order issue" → handoff voice ("I'll pass you
+  to the store's team", "flag the team to reach out") with intent=support, NOT styling; "return
+  policy" → grounded 14-day policy; "delivery" → grounded "complimentary worldwide shipping" (an
+  authoritative brand SHIPPING POLICY fact, not a fabrication). "I need help" → discover (ambiguous
+  shopping-help read; no support chip) → P2.
+
+### P0 blockers found
+NONE. No fake cart success, no wrong-action intent, no card-missing-where-required, no
+support→styling misroute, no stale-context, no crash.
+
+### P1 fixes made
+**Semantic pairing — dress + bottom wrongly "pairs" (scenario 33).** `switchLine` branched only on
+same-slot vs different-slot, so a dress (full-body) + trouser scored 0.73 on `buildLook` and Mira
+said "This pairs with the Trouser." A dress is a whole outfit. Fix: a `full`-slot piece now only
+COMPLEMENTS a `layer` (coat/jacket) or `accent` (bag/belt/jewellery); against a top/bottom/other
+dress it's COMPARE ("A dress is a whole look on its own — want them side by side?"). Symmetric
+(dress→trouser AND trouser→dress). Verified via the catalog engine: 33 dress→trouser → COMPARE,
+33c dress→coat → PAIRS-as-LAYER, 30 shirt→skirt still PAIRS, 34 shirt→shirt still COMPARE.
+
+### P2 deferred items
+- "Show me something similar" qualifies before showing alternative cards (one extra tap to cards) —
+  prompt-behaviour tradeoff with the qualify-first rule; not a wrong action.
+- "I need help" reads as shopping-discovery, no explicit "Talk to support" chip (ambiguous input).
+- A dedicated visual support BUBBLE (vs a say-bubble + handoff chip) — current handoff is functional.
+
+### Pairing logic findings
+top+bottom / knitwear+bottom / shirt+skirt → complement (pairs). bottom+bottom / shirt+shirt →
+compare (same slot). dress + top/bottom/dress → compare (whole look). dress + coat/accessory →
+layer/accent complement. All now honest; no forced pairs.
+
+### Support/handoff findings
+Support intent (return/order-issue/human) correctly classified intent=support and produces a safe
+handoff voice with no order mutation and no invented ticket. Policy questions (returns/shipping)
+answered from the authoritative brand facts only.
+
+### Cards/navigation findings
+reco/look routes render real cards; look pieces + reco cards navigate to PDP via the executor;
+try-on/size chips open the real panels; add-to-bag never claims success without the real cart result.
+
+### Chip/bubble findings
+Chips are distinct and action-based (e.g. "Build the look / Style this / My size?"), latest-row-only,
+deduped/capped at 3. Sizing chips read "Start sizing" (not three near-duplicate "size it/will it
+fit/is it my size" together). No duplicate-meaning chips observed across the 26 live turns.
+
+### Verification results
+typecheck 11/11 · build 5/5 · test 247/248 (only the pre-existing TRYON_BODY) · anti-chatbot-eval
+15/15 · size-ladder PASS · runtime-ux-regression 11/11.
+
+### Merge recommendation
+MERGE — no P0 blockers; the one proven P1 (dress-pairing) is fixed + verified. P2 items are
+polish, not pilot-blocking.

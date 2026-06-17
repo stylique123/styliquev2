@@ -448,8 +448,21 @@ function garmentSlot(p: Product): GarmentSlot {
 // pair (and be honest when they don't actually go together).
 function switchLine(cur: Product, prev: Product): { text: string; chips: string[] } {
   const prevShort = prev.name.split(" ").slice(-1)[0];
-  if (garmentSlot(cur) === garmentSlot(prev)) {
+  const curSlot = garmentSlot(cur);
+  const prevSlot = garmentSlot(prev);
+  if (curSlot === prevSlot) {
     return { text: `Two takes on the same slot — want them side by side?`, chips: [`Compare with the ${prevShort}`, "Style this", "My size?"] };
+  }
+  // A DRESS is a whole outfit on its own — it only completes with a LAYER
+  // (coat/jacket) or an ACCENT (bag/belt/jewellery), never with a top, a bottom,
+  // or another dress. So a dress paired with a trouser/top is NOT a pairing; it's
+  // two separate looks → compare, not complement (QA scenario 33).
+  if (curSlot === "full" || prevSlot === "full") {
+    const layerOrAccent = (curSlot === "full" ? prevSlot : curSlot);
+    if (layerOrAccent === "layer" || layerOrAccent === "accent") {
+      return { text: `The ${prevShort} layers over this beautifully. Want the full look?`, chips: ["Build the look", "Style this", "My size?"] };
+    }
+    return { text: `A dress is a whole look on its own — want them side by side, or this one styled?`, chips: [`Compare with the ${prevShort}`, "Style this", "My size?"] };
   }
   // Different slots → they build one outfit. Read whether they genuinely pair.
   const e = buildLook(cur, [prev])[0];
