@@ -1183,3 +1183,13 @@ Quick-reply chips render only on the latest turn (`i === lastChipIdx`), deduped 
 Founder: reload port 3002 (cache disabled), run the exact flow (build look → tap a piece →
 switch product → open size guide). If anything still reads wrong, capture the rendered bubble
 text so we fix the exact string. Then decide whether to add Task I #4 + a Task K DOM test.
+
+### Follow-up — context cards + tighter copy (2026-06-17)
+Founder: "too many words reduce value; differentiate a new product in chat with a card."
+- New `ContextCard` (ChatMsg kind `context`): a compact divider with a 30px thumbnail +
+  "Now viewing" + product name + price, inserted on every product switch (restore + SPA
+  re-approach paths). The thread now SHOWS the new context instead of describing it.
+- Trimmed copy: product-switch line "You moved to the … want me to compare it with the …,
+  or style this one?" → context card + "Compare with the {Short}, or style this one?";
+  opener size offer → "Want me to size it? It's cut a little differently."; size-chart offer
+  → "Checking sizes? Let me size the {piece} for you." VERIFIED LIVE on trouser→turtleneck.

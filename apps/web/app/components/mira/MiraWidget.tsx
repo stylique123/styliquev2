@@ -195,7 +195,11 @@ type ChatMsg =
   | { from: "mira"; kind: "reco"; reco: Reco; lead?: string }
   | { from: "mira"; kind: "look"; look: LookBoard }
   | { from: "mira"; kind: "insight"; label: string; text: string; quickReplies?: string[] }
-  | { from: "mira"; kind: "cart"; productName: string };
+  | { from: "mira"; kind: "cart"; productName: string }
+  // Visual context divider when the shopper moves to a new product — keeps the
+  // thread oriented without a wall of text (founder: "differentiate new product
+  // in chat with cards / highlight different context").
+  | { from: "mira"; kind: "context"; product: Product; prevName?: string };
 
 type KnowledgeEntry = { id: string; text: string; createdAt: string };
 
@@ -1757,6 +1761,29 @@ function InsightCard({ label, text }: { label: string; text: string }) {
   );
 }
 
+// Compact context divider — marks a product switch in the thread with a small
+// thumbnail + name + price, so the new context reads at a glance (no wall of text).
+function ContextCard({ product, prevName }: { product: Product; prevName?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "4px 0 2px" }}>
+      <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.35))" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.28)", borderRadius: 999, padding: "5px 12px 5px 5px" }}>
+        <div style={{ position: "relative", width: 30, height: 30, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "var(--surface)" }}>
+          {product.images[0]
+            ? <Image src={product.images[0]} alt={product.name} fill sizes="30px" style={{ objectFit: "cover" }} />
+            : null}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--electric)" }}>{prevName ? "Now viewing" : "Viewing"}</span>
+          <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 13, color: "#F4F2EE" }}>{product.name}</span>
+        </div>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(244,242,238,0.6)", paddingLeft: 2 }}>{money(product.priceUsd)}</span>
+      </div>
+      <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(139,92,246,0.35), transparent)" }} />
+    </div>
+  );
+}
+
 function primaryBtn(): React.CSSProperties {
   return { flex: 1, background: "var(--grad)", border: "none", borderRadius: 8, padding: "10px 12px", color: "#0E0A14", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 12.5, cursor: "pointer", whiteSpace: "nowrap" };
 }
@@ -1874,11 +1901,11 @@ export default function MiraWidget() {
       if (switched) {
         approachedHandle.current = cur.handle;
         activeProductHandle.current = cur.handle;
-        restoredMsgs = [...snap.messages, {
-          from: "mira", kind: "say",
-          text: `You moved to the ${cur.name} — want me to compare it with the ${prev.name}, or style this one?`,
-          quickReplies: [`Compare with the ${prev.name.split(" ").slice(-1)[0]}`, "Style the look", "Will it fit me?"],
-        }];
+        const prevShort = prev.name.split(" ").slice(-1)[0];
+        restoredMsgs = [...snap.messages,
+          { from: "mira", kind: "context", product: cur, prevName: prev.name },
+          { from: "mira", kind: "say", text: `Compare with the ${prevShort}, or style this one?`, quickReplies: [`Compare with the ${prevShort}`, "Style this", "Will it fit me?"] },
+        ];
       }
       setMessages(restoredMsgs);
       setTurnCount(snap.turnCount ?? 0);
@@ -2024,7 +2051,7 @@ export default function MiraWidget() {
       if (open) {
         setMessages((prev) => [...prev, {
           from: "mira", kind: "say",
-          text: `Checking the size chart? Let me size the ${cp.name} for you — it's quicker than the table.`,
+          text: `Checking sizes? Let me size the ${cp.name} for you.`,
           quickReplies: ["Size this one", "What's my size?", "I'm just looking"],
         }]);
       } else if (!sessionStorage.getItem("mira_opened")) {
@@ -2092,13 +2119,21 @@ export default function MiraWidget() {
     // The new PDP is now the conversation's active subject ("it" = this piece).
     activeProductHandle.current = handle;
     if (open) {
-      // Notice the switch out loud and offer the compare (founder: "Mira does not
-      // notice product switching" + "compare this with the last one"). If we know
-      // the piece they came from, name it and lead with the compare.
-      const line: ChatMsg = prev && prev.handle !== p.handle
-        ? { from: "mira", kind: "say", text: `You moved to the ${p.name} — want me to compare it with the ${prev.name}, or style this one?`, quickReplies: [`Compare with the ${prev.name.split(" ").slice(-1)[0]}`, "Style the look", "Will it fit me?"] }
-        : { from: "mira", kind: "say", text: contextualOpener(p), quickReplies: ["Style the look", "Will it fit me?", "See it on me"] };
-      setMessages((prev2) => [...prev2, line]);
+      // Mark the switch with a visual context card + a SHORT line (founder: "too
+      // many words" + "differentiate new product with cards"). Lead with the
+      // compare when we know the piece they came from.
+      if (prev && prev.handle !== p.handle) {
+        const prevShort = prev.name.split(" ").slice(-1)[0];
+        setMessages((prev2) => [...prev2,
+          { from: "mira", kind: "context", product: p, prevName: prev.name },
+          { from: "mira", kind: "say", text: `Compare with the ${prevShort}, or style this one?`, quickReplies: [`Compare with the ${prevShort}`, "Style this", "Will it fit me?"] },
+        ]);
+      } else {
+        setMessages((prev2) => [...prev2,
+          { from: "mira", kind: "context", product: p },
+          { from: "mira", kind: "say", text: "Want this styled, or sized?", quickReplies: ["Style this", "Size this one", "See it on me"] },
+        ]);
+      }
     } else if (!sessionStorage.getItem("mira_opened")) {
       setNudgeProduct(p);
       setNudge(true);
@@ -2200,7 +2235,7 @@ export default function MiraWidget() {
         : [
             { from: "mira", kind: "say", text: isReturn ? `Back on the ${cp.name}? It's a good one.` : contextualOpener(cp) },
             // Per-product sizing offered proactively, every piece is cut differently.
-            { from: "mira", kind: "say", text: "Want me to size this exact piece? It runs a little different from most.", quickReplies: ["Size this one", "What goes with it?", "Is it right for me?"] },
+            { from: "mira", kind: "say", text: "Want me to size it? It's cut a little differently.", quickReplies: ["Size this one", "What goes with it?", "Is it right for me?"] },
           ];
     } else {
       greeting = [
@@ -2650,6 +2685,7 @@ export default function MiraWidget() {
                 </div>
               );
               if (msg.kind === "cart") return <CartLine key={i} productName={msg.productName} />;
+              if (msg.kind === "context") return <ContextCard key={i} product={msg.product} prevName={msg.prevName} />;
               // say, each Mira line gets its own bubble so two messages never
               // read as one run-on block.
               return (
