@@ -1382,3 +1382,62 @@ typecheck 11/11 · anti-chatbot-eval 15/15 · runtime-ux-regression 11/11.
 ### Note
 Each signal fires at most once per session (`mira_nudged` guard) and only when the panel isn't
 already open — no spam, no double-greet on a restored conversation.
+
+---
+
+## Step 2H — 50-scenario REAL transcripts + order-issue handoff fix — 2026-06-17
+
+### What this is
+Verbatim Mira output captured live from `/api/mira` (smart Gemini path) — the actual message,
+chips, and card she presents per scenario. Running the real conversations surfaced one genuine
+P0 the summary table had missed, now fixed.
+
+### P0 FOUND + FIXED — "I have an order issue" was getting a SALES pitch, not a handoff
+Live #50 returned: *"This is a beautiful trouser, it hangs perfectly. I can help with sizing, or
+build a full look?"* with styling chips — an order problem must hand off, not sell. Root cause:
+`classifySupportIntent("I have an order issue")` returned `null` (no pattern matched "order
+issue"), so the deterministic handoff was skipped and the LLM free-styled. Fix
+(`packages/mira-brain/src/support.ts`): new `order_problem` support intent (regex: order
+issue/problem, issue/problem with my order, my order is/hasn't/didn't, wrong size/item arrived,
+missing item) classified BEFORE order_status and routed through `supportNeedsHandoff` → the brain
+forces `talk_only` + handoff voice + ["Connect me", "Keep shopping"]. VERIFIED LIVE across 4
+phrasings:
+- "I have an order issue" → "Let me get the store's team onto your order — they can sort this
+  directly. Want me to connect you?" [Connect me | Keep shopping]
+- "my order hasn't arrived" / "wrong size arrived" / "there's a problem with my order" → same handoff.
+- "I need help with my order" → support chip ("General support") offered.
+Bare "I need help" → stays shopping-help (a floor associate's correct read on a PDP) — P2, left.
+
+### Real transcripts (live /api/mira, verbatim) — representative
+- **#9 "What's it made of?"** → *"The Atelier Wide-Leg Trouser is a premium wool blend, designed
+  for structure and drape. What are you looking to wear it for?"* · [What's my size? | See it on
+  you | Build the look] · INSIGHT CARD (fabric) · no cart.
+- **#12 "Will it fit me?"** → *"…runs true to size in the waist, but it's cut for a longer torso.
+  If you're under 5'4", you'd likely need a slight hem."* · [Start sizing | See it on you | Build
+  the look] · opens SIZE HELPER.
+- **#17 "Too expensive"** → *"That's fair. What were you hoping it would come in around?"* ·
+  [Under $300 | Under $400 | Open] · price objection.
+- **#23 "Show me something that goes with this"** → *"…I'd pair it with the Merino Ribbed
+  Turtleneck for a clean, monochromatic look, or the Ivory Silk Camisole for a soft contrast."* ·
+  [Size the pieces | See whole look | Add full look] · OUTFIT CARD.
+- **#25 "Add it"** → *"I'll put the Atelier Wide-Leg Trouser in your bag. Want the full look, or
+  straight to checkout?"* · [Build the look | Checkout] · CART LINE.
+- **#26 build-look (trouser)** → *"…with the Merino Ribbed Turtleneck… The two together would be
+  $830."* · OUTFIT CARD with total.
+- **#29 build-look (skirt)** → *"The Pleated Satin Midi Skirt pairs with the Ivory Silk Camisole…
+  finish with the Saddle Leather Belt. Together, those three pieces are $1290."* · OUTFIT CARD.
+- **#47 "Can I talk to someone?"** → *"I'll pass you to the store's team — they can pick this up
+  directly."* · [Connect me | Keep shopping] · support handoff.
+- **#48 "What's your return policy?"** → *"We offer returns within a 14-day window, on unworn
+  items with original packaging…"* · grounded policy, no fabrication.
+- **#49 "Is delivery available?"** → *"…complimentary worldwide shipping, 2–4 business days within
+  the country, 5–9 internationally."* · grounded shipping fact.
+(Full 26-row capture is reproducible via /tmp/mira-50-proof.mjs against the running dev server.)
+
+### Pass tally (live)
+Cat 2 intent 17/17 honest routes (fabric→insight, fit→size_form, price→objection, occasion→qualify);
+Cat 3 build-look 4/4 coherent OUTFIT CARDS with totals; Cat 5 support 5/5 (after the order_problem
+fix). 0 fabrications, 0 fake cart success.
+
+### Verification
+typecheck 11/11 · anti-chatbot-eval 15/15 · runtime-ux-regression 11/11.

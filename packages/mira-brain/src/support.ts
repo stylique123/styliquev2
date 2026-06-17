@@ -13,6 +13,7 @@ export const SUPPORT_INTENTS = [
   "exchange_policy",
   "shipping_policy",
   "order_status",
+  "order_problem",
   "return_request",
   "exchange_request",
   "fit_feedback",
@@ -24,6 +25,8 @@ export type SupportIntent = (typeof SUPPORT_INTENTS)[number];
 const SI = {
   human_handoff: /\b(speak to|talk to|real person|human|agent|representative|customer service|contact you|email (you|someone)|call (you|someone))\b/i,
   order_status: /\b(order status|where.?s my order|track(ing)?|has my order shipped|when will (it|my order) (arrive|ship)|delivery date)\b/i,
+  // A reported problem WITH AN ORDER (not styling) — must hand off, never sell.
+  order_problem: /\b(order (issue|problem|help)|issue with (my|the|an) order|problem with (my|the|an) order|something.?s wrong with (my|the) order|my order (is|has|hasn.?t|didn.?t|never)|wrong (size|item|colour|color) (arrived|came)|missing (item|piece))\b/i,
   return_request: /\b(i want to return|how do i return|start a return|return this|send (it|this) back|return my order)\b/i,
   exchange_request: /\b(i want to exchange|how do i exchange|swap (it|this)|exchange this|different size instead)\b/i,
   return_policy: /\b(return policy|can i return|returnable|refund policy|do you (accept|take) returns|how long.* return)\b/i,
@@ -39,6 +42,7 @@ export function classifySupportIntent(message: string): SupportIntent | null {
   if (SI.human_handoff.test(m)) return "human_handoff";
   if (SI.return_request.test(m)) return "return_request";
   if (SI.exchange_request.test(m)) return "exchange_request";
+  if (SI.order_problem.test(m)) return "order_problem";
   if (SI.order_status.test(m)) return "order_status";
   if (SI.complaint.test(m)) return "complaint";
   if (SI.fit_feedback.test(m)) return "fit_feedback";
@@ -54,6 +58,7 @@ export function supportNeedsHandoff(intent: SupportIntent): boolean {
   return (
     intent === "human_handoff" ||
     intent === "order_status" ||      // we don't expose order lookup in V1
+    intent === "order_problem" ||     // a reported order problem → straight to the team
     intent === "return_request" ||    // do NOT process returns
     intent === "exchange_request" ||  // do NOT process exchanges
     intent === "complaint"
@@ -121,6 +126,7 @@ export function buildSafeHandoff(
   const reasonLine: Record<SupportIntent, string> = {
     human_handoff: "I'll pass you to the store's team — they can pick this up directly.",
     order_status: "I can't look up live order status here, but the store's team can — I'll flag it for them.",
+    order_problem: "Let me get the store's team onto your order — they can sort this directly. Want me to connect you?",
     return_request: "I can't process the return myself, but I'll hand this to the store's team to set up.",
     exchange_request: "I can't run the exchange here, but the store's team can sort it — I'll flag it.",
     complaint: "I'm sorry this fell short. I'll make sure the store's team sees this.",
