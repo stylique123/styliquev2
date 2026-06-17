@@ -61,20 +61,32 @@ export async function action({ request }: ActionFunctionArgs) {
     //    live session carries a shopifyCustomerId yet (the theme-block linkage is
     //    not populating), so email is the practical attribution key; without this
     //    fallback every order short-circuits and CART_CONFIRMED never fires.
+    // P4-T03 — record HOW the order linked to a shopper + how strong the link is,
+    // so downstream/dashboard never overclaims attribution. No cart/checkout token
+    // is matched yet (that needs a schema migration — deferred), so the strongest
+    // available key is the Shopify customer id, then email.
+    //   customer_id → "high"   · email → "medium"   · neither → unlinked (return)
     let shopper = customerId
       ? await prisma.shopperSession.findFirst({
           where: { shopifyDomain: shop, shopifyCustomerId: customerId },
           select: { id: true },
         })
       : null;
+    let linkMethod: "customer_id" | "email" = "customer_id";
+    let linkConfidence: "high" | "medium" = "high";
     if (!shopper && customerEmail) {
       shopper = await prisma.shopperSession.findFirst({
         where: { shopifyDomain: shop, email: customerEmail },
         select: { id: true },
       });
+      linkMethod = "email";
+      linkConfidence = "medium";
     }
     if (!shopper) {
       // Guest checkout or shopper not yet linked (no matching customer id/email).
+      // Honest stance (P4-T04): an UNLINKED order produces NO assisted-revenue /
+      // outcome signal — we never guess attribution for an order we can't tie to
+      // a shopper session.
       return new Response(null, { status: 200 });
     }
 
@@ -135,6 +147,9 @@ export async function action({ request }: ActionFunctionArgs) {
             quantity: qty,
             // lineValue = unit price × quantity, in CENTS.
             lineValue: lineValueCents,
+            // P4-T03 — how this order was tied to the shopper + confidence.
+            linkMethod,
+            linkConfidence,
           },
         },
       });
@@ -208,6 +223,10 @@ export async function action({ request }: ActionFunctionArgs) {
               assistedRevenueCents,
               assistedUnits,
               totalLineItems: lineItems.length,
+              // P4-T03 — attribution is order-linked but the link itself is
+              // customer_id (high) or email (medium), NOT a holdout/causal proof.
+              linkMethod,
+              linkConfidence,
             },
           },
         });

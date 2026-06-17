@@ -91,24 +91,47 @@ export default function Dashboard() {
           )}
         </Layout.Section>
 
-        {/* ── MEASURED ROI hero ─────────────────────────────────────────── */}
+        {/* ── Outcome hero (P4-T05) — honest: measured only when there's a
+             real linked order; otherwise "pilot pending", never a $0 "Measured"
+             headline (which reads as a measured zero rather than no-data-yet). ── */}
         <Layout.Section>
           <Card>
-            <BlockStack gap="300">
-              <InlineStack align="space-between" blockAlign="center">
-                <Text as="h2" variant="headingMd">Revenue Mira drove</Text>
-                <Badge tone="success">Measured</Badge>
-              </InlineStack>
-              <InlineStack gap="800" wrap>
-                <Stat label="assisted revenue" value={usd(h.miraAssistedRevenueCents)}
-                  hint={`${h.miraAssistedOrders} orders`} />
-                <Stat label="return on Stylique" value={h.miraRoiMultiple > 0 ? `${h.miraRoiMultiple}×` : "—"}
-                  hint="assisted revenue ÷ plan price" />
-                <Stat label="assisted AOV" value={h.assistedAovCents > 0 ? usd(h.assistedAovCents) : "—"} />
-                <Stat label="repeat buyers" value={`${h.repeatPurchaseRate.pct}%`}
-                  hint={`${h.repeatPurchaseRate.repeatShoppers} of ${h.repeatPurchaseRate.totalShoppers} came back`} />
-              </InlineStack>
-            </BlockStack>
+            {h.miraAssistedOrders > 0 ? (
+              <BlockStack gap="300">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h2" variant="headingMd">Revenue Mira drove</Text>
+                  <Badge tone="success">Measured · attributed</Badge>
+                </InlineStack>
+                <InlineStack gap="800" wrap>
+                  <Stat label="assisted revenue" value={usd(h.miraAssistedRevenueCents)}
+                    hint={`${h.miraAssistedOrders} linked orders`} />
+                  <Stat label="return on Stylique" value={h.miraRoiMultiple > 0 ? `${h.miraRoiMultiple}×` : "—"}
+                    hint="assisted revenue ÷ plan price" />
+                  <Stat label="assisted AOV" value={h.assistedAovCents > 0 ? usd(h.assistedAovCents) : "—"} />
+                  <Stat label="repeat buyers" value={`${h.repeatPurchaseRate.pct}%`}
+                    hint={`${h.repeatPurchaseRate.repeatShoppers} of ${h.repeatPurchaseRate.totalShoppers} came back`} />
+                </InlineStack>
+                <Text as="p" tone="subdued" variant="bodyXs">
+                  Attribution links each order to a Mira session by customer email or
+                  Shopify customer id, within 48h of an assist. It is directional
+                  (order-linked), not a controlled holdout — so read it as &ldquo;Mira
+                  was involved&rdquo;, not a proven causal lift.
+                </Text>
+              </BlockStack>
+            ) : (
+              <BlockStack gap="200">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h2" variant="headingMd">Revenue Mira drove</Text>
+                  <Badge tone="attention">Pilot pending</Badge>
+                </InlineStack>
+                <Text as="p" tone="subdued" variant="bodySm">
+                  No linked orders yet — outcome measurement begins with your first
+                  order we can tie back to a Mira session. We will never show an
+                  estimated or assumed revenue figure here; only orders we can
+                  actually link will count.
+                </Text>
+              </BlockStack>
+            )}
           </Card>
         </Layout.Section>
 

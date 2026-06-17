@@ -698,3 +698,82 @@ UI/API/code references remain:
 - Ready for Step 2H Phase 4 (Outcome Proof). Recommend a live render pass on a pilot store to
   visually confirm colourway + size distinctness, and surfacing the sizing confidence level
   in Mira's voice + the fitting-room UI.
+
+---
+
+## Step 2H Phase 4 — Outcome Proof — 2026-06-17
+
+### Branch state
+- Branched `chore/phase4-outcome-proof` from `chore/phase3-tryon-sizing-trust` (08cb17e).
+- Phase 3 branch confirmed pushed to origin this session (`git push -u`, was un-tracked).
+- No deploy, no DB migration applied, stash untouched, no Creative resurrection.
+
+### Tickets completed
+- P4-T01 proof-event audit — AUDIT done (no migration needed for the audit).
+- P4-T02 CartIntent / cart proof — AUDITED; honest gaps logged + deferred (need migration / widget rebuild).
+- P4-T03 session/order linkage — AUDITED + FIXED (linkage method + confidence recorded, migration-free).
+- P4-T04 strict outcome resolver — AUDITED; honest conclusion + deferrals.
+- P4-T05 honest dashboard tile — FIXED (pilot-pending state + attribution caveat).
+- P4-T06 holdout label — VERIFIED none active, nothing shown (no change needed).
+- P4-T07 dashboard honesty sweep — AUDITED; merchant hero made honest; rest already labelled.
+
+### Proof-event audit (P4-T01)
+- Event store: `AnalyticsEvent` (shopId, shopperId→ShopperSession, productId, name=EventName enum, payload Json, createdAt). Linkage fields available: shopId, shopperId, productId, payload Json (orderId/source on order events). NOT stored anywhere: variantId, cartToken, checkoutToken, event-version.
+- Mapped requested journey events → real code events:
+  - widget_live → `WIDGET_PLACEMENT_AUDIT` (placement) — present.
+  - mira_opened/message → `CHAT_OPENED`/`CHAT_MESSAGE_SENT` — present.
+  - product_recommended/clicked → `CHAT_COMBO_PROPOSED`/`CHAT_PRODUCT_CLICKED` — present.
+  - tryon_* → `PDP_TRYON_CLICKED` + `TRYON_RENDER_REQUESTED/COMPLETED/FAILED`; TryOnSession row is the durable proof (5 rows live).
+  - add_to_cart_assist → `CHAT_CART_REQUESTED`/`CART_FROM_TRYON`/`CART_FROM_WIDGET_STYLE` — present, but fired at REQUEST time, not on the real `/cart/add.js` result.
+  - cart_add_attempted/_succeeded/_failed → **MISSING as distinct real-result events.** `storefront-cart.ts` calls real `/cart/add.js`, returns `{ok,real,error}`, dispatches a DOM event, posts NO server event. Enum already has `CART_FAILED`/`CART_FROM_*` so recording needs NO migration — but needs a widget rebuild + `CLIENT_POSTABLE_EVENTS` allowlist addition. DEFERRED.
+  - order_created/purchase → `webhooks.orders.tsx` emits `PURCHASE {orderIdHash,totalCents}` with NO shopperId → NOT linkable. `webhooks.orders.fulfilled.tsx` emits `CART_CONFIRMED` (shopperId+productId+orderId+lineValue) — the linkable one.
+  - checkout_started/support_intent/hesitation_detected/fit_feedback → not discrete events (DEFERRED; some need new enum values = migration).
+
+### CartIntent / cart proof (P4-T02)
+- `CartIntent`: id, shopId, shopperId, productIds[], comboName, status(pending/confirmed), timestamps. NO variantId, cartToken, orderId, real/demo flag, confidence.
+- Created (pending) ONLY in `postComboAddAll` (`shopper-events.server.ts:220`) when "Add all" resolves real merchant variant ids server-side. Single-item `addToBag` creates NO CartIntent.
+- Confirmed → `webhooks.orders.fulfilled.tsx` `cartIntent.updateMany({pending, productIds hasSome orderProductIds} → confirmed)` — a REAL order link; the only honest conversion-proof transition, correctly gated on a linked order. (0 rows live → nothing confirmed yet.)
+- Real cart success/failure decided CLIENT-side (`storefront-cart.ts:62-74`), NOT recorded server-side. Demo cart cleanly separated: `onStorefront()===false → {ok:true, real:false}` (simulated); `postComboAddAll` reached only via real App Proxy, so demo "successes" can never become production outcomes.
+- DEFERRED (migration/widget rebuild): distinct cart events from the real response; CartIntent variantId/cartToken/real-demo/confidence columns.
+
+### Session/order linkage (P4-T03)
+- `webhooks.orders.fulfilled.tsx` links order→ShopperSession by `shopifyCustomerId` first, else `email`. No cart/checkout token, note_attributes, landing cookie. `webhooks.orders.tsx` (PURCHASE) has NO linkage.
+- FIX (migration-free): webhook now computes `linkMethod` (customer_id|email) + `linkConfidence` (high|medium) and writes both into the `CART_CONFIRMED` and `MIRA_ASSISTED_ORDER` payload Json. Unlinked orders return early, emit nothing (unlinked stays unlinked — no fake attribution).
+- DEFERRED (migration): typed confidence column / enum on a dedicated outcome row.
+
+### Outcome resolver (P4-T04)
+- Existing `Outcome` model + `apps/worker/src/jobs/outcome-resolver.ts` are for **BrandRecommendation** outcomes (did a merchant action move a metric) — NOT shopper→cart→order. The `Outcome` shape (recommendationId/before/after/delta) does not fit a conversion outcome.
+- Honest conclusion: CartIntent pending→confirmed (webhook-driven, real-order-gated) IS the conversion proof mechanism and refuses to confirm without a linked order. A DEDICATED conversion-Outcome model (assisted_conversion/tryon_to_cart/unlinked_order/no_outcome + confidence + proof-path) needs a schema migration → DEFERRED per the no-migration constraint.
+- No revenue/conversion number is produced anywhere without a real linked order (verified): `miraAssistedRevenueCents` sums `MIRA_ASSISTED_ORDER.assistedRevenueCents`, emitted only on a real fulfilled+linked order.
+
+### Honest dashboard (P4-T05)
+- `app.dashboard.tsx` revenue hero: was "$0 · Measured" at zero (reads as a measured zero). Now: `miraAssistedOrders === 0` → "Pilot pending" ("measurement begins with your first linked order; we never show estimated/assumed revenue"). >0 → numbers + badge "Measured · attributed" + explicit caveat: attribution is order-linked by email/customer-id within 48h, directional, NOT a holdout/causal lift.
+- Engagement funnel = measured counts — left as-is.
+
+### Holdout status (P4-T06)
+- No Experiment/holdout active and NO holdout/uplift/control-group result rendered anywhere (grep app.dashboard/internal.*/dashboard.server = none). Nothing to remove; no invented control group.
+
+### Dashboard honesty sweep (P4-T07)
+- Merchant: hero relabelled (above); reorder tiles already `~`/"Est."; `return on Stylique` explicitly "assisted revenue ÷ plan price" (cost ratio, not causal ROI).
+- Internal/reports: EXPERT-PANEL-7 already converted speculative savings to `~`/"Est."; `assistedRevenue` is the only "Measured" figure and is real-order-sourced.
+- Marketing `page.tsx` STATS (4.2×/18%/+23%) are hardcoded/fabricated — FLAGGED but OUT OF PHASE-4 SCOPE (T07 = merchant/internal/admin/reports dashboards, not the marketing site). Recorded for a separate pass.
+
+### Verification results
+- Linkage confidence stamped on both order events (Json, no migration).
+- Dashboard pilot-pending vs measured-attributed states compile + render via existing Polaris components.
+
+### Typecheck/build/test
+- `pnpm typecheck` → 11/11 PASS.
+- `pnpm build` → 5/5 PASS.
+- `pnpm test` → 247 passed / 1 failed = the KNOWN pre-existing `TRYON_BODY` test (`packages/core/src/__tests__/plans.test.ts:52`), unchanged from the Phase 3 baseline, NOT touched here.
+
+### Phase 4 gate status
+- INCOMPLETE. Audit + migration-free honesty fixes (linkage confidence, honest dashboard hero, holdout verification, honesty sweep) DONE + verified. Acceptance criteria needing new schema or a widget rebuild are deliberately DEFERRED under the phase's no-migration/no-deploy constraints — recorded honestly, not faked.
+
+### Blockers
+- MIGRATION-GATED (phase forbids migration): dedicated conversion-Outcome model + confidence/proof-path (P4-T04); CartIntent variantId/cartToken/real-demo/confidence columns (P4-T02); discrete checkout_started/support_intent/fit_feedback enum events (P4-T01).
+- WIDGET-REBUILD-GATED (phase forbids deploy): real cart_add_attempted/succeeded/failed events from `/cart/add.js` + `CLIENT_POSTABLE_EVENTS` allowlist (P4-T02).
+- DATA-GATED: 0 CartIntent / 0 Outcome / 0 linked orders live — resolver + "measured" dashboard paths cannot be exercised until one real shopper completes a linked purchase (Phase 5).
+
+### Next action
+- Founder decision: approve a small additive migration (conversion-Outcome model + CartIntent linkage columns) to complete P4-T02/T04 strictly, OR approve a widget rebuild for real cart-result events. Then Phase 5 (Real Merchant Pilot) generates the first linked order to light up the honest dashboard.
