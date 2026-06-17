@@ -1003,3 +1003,61 @@ UI/API/code references remain:
 - Founder: hard-reload port 3002 (cache disabled) and reconfirm fabric/try-on/build-look behave
   correctly with a real handle (they do in code + live preview). Then decide whether to greenlight
   the dedicated Agentic Navigation + Proactive phase (Tasks G/H) as its own scoped build.
+
+---
+
+## Step 2H — Runtime Action Integrity Fix (re-run) — 2026-06-17
+
+### Why this pass was run
+- Founder retested and reported the SAME screenshots still failing ("The fabric" → "is in your
+  bag", "See them on me" → text only, "Build the look" → no card). This pass re-investigated with
+  the assumption the prior "stale bundle" conclusion might be wrong.
+
+### Screenshot regression — DEFINITIVE REPRODUCTION
+- The screenshot voice lines ("What's been your experience…", "What's making you unsure…") are
+  FREE-FORM LLM voice (`DecisionSchema.voice`, gemini, max 600 chars) — not hardcoded. So those
+  lines are normal model output for a hesitation/suitability turn.
+- The hardcoded "is in your bag" exists ONLY in the `add_to_cart` branch (MiraWidget 1168) and the
+  fallback buy-signal branch (718) — both gated to cart intent. For "The fabric" to produce it, the
+  BRAIN must return `route:add_to_cart`.
+- TRIPLE PROOF that current code does NOT do this:
+  1. Brain API (live, exact screenshot history) → "The fabric" returned `route:fabric` 5/5 times.
+  2. Code trace → fabric routes to a Fabric&care answer in the brain, the regex fallback (line 639
+     matches `fabric`), AND `applyDecision` (1124). No path maps "the fabric" → cart.
+  3. LIVE RENDER on the founder's exact server (port 3002, dock driven through the real sequence
+     "I'm not sure" → "The fabric"): Mira replied "…a soft wool blend, lovely drape…" + a
+     "FABRIC & CARE" card (72% wool…); `FALSE_CART_CLAIM_PRESENT:false`. Earlier in this same pass,
+     "build the look" rendered a real multi-piece LookCard and "see them on me" opened the
+     TryOnPanel (muse picker + GENERATE MY LOOK). All correct.
+
+### Root causes
+- Fabric→bag / fake cart language / see-on-me text-only / build-look no-card: NONE exist in current
+  code. CAUSE = a STALE BROWSER BUNDLE on the founder's tab serving old JS.
+- Verified there is NO code-level forced-staleness: no service worker, no PWA/workbox, no
+  next-pwa, no aggressive Cache-Control on the JS bundle (only the try-on IMAGE route caches, by
+  immutable key — correct). The demo page mounts the React `MiraWidget` directly; it does NOT load
+  the `public/widget.js` storefront artifact.
+
+### Fabric / Cart / Try-on / Build-look fixes
+- None warranted — the code is correct (proven 3 ways). No speculative edits made.
+
+### Card/action renderer fix
+- None needed — cards/actions render live (LookCard images via next/image; TryOnPanel opens).
+
+### Regression tests / Verification results
+- typecheck 11/11 · build 5/5 (fresh compile — proves source→output is correct) · test 247/1
+  (pre-existing TRYON_BODY) · anti-chatbot eval 15/15 · size-ladder harness PASS.
+
+### Remaining blockers
+- The founder's browser is not loading fresh JS. To force fresh code, ANY of: (a) DevTools open →
+  Network tab "Disable cache" checked → right-click reload → "Empty Cache and Hard Reload"; (b)
+  Application tab → Storage → "Clear site data"; (c) test in an Incognito window. If it still
+  reproduces in Incognito on port 3002, the dev server's `.next` cache may hold a stale chunk —
+  ask CTO to clear it (`rm -rf apps/web/.next` + the running `next dev` recompiles) — NOT done
+  this pass to avoid disrupting the founder's running server.
+
+### Next action
+- Founder: reload port 3002 in an INCOGNITO window (guarantees no cached bundle) and re-run the
+  exact flow. It will show the correct fabric card + no cart claim (verified live). If — and only
+  if — it still fails in Incognito, authorize clearing the dev `.next` cache, then capture the
+  Network-tab `/api/mira` response so we have the exact server payload.
