@@ -5,7 +5,7 @@
 //   GROWTH   → + catalog gaps with purchase-intent, combo performance,
 //                size distribution drift, return rate, sentiment summary
 //   ULTIMATE → + trend velocity (k-anon ≥3 brands), restocking predictions,
-//                customer segments, creative performance correlation
+//                customer segments
 //
 // All Prisma queries are shopId-scoped. Cross-tenant reads are impossible
 // by construction. Network-level trend queries apply a k-anonymity floor of
@@ -87,14 +87,6 @@ export type UltimateInsights = GrowthInsights & {
     highEngagementNoPurchase: number; // signalCount ≥5, no CART_CONFIRMED
     topSegmentInsight: string;
   };
-  creativePerformance: Array<{
-    creativeSetId: string;
-    kind: string;
-    generatedAt: Date;
-    pdpClickThrough: number; // CHAT_PRODUCT_CLICKED events within 24h of generation
-    conversionRate: number; // CART_CONFIRMED within 24h of creative being live
-    topPerformingStyle: string | null;
-  }>;
 };
 
 // ─── Main entry point ─────────────────────────────────────────────────────
@@ -595,8 +587,6 @@ async function getUltimateInsights(
     highRepeatSessions,
     singlePurchaseSessions,
     highEngagementSessions,
-    // For creative performance: recent creative sets
-    recentCreativeSets,
   ] = await Promise.all([
     // This brand's gap queries (current 30d)
     prisma.catalogGap.findMany({
@@ -644,9 +634,6 @@ async function getUltimateInsights(
         accountClaimedAt: null, // engaged but haven't committed
       },
     }),
-
-    // Creative Studio removed — creative-performance correlation is gone.
-    Promise.resolve([] as Array<{ id: string; createdAt: Date; brief: unknown; providerMeta: unknown; productId: string | null }>),
   ]);
 
   // ─── Trend velocity ───────────────────────────────────────────────────
@@ -775,17 +762,11 @@ async function getUltimateInsights(
     topSegmentInsight,
   };
 
-  // ─── Creative performance ─────────────────────────────────────────────
-  // Creative Studio removed — no creative performance to correlate.
-  void recentCreativeSets;
-  const creativePerformance: UltimateInsights["creativePerformance"] = [];
-
   return {
     ...growth,
     trendVelocity,
     restockingPredictions,
     customerSegments,
-    creativePerformance,
   };
 }
 

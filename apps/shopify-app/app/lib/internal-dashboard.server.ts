@@ -20,11 +20,6 @@ export type BrandSummary = {
   totalShopperSessions: number;
   sessionsLast7Days: number;
 
-  // Creative Studio
-  totalCreativeSets: number;
-  pendingCreativeSets: number;
-  failedCreativeSets: number;
-
   // VTO
   totalTryOnSessions: number;
   tryOnSuccessRate: number; // 0-1
@@ -62,14 +57,6 @@ export type BrandDetail = BrandSummary & {
     error: string | null;
     createdAt: Date;
   }>;
-  recentCreativeSets: Array<{
-    id: string;
-    status: string;
-    triggeredBy: string | null;
-    error: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
   brandProfile: {
     paletteJson: unknown;
     toneJson: unknown;
@@ -83,7 +70,6 @@ export type BrandDetail = BrandSummary & {
 function computeHealthStatus(
   installedAt: Date,
   sessionsLast7Days: number,
-  failedCreativeSets: number,
   lastActiveAt: Date | null,
 ): BrandHealthStatus {
   const now = Date.now();
@@ -93,12 +79,11 @@ function computeHealthStatus(
   if (!lastActiveAt || now - lastActiveAt.getTime() > 30 * DAY) return "inactive";
   if (now - lastActiveAt.getTime() > 14 * DAY) return "churning";
   if (sessionsLast7Days < 2 && ageDays > 14) return "at_risk";
-  if (sessionsLast7Days > 5 && failedCreativeSets < 3) return "healthy";
+  if (sessionsLast7Days > 5) return "healthy";
   return "at_risk";
 }
 
 function buildIssues(
-  failedCreativeSets: number,
   hasBrandDNA: boolean,
   tryOnSuccessRate: number,
   sessionsLast7Days: number,
@@ -107,10 +92,6 @@ function buildIssues(
   const issues: string[] = [];
   const suggestions: string[] = [];
 
-  if (failedCreativeSets > 0) {
-    issues.push(`${failedCreativeSets} failed creative set${failedCreativeSets > 1 ? "s" : ""}`);
-    suggestions.push("Debug and re-queue failed creative sets");
-  }
   if (!hasBrandDNA) {
     issues.push("No brand DNA computed");
     suggestions.push("Schedule a brand DNA refresh run");
@@ -147,7 +128,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
           planFeaturesJson: true,
           monthlyTryOnPersonal: true,
           monthlyTryOnBody: true,
-          monthlyCreatives: true,
         },
       },
       brandProfile: {
@@ -167,8 +147,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
   const [
     sessions7d,
     allSessions,
-    failedSets,
-    pendingSets,
     chatMessages,
     tryOnCompleted,
     tryOnFailed,
@@ -187,9 +165,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       where: { shopifyDomain: { in: shops.map((s) => s.shopifyDomain) } },
       _count: { _all: true },
     }),
-    // Creative Studio removed — failed/pending creative sets no longer tracked.
-    Promise.resolve([] as Array<{ shopId: string; _count: { _all: number } }>),
-    Promise.resolve([] as Array<{ shopId: string; _count: { _all: number } }>),
     // Total chat messages per shop
     prisma.analyticsEvent.groupBy({
       by: ["shopId"],
@@ -226,8 +201,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
     const domain = shop.shopifyDomain;
     const s7 = sessions7d.find((s) => s.shopifyDomain === domain)?._count._all ?? 0;
     const totalSessions = allSessions.find((s) => s.shopifyDomain === domain)?._count._all ?? 0;
-    const failed = failedSets.find((f) => f.shopId === shop.id)?._count._all ?? 0;
-    const pending = pendingSets.find((f) => f.shopId === shop.id)?._count._all ?? 0;
     const chatMsgs = chatMessages.find((c) => c.shopId === shop.id)?._count._all ?? 0;
     const vtoOk = tryOnCompleted.find((t) => t.shopId === shop.id)?._count._all ?? 0;
     const vtoFail = tryOnFailed.find((t) => t.shopId === shop.id)?._count._all ?? 0;
@@ -242,8 +215,8 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
     // Approximate quota usage from plan caps
     const plan = shop.plan;
     const monthlyCap = plan
-      ? (plan.monthlyCreatives ?? 100) + (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
-      : 350;
+      ? (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
+      : 250;
     const quotaUsagePercent = Math.min(1, creditsBurned / monthlyCap);
 
     const hasBrandDNA = !!shop.brandProfile?.paletteJson;
@@ -251,8 +224,8 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       ? Math.round((Date.now() - shop.brandProfile.trainedAt.getTime()) / DAY)
       : null;
 
-    const status = computeHealthStatus(shop.installedAt, s7, failed, lastActiveAt);
-    const { issues, suggestions } = buildIssues(failed, hasBrandDNA, vtoRate, s7, lastActiveAt);
+    const status = computeHealthStatus(shop.installedAt, s7, lastActiveAt);
+    const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, s7, lastActiveAt);
 
     return {
       shopId: shop.id,
@@ -263,9 +236,6 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       lastActiveAt,
       totalShopperSessions: totalSessions,
       sessionsLast7Days: s7,
-      totalCreativeSets: 0,
-      pendingCreativeSets: pending,
-      failedCreativeSets: failed,
       totalTryOnSessions: shop._count.tryOnSessions,
       tryOnSuccessRate: vtoRate,
       totalChatMessages: chatMsgs,
@@ -293,7 +263,6 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
           planFeaturesJson: true,
           monthlyTryOnPersonal: true,
           monthlyTryOnBody: true,
-          monthlyCreatives: true,
         },
       },
       brandProfile: {
@@ -310,12 +279,9 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
   const [
     recentEvents,
     recentTryOns,
-    recentCreativeSets,
     topGaps,
     sessionsAllTime,
     sessions7d,
-    failedSetsCount,
-    pendingSetsCount,
     chatMsgCount,
     vtoOkCount,
     vtoFailCount,
@@ -333,8 +299,6 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
       take: 10,
       select: { id: true, status: true, providerKey: true, latencyMs: true, error: true, createdAt: true },
     }),
-    // Creative Studio removed — no recent creative sets.
-    Promise.resolve([] as Array<{ id: string; status: string; triggeredBy: string | null; error: string | null; createdAt: Date; updatedAt: Date }>),
     prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
       where: { shopId },
@@ -344,8 +308,6 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     }),
     prisma.shopperSession.count({ where: { shopifyDomain: shop.shopifyDomain } }),
     prisma.shopperSession.count({ where: { shopifyDomain: shop.shopifyDomain, lastSeenAt: { gte: since7d } } }),
-    Promise.resolve(0), // failed creative sets — Creative Studio removed
-    Promise.resolve(0), // pending creative sets — Creative Studio removed
     prisma.analyticsEvent.count({ where: { shopId, name: "CHAT_MESSAGE_SENT" } }),
     prisma.tryOnSession.count({ where: { shopId, status: "SUCCEEDED" } }),
     prisma.tryOnSession.count({ where: { shopId, status: "FAILED" } }),
@@ -373,12 +335,12 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
   const vtoRate = vtoTotal > 0 ? vtoOkCount / vtoTotal : 0;
   const lastActiveEvt = recentEvents[0]?.createdAt ?? null;
 
-  const status = computeHealthStatus(shop.installedAt, sessions7d, failedSetsCount, lastActiveEvt);
+  const status = computeHealthStatus(shop.installedAt, sessions7d, lastActiveEvt);
   const hasBrandDNA = !!shop.brandProfile?.paletteJson;
   const brandDNAAge = shop.brandProfile?.trainedAt
     ? Math.round((Date.now() - shop.brandProfile.trainedAt.getTime()) / DAY)
     : null;
-  const { issues, suggestions } = buildIssues(failedSetsCount, hasBrandDNA, vtoRate, sessions7d, lastActiveEvt);
+  const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, sessions7d, lastActiveEvt);
 
   const shopCounters = await prisma.usageCounter.findMany({
     where: {
@@ -390,8 +352,8 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
   const creditsBurned = shopCounters.reduce((sum, u) => sum + u.count, 0);
   const plan = shop.plan;
   const monthlyCap = plan
-    ? (plan.monthlyCreatives ?? 100) + (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
-    : 350;
+    ? (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
+    : 250;
 
   return {
     shopId: shop.id,
@@ -402,9 +364,6 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     lastActiveAt: lastActiveEvt,
     totalShopperSessions: sessionsAllTime,
     sessionsLast7Days: sessions7d,
-    totalCreativeSets: 0,
-    pendingCreativeSets: pendingSetsCount,
-    failedCreativeSets: failedSetsCount,
     totalTryOnSessions: shop._count.tryOnSessions,
     tryOnSuccessRate: vtoRate,
     totalChatMessages: chatMsgCount,
@@ -429,14 +388,6 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
       latencyMs: t.latencyMs,
       error: t.error,
       createdAt: t.createdAt,
-    })),
-    recentCreativeSets: recentCreativeSets.map((c) => ({
-      id: c.id,
-      status: c.status,
-      triggeredBy: c.triggeredBy,
-      error: c.error,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
     })),
     brandProfile: shop.brandProfile
       ? {

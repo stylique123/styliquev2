@@ -1,6 +1,6 @@
 // GET /api/admin/products — return up to 200 products for the authenticated shop.
 //
-// Called by the Creative Studio (apps/creative) to populate its product picker.
+// Admin product list endpoint (read-only product picker).
 // Only safe read-only fields are returned; pricing and inventory are excluded
 // because this endpoint does not pass Shopify storefront-level auth.
 

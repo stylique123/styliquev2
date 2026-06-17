@@ -22,9 +22,6 @@ export async function enqueueCatalogSync(job: CatalogSyncJob) {
   });
 }
 
-// ─── Creative Studio generation queue ──────────────────────────────────
-// (Creative-set queue removed — Stylique no longer generates creative content.)
-
 // ─── Brand-install queue (D38a-r1) ─────────────────────────────────────
 // Enqueued once from afterAuth on first OAuth (and reinstall). Worker
 // generates the 12-muse library + pre-warms top-50 product VTO renders.

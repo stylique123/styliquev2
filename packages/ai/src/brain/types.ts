@@ -300,14 +300,13 @@ export type BrainContext = {
     appliesTo?: string;           // category/collection hint
   }>;
 
-  // Brand DNA — visual/tone/style memory learned from catalog scans, reference
-  // assets, and creative review feedback. Soft guidance only: it must never
-  // override catalog facts or shopper preferences.
+  // Brand DNA — visual/tone/style memory learned from catalog scans and
+  // reference assets. Soft guidance only: it must never override catalog facts
+  // or shopper preferences.
   brandDNA?: {
     palette?: string[];
     tone?: string[];
     style?: string[];
-    creativeMemory?: string[];
     trainedAt?: Date | null;
   };
 

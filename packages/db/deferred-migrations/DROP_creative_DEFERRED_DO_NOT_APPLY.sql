@@ -48,6 +48,10 @@ ALTER TABLE "Plan" DROP COLUMN IF EXISTS "monthlyCreatives";
 ALTER TABLE "Plan" DROP COLUMN IF EXISTS "monthlyCreativeSets";
 ALTER TABLE "Plan" DROP COLUMN IF EXISTS "creativeSets";
 
+-- 2b. Drop the now-unwritten benchmark column (code no longer reads/writes it;
+--     the network "creative_volume" benchmark dimension was removed).
+ALTER TABLE "BrandTasteSnapshot" DROP COLUMN IF EXISTS "creativesCount";
+
 -- 3. Remove the Creative values from the UsageMetric and EventName enums.
 --    Postgres has no DROP VALUE for enums — the type must be recreated. This is
 --    illustrative; the real migration must rewrite every column of these enum

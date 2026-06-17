@@ -101,15 +101,15 @@ build/client/assets/app._index-DXesx8Ry.js                              5.56 kB 
 build/client/assets/internal.pilot-xvPkwuTF.js                          5.60 kB │ gzip:  1.99 kB
 build/client/assets/app.reports.monthly-0KOVWOYc.js                     5.88 kB │ gzip:  2.29 kB
 build/client/assets/app.settings.tryon-DZAd6-hZ.js                      6.89 kB │ gzip:  2.41 kB
-build/client/assets/internal.jobs-VSVDicMR.js                           9.15 kB │ gzip:  2.43 kB
-build/client/assets/internal._index-drOJkCio.js                         9.88 kB │ gzip:  3.12 kB
+build/client/assets/internal.jobs-C5OcQjgH.js                           7.08 kB │ gzip:  2.23 kB
+build/client/assets/internal._index-udBcIw3n.js                         9.82 kB │ gzip:  3.10 kB
 build/client/assets/internal._shopId-Ds-rLJwx.js                       11.17 kB │ gzip:  3.57 kB
 build/client/assets/app.settings.brand-CpiHIV5x.js                     17.98 kB │ gzip:  4.80 kB
 build/client/assets/app-CS_nVbF0.js                                    42.85 kB │ gzip: 14.33 kB
 build/client/assets/Page-Bmx78ELT.js                                   98.54 kB │ gzip: 29.44 kB
 build/client/assets/context-DyoqR0IN.js                               102.43 kB │ gzip: 10.26 kB
 build/client/assets/components-C9-Wdu8O.js                            257.13 kB │ gzip: 82.82 kB
-✓ built in 9.72s
+✓ built in 5.36s
 vite v5.4.21 building SSR bundle for production...
 transforming...
 ✓ 150 modules transformed.
@@ -130,7 +130,7 @@ build/server/.vite/manifest.json                       1.84 kB
 build/server/assets/styles-C7YjYK5e.css              445.00 kB
 build/server/index.js                                  0.83 kB
 build/server/assets/scriptTag.server-CtcNeRHC.js       3.06 kB
-build/server/assets/mira-adapter.server-CWDnpoL0.js   28.14 kB
+build/server/assets/mira-adapter.server-BTOljKxb.js   28.14 kB
 build/server/assets/index-BGLjUCHu.js                133.42 kB
-build/server/assets/server-build-B6aY9OI1.js         632.71 kB
-✓ built in 1.76s
+build/server/assets/server-build-B52l6Uei.js         625.43 kB
+✓ built in 1.17s

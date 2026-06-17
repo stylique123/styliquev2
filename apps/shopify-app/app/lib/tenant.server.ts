@@ -20,7 +20,7 @@
 //
 //   const shopId = await requireShopId(request);
 //   const db = scopedPrisma(shopId);
-//   const sets = await db.findMany("creativeSet", { select: { id: true } });
+//   const rows = await db.findMany("product", { select: { id: true } });
 //
 // Usage (shopper API — shop is already resolved from the App Proxy HMAC):
 //
@@ -74,7 +74,7 @@ export async function requireShopId(request: Request): Promise<string> {
  * bare `id` from a URL parameter).
  *
  * @example
- *   const record = await prisma.creativeSet.findUnique({ where: { id } });
+ *   const record = await prisma.product.findUnique({ where: { id } });
  *   if (!record) throw notFound();
  *   assertShopOwns(shopId, record.shopId); // throws 403 if leaked via URL
  */

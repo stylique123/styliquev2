@@ -1,5 +1,5 @@
 // Stylique Internal Ops — Brand Detail Page.
-// Shows full activity, jobs, VTO, Studio, and Brand DNA for one brand.
+// Shows full activity, jobs, VTO, and Brand DNA for one brand.
 
 import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
@@ -18,7 +18,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const detail = await getBrandDetail(shopId);
   if (!detail) throw new Response("Brand not found", { status: 404 });
   // Generate a CSRF token bound to STYLIQUE_INTERNAL_SECRET so destructive
-  // action forms (change_tier, requeue_set, save_plan_features) are CSRF-protected.
+  // action forms (change_tier, save_plan_features) are CSRF-protected.
   const secret = process.env.STYLIQUE_INTERNAL_SECRET ?? "unset";
   const csrf = generateCSRFToken(secret);
   return json({ detail, csrf });
@@ -215,55 +215,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </div>
       <div style={{ padding: "16px 20px" }}>{children}</div>
     </div>
-  );
-}
-
-// ─── Creative set row with requeue button ─────────────────────────────────
-
-function CreativeSetRow({ set, csrf }: { set: { id: string; status: string; triggeredBy: string | null; error: string | null; createdAt: Date; updatedAt: Date }; csrf: string }) {
-  const fetcher = useFetcher<{ ok: boolean; message?: string }>();
-  return (
-    <tr>
-      <td style={{ padding: "7px 0", fontSize: 12, fontFamily: "monospace", color: "#555" }}>
-        {set.id.slice(0, 12)}…
-      </td>
-      <td style={{ padding: "7px 8px" }}>{statusPill(set.status)}</td>
-      <td style={{ padding: "7px 8px", fontSize: 12, color: "#666" }}>
-        {set.triggeredBy ?? "—"}
-      </td>
-      <td style={{ padding: "7px 8px", fontSize: 12, color: "#dc2626", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {set.error ?? "—"}
-      </td>
-      <td style={{ padding: "7px 8px", fontSize: 12, color: "#888" }}>
-        {timeAgo(set.createdAt)}
-      </td>
-      <td style={{ padding: "7px 0" }}>
-        {set.status === "FAILED" && (
-          <fetcher.Form method="post">
-            <input type="hidden" name="intent" value="requeue_set" />
-            <input type="hidden" name="setId" value={set.id} />
-            <input type="hidden" name="csrf" value={csrf} />
-            <button
-              type="submit"
-              style={{
-                padding: "4px 10px",
-                fontSize: 12,
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                cursor: "pointer",
-                background: "#fff",
-                color: "#333",
-              }}
-            >
-              {fetcher.state === "submitting" ? "…" : "Requeue"}
-            </button>
-          </fetcher.Form>
-        )}
-        {fetcher.data?.message && (
-          <span style={{ fontSize: 11, color: "#166534", marginLeft: 6 }}>✓</span>
-        )}
-      </td>
-    </tr>
   );
 }
 
@@ -518,8 +469,6 @@ export default function BrandDetailPage() {
             <Section title="Stylist sessions — last 7 days">
               <ActivityChart data={d.activityByDay} />
             </Section>
-
-            {/* Creative Studio section removed — module deleted per repositioning */}
 
             {/* VTO sessions */}
             <Section title="VTO renders — last 10">

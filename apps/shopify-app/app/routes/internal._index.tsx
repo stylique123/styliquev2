@@ -20,9 +20,6 @@ type SerializedBrandSummary = {
   lastActiveAt: string | null;
   totalShopperSessions: number;
   sessionsLast7Days: number;
-  totalCreativeSets: number;
-  pendingCreativeSets: number;
-  failedCreativeSets: number;
   totalTryOnSessions: number;
   tryOnSuccessRate: number;
   totalChatMessages: number;
@@ -44,10 +41,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   // Global stats
   const totalBrands = brands.length;
   const activeBrands = brands.filter((b) => b.sessionsLast7Days > 0).length;
-  const totalCreativeSets = brands.reduce((s, b) => s + b.totalCreativeSets, 0);
   const totalVTO = brands.reduce((s, b) => s + b.totalTryOnSessions, 0);
 
-  return json({ brands, stats: { totalBrands, activeBrands, totalCreativeSets, totalVTO } });
+  return json({ brands, stats: { totalBrands, activeBrands, totalVTO } });
 }
 
 // ─── Action (quick overrides) ─────────────────────────────────────────────
@@ -271,8 +267,6 @@ function QuickActionModal({
               ))}
             </div>
           </div>
-
-          {/* Creative Studio re-queue removed — module deleted per repositioning */}
 
           {/* Pause / resume generation */}
           <fetcher.Form method="post">
@@ -542,11 +536,10 @@ export default function InternalIndex() {
             </div>
 
             {/* Stats bar */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 28 }}>
               {[
                 { label: "Total brands", value: stats.totalBrands },
                 { label: "Active (7d)", value: stats.activeBrands },
-                { label: "Creative sets (all time)", value: stats.totalCreativeSets },
                 { label: "VTO renders (all time)", value: stats.totalVTO },
               ].map((s) => (
                 <div

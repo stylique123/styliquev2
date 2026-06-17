@@ -8,7 +8,6 @@
 //   • headline  — top-line KPIs across all 3 offerings
 //   • stylist   — chat funnel + top combos
 //   • widget    — try-on / fit / style funnel + mood + model splits
-//   • studio    — sets generated, top-performing creatives, gaps
 //   • catalog   — top requested queries + catalog gaps (when tier allows)
 //   • taste     — aggregated brand-side taste profile (Growth+)
 //   • recs      — tier-filtered BrandRecommendation rows
@@ -239,12 +238,6 @@ export async function buildOverview(args: {
       upsellTriggered: boolean;
     };
   };
-  studio: {
-    setsGenerated: number;
-    creativesGenerated: number;
-    pendingFromRecommendations: number;
-    sourcedFromCombos: number;
-  } | null;
   catalog: {
     topQueries: Array<{ query: string; count: number }>;
     // Reorder intelligence (brand-leader panel — merch-buyer #1 ask). Gaps now
@@ -527,9 +520,6 @@ export async function buildOverview(args: {
   // rather than defaulting everything unknown to "gemini-image" (D38a-r1).
   const tryonProvider: string = rawTryon?.providerKey ?? "gemini-image";
 
-  // Creative Studio removed — no studio section on the dashboard.
-  const studio: Awaited<ReturnType<typeof buildOverview>>["studio"] = null;
-
   // ─── catalog (top queries + gaps), Growth+ only ─────────────────────
   let catalog: Awaited<ReturnType<typeof buildOverview>>["catalog"] = null;
   if (plan.tier !== "STARTER") {
@@ -746,7 +736,6 @@ export async function buildOverview(args: {
       },
       placement: await buildPlacementSummary(args.shopId, since),
     },
-    studio,
     catalog,
     taste,
     recs: recs.map((r) => ({

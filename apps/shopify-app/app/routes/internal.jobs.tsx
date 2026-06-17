@@ -1,5 +1,5 @@
 // Stylique Internal Ops — Jobs Overview.
-// Shows job health using DB-backed proxies (AnalyticsEvent + CreativeSet + TryOnSession).
+// Shows job health using DB-backed proxies (AnalyticsEvent + TryOnSession).
 // BullMQ runs in the worker process, not here — we approximate via DB state.
 
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
@@ -17,29 +17,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const since7d = new Date(Date.now() - 7 * 86_400_000);
 
   const [
-    // Creative set status counts
-    csStats,
     // VTO status counts
     vtoStats,
-    // Failed creative sets with shop domain
-    recentFailedCS,
     // Failed VTO with shop
     recentFailedVTO,
     // Event throughput in last 24h
     eventVolume,
-    // Queue proxies — pending creative sets
-    pendingCS,
     // Embedding coverage
     totalProducts,
     embeddedProducts,
   ] = await Promise.all([
-    // Creative Studio removed — creative-set queue no longer exists.
-    Promise.resolve([] as Array<{ status: string; _count: { _all: number } }>),
     prisma.tryOnSession.groupBy({
       by: ["status"],
       _count: { _all: true },
     }),
-    Promise.resolve([] as Array<{ id: string; shopId: string; error: string | null; triggeredBy: string | null; updatedAt: Date; shop: { shopifyDomain: string } }>),
     prisma.tryOnSession.findMany({
       where: { status: "FAILED", createdAt: { gte: since24h } },
       select: {
@@ -61,12 +52,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
       orderBy: { _count: { name: "desc" } },
       take: 15,
     }),
-    Promise.resolve(0), // pending creative sets — Creative Studio removed
     prisma.product.count(),
     prisma.productEmbedding.count(),
   ]);
 
-  const csByStatus = Object.fromEntries(csStats.map((s) => [s.status, s._count._all]));
   const vtoByStatus = Object.fromEntries(vtoStats.map((s) => [s.status, s._count._all]));
 
   // Weekly event total for throughput gauge
@@ -74,13 +63,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   return json({
     queues: {
-      creativeSet: {
-        pending: csByStatus.PENDING ?? 0,
-        running: csByStatus.GENERATING ?? 0,
-        succeeded: csByStatus.READY ?? 0,
-        failed: csByStatus.FAILED ?? 0,
-        partial: csByStatus.PARTIAL ?? 0,
-      },
       vtoRender: {
         pending: vtoByStatus.PENDING ?? 0,
         running: 0,
@@ -93,14 +75,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
         coverage: totalProducts > 0 ? Math.round((embeddedProducts / totalProducts) * 100) : 0,
       },
     },
-    pendingCSGlobal: pendingCS,
-    recentFailedCS: recentFailedCS.map((c) => ({
-      id: c.id,
-      shopDomain: c.shop.shopifyDomain,
-      error: c.error,
-      triggeredBy: c.triggeredBy,
-      updatedAt: c.updatedAt,
-    })),
     recentFailedVTO: recentFailedVTO.map((v) => ({
       id: v.id,
       shopDomain: v.shop.shopifyDomain,
@@ -285,23 +259,6 @@ export default function InternalJobsPage() {
               </span>
             )}
             <fetcher.Form method="post">
-              <input type="hidden" name="intent" value="requeue_all_failed" />
-              <button
-                type="submit"
-                style={{
-                  padding: "7px 14px",
-                  fontSize: 13,
-                  border: "1px solid #ddd",
-                  borderRadius: 5,
-                  cursor: "pointer",
-                  background: "#fff",
-                  fontWeight: 500,
-                }}
-              >
-                🔄 Re-queue all failed creative sets
-              </button>
-            </fetcher.Form>
-            <fetcher.Form method="post">
               <input type="hidden" name="intent" value="pause_all" />
               <button
                 type="submit"
@@ -341,20 +298,6 @@ export default function InternalJobsPage() {
 
           {/* Queue status cards */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-            <QueueCard
-              title="creative-set queue"
-              pending={d.queues.creativeSet.pending}
-              running={d.queues.creativeSet.running}
-              succeeded={d.queues.creativeSet.succeeded}
-              failed={d.queues.creativeSet.failed}
-              extra={
-                d.queues.creativeSet.partial > 0 ? (
-                  <div style={{ fontSize: 12, color: "#9a3412", marginTop: 8 }}>
-                    {d.queues.creativeSet.partial} partial sets
-                  </div>
-                ) : null
-              }
-            />
             <QueueCard
               title="tryon-render queue"
               pending={d.queues.vtoRender.pending}
@@ -434,78 +377,6 @@ export default function InternalJobsPage() {
               </tbody>
             </table>
           </div>
-
-          {/* Failed creative sets */}
-          {d.recentFailedCS.length > 0 && (
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #fecaca",
-                borderRadius: 7,
-                overflow: "hidden",
-                marginBottom: 20,
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 20px",
-                  borderBottom: "1px solid #fecaca",
-                  fontWeight: 700,
-                  fontSize: 13,
-                  background: "#fef2f2",
-                  color: "#dc2626",
-                }}
-              >
-                Failed creative sets — last 24h ({d.recentFailedCS.length})
-              </div>
-              <div style={{ padding: "16px 20px" }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Brand</th>
-                      <th>Error</th>
-                      <th>Triggered by</th>
-                      <th>When</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {d.recentFailedCS.map((c) => (
-                      <tr key={c.id}>
-                        <td style={{ padding: "6px 0", fontFamily: "monospace", fontSize: 12, color: "#555" }}>
-                          {c.id.slice(0, 12)}…
-                        </td>
-                        <td style={{ padding: "6px 8px", fontSize: 12 }}>
-                          <a href={`/internal/${c.shopDomain}`} style={{ color: "#3b82f6" }}>
-                            {c.shopDomain.replace(".myshopify.com", "")}
-                          </a>
-                        </td>
-                        <td
-                          style={{
-                            padding: "6px 8px",
-                            fontSize: 12,
-                            color: "#dc2626",
-                            maxWidth: 220,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {c.error ?? "—"}
-                        </td>
-                        <td style={{ padding: "6px 8px", fontSize: 12, color: "#666" }}>
-                          {c.triggeredBy ?? "—"}
-                        </td>
-                        <td style={{ padding: "6px 8px", fontSize: 12, color: "#888" }}>
-                          {timeAgo(c.updatedAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
 
           {/* Failed VTO */}
           {d.recentFailedVTO.length > 0 && (

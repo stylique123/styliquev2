@@ -98,7 +98,6 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
   const signupsClaimed  = n("SIGNUP_CLAIMED");
   const tryOnSessions   = n("WIDGET_OPENED");
   const fitSubmitted    = n("WIDGET_FIT_SUBMITTED");
-  const creativesCount  = 0; // Creative Studio removed — dead benchmark dimension reads 0.
 
   const comboCtr      = combosProposed > 0 ? cartConfirmed / combosProposed : 0;
   const signupRate    = chatSessions   > 0 ? signupsClaimed / chatSessions   : 0;
@@ -115,7 +114,7 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
       moodJson:        normalize(moodAgg)         as object,
       modelJson:       normalize(modelAgg)        as object,
       chatSessions, combosProposed, cartConfirmed, signupsClaimed,
-      tryOnSessions, fitSubmitted, creativesCount,
+      tryOnSessions, fitSubmitted,
       comboCtr: +comboCtr.toFixed(4),
       signupRate: +signupRate.toFixed(4),
       fitToCartRate: +fitToCartRate.toFixed(4),
@@ -129,7 +128,7 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
       moodJson:        normalize(moodAgg)         as object,
       modelJson:       normalize(modelAgg)        as object,
       chatSessions, combosProposed, cartConfirmed, signupsClaimed,
-      tryOnSessions, fitSubmitted, creativesCount,
+      tryOnSessions, fitSubmitted,
       comboCtr: +comboCtr.toFixed(4),
       signupRate: +signupRate.toFixed(4),
       fitToCartRate: +fitToCartRate.toFixed(4),
@@ -158,7 +157,7 @@ export async function recomputeNetworkBenchmarks(): Promise<{ dimensions: number
     where: { snapshotDate: today },
     select: {
       comboCtr: true, signupRate: true, fitToCartRate: true,
-      chatSessions: true, tryOnSessions: true, creativesCount: true,
+      chatSessions: true, tryOnSessions: true,
     },
   });
   if (snaps.length < NETWORK_MIN_BRANDS) return { dimensions: 0 };
@@ -169,7 +168,6 @@ export async function recomputeNetworkBenchmarks(): Promise<{ dimensions: number
     fit_to_cart_rate: snaps.map((s) => s.fitToCartRate),
     chat_volume:      snaps.map((s) => s.chatSessions),
     tryon_volume:     snaps.map((s) => s.tryOnSessions),
-    creative_volume:  snaps.map((s) => s.creativesCount),
   };
 
   let written = 0;
@@ -235,7 +233,6 @@ export async function readBenchmarksForShop(shopId: string): Promise<BenchmarkRe
       case "fit_to_cart_rate":  return snap.fitToCartRate;
       case "chat_volume":       return snap.chatSessions;
       case "tryon_volume":      return snap.tryOnSessions;
-      case "creative_volume":   return snap.creativesCount;
       default:                  return 0;
     }
   };

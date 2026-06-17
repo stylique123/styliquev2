@@ -1,7 +1,7 @@
 // GET  /api/admin/brand-profile — return BrandProfile for the authenticated shop.
 // PATCH /api/admin/brand-profile — upsert BrandProfile fields.
 //
-// The Creative Studio calls these from apps/creative (VITE_SHOPIFY_APP_URL).
+// The admin Brand DNA settings page reads/writes these.
 // Fields like name, handle, description, logoUrl, colorPalette are stored in
 // toneJson as a freeform object so we don't need a schema migration.
 

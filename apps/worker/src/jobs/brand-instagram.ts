@@ -14,7 +14,7 @@
 // If `data.campaignOverride` is set, the result is stored as a campaign
 // override entry inside BrandProfile.toneJson.campaignOverrides[] rather
 // than the base DNA — so brands can have one "summer campaign" aesthetic
-// that overrides the base DNA for Creative Studio jobs tagged with that name.
+// that overrides the base DNA for jobs tagged with that campaign name.
 
 import { prisma } from "@stylique/db";
 import { extractDNAFromInstagramPosts, mergeBrandDNA } from "@stylique/core";
