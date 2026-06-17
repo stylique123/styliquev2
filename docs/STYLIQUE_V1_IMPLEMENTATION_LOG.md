@@ -344,3 +344,61 @@ UI/API/code references remain:
 - None for Creative removal. Open (out of scope): the pre-existing TRYON_BODY test
   expectation (product decision: fix test vs. the 3000 cap); founder sign-off on the
   deferred DB migration before it can be applied.
+
+---
+
+## Step 2H Phase 0 — Final Gate Close — 2026-06-17
+
+### Branch push
+- `git push -u origin chore/phase0-remove-creative` → **pushed** (new remote branch,
+  no force, no merge). Local tracks `origin/chore/phase0-remove-creative`; HEAD == remote
+  (`0 0`). Still **2 commits ahead of origin/main** (`704d6c4`, `7f491b5`); not merged.
+- Working tree clean. Latest commit `7f491b5`.
+
+### Final Creative reference check
+- Final grep over `apps`/`packages` (excl. node_modules/dist/build/.next/deferred-migrations):
+  **PASS — zero active Creative Studio references.** All hits are allowed:
+  historical/removal notes; normal-English false positives ("creative director" brand
+  copy, "hero/landing creative" merchant copy, `productNeedingCreativeRefresh`
+  merchant-imagery insight); deferred Prisma enum/DB-compat (`schema.prisma` Plan cols +
+  `BrandTasteSnapshot.creativesCount` + `CREATIVE_*` enum values + `packages/types` Zod
+  mirrors); actively-used `RecommendationKind WEAK_PDP_CREATIVE`. No edits required.
+
+### Railway deployment state (read-only; current LIVE = pre-Creative-branch)
+- Project `stylique-fashion` (`0abd1c6d-…`), env production. All services ● Online.
+- Current SUCCESS deployments (git SHA unavailable through CLI — `deployment list`
+  exposes deployment ID/status/timestamp only):
+  - **stylique-app**   — `c0fd5363-b50b-47da-a0c9-fa6c33c2a338` · SUCCESS · 2026-06-14 12:11:08 +05
+  - **stylique-worker**— `5f8e3e0a-e53a-4702-88de-5dbee6e666c6` · SUCCESS · 2026-06-14 12:11:15 +05
+  - **stylique-web**   — `20ee8899-9aa9-47c7-bbab-5f1acd114d59` · SUCCESS · 2026-06-14 11:54:37 +05
+- These predate the Creative branch → live prod does NOT yet include Creative removal
+  (expected: branch is pushed but not merged/deployed). To map a deployment to a git
+  SHA, read the Railway dashboard → Deployments → commit (CLI does not expose it).
+
+### Test/build status (confirmed unchanged from the verification pass)
+- typecheck **11/11** · build **5/5** · tests **233 passed / 1 pre-existing unrelated
+  fail** (`TRYON_BODY` unlimited-quota test; reproduces on parent `345a034`).
+
+### DB migration status
+- **Plan-only, NOT applied.** Draft `packages/db/deferred-migrations/DROP_creative_DEFERRED_DO_NOT_APPLY.sql`
+  (outside `prisma/migrations/`, `BEGIN…ROLLBACK`). `prisma/migrations/` holds only
+  `00000000000000_baseline` + `migration_lock.toml`.
+
+### Final Phase 0 gate decision
+- **PASSED.** Credential rotation ✅ · Creative active-code + internal-stub removal ✅ ·
+  final grep clean ✅ · typecheck 11/11 ✅ · build 5/5 ✅ · tests 233✅/1 pre-existing ·
+  DB migration plan-only/not-applied ✅ · branch pushed (not merged) ✅ · stash untouched ✅ ·
+  Phase 1 not started ✅.
+
+### Remaining non-blockers
+- Pre-existing `TRYON_BODY` test expectation (product decision: fix test vs. the 3000
+  STARTER body cap) — explicitly out of this branch's scope.
+- Deferred DB migration awaits founder approval + schema edit + `prisma migrate diff`
+  regeneration before any apply.
+- Live Railway deploys still on the pre-Creative branch — they update only on a future
+  merge + deploy, which is intentionally not done here.
+- Exact deployed git SHA per service still only readable from the Railway dashboard.
+
+### Next action
+- Phase 0 is closed. Ready to begin Step 2H Phase 1 (Safety & Shopify Pilot Foundation)
+  on a new branch off this one (or off main after a reviewed merge — founder's call).
