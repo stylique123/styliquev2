@@ -2517,7 +2517,17 @@ export default function MiraWidget() {
           {/* Editorial feed */}
           {/* aria-live='polite' + role='log' ensures screen readers announce new Mira messages (WCAG SC 4.1.3) */}
           <div role="log" aria-live="polite" aria-label="Mira conversation" data-stylique-widget="1" style={{ flex: 1, overflowY: "auto", padding: "18px 14px", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none" }}>
-            {messages.map((msg, i) => {
+            {(() => {
+              // Only the LATEST chip-bearing message shows its quick-replies.
+              // Past assistant bubbles keep their text but drop the clickable
+              // chips — otherwise every prior turn's chips stack + repeat (e.g.
+              // "What's it made of?" reappearing), which read as a chatbot loop.
+              let lastChipIdx = -1;
+              for (let k = messages.length - 1; k >= 0; k--) {
+                const mm = messages[k] as { quickReplies?: string[] };
+                if (mm.quickReplies && mm.quickReplies.length) { lastChipIdx = k; break; }
+              }
+              return messages.map((msg, i) => {
               if (msg.from === "user") {
                 return (
                   <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "rgba(139,92,246,0.16)", border: "1px solid rgba(139,92,246,0.24)", borderRadius: 12, padding: "9px 14px", fontFamily: "var(--sans)", fontSize: 14.5, lineHeight: 1.5, color: "#F4F2EE" }}>{msg.text}</div>
@@ -2528,7 +2538,7 @@ export default function MiraWidget() {
               if (msg.kind === "insight") return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <InsightCard label={msg.label} text={msg.text} />
-                  {msg.quickReplies && <QuickReplies replies={msg.quickReplies} onPick={sendMessage} />}
+                  {i === lastChipIdx && msg.quickReplies && <QuickReplies replies={msg.quickReplies} onPick={sendMessage} />}
                 </div>
               );
               if (msg.kind === "cart") return <CartLine key={i} productName={msg.productName} />;
@@ -2537,10 +2547,11 @@ export default function MiraWidget() {
               return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-start" }}>
                   <div style={{ alignSelf: "flex-start", maxWidth: "90%", background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "4px 14px 14px 14px", padding: "11px 15px", fontFamily: "var(--sans)", fontSize: 15.5, lineHeight: 1.5, color: "#F4F2EE" }}>{renderText(msg.text)}</div>
-                  {msg.quickReplies && <QuickReplies replies={msg.quickReplies} onPick={sendMessage} />}
+                  {i === lastChipIdx && msg.quickReplies && <QuickReplies replies={msg.quickReplies} onPick={sendMessage} />}
                 </div>
               );
-            })}
+              });
+            })()}
 
             {showSizeForm && (
               <SizeForm
@@ -2747,9 +2758,12 @@ export default function MiraWidget() {
 
 // ── Small components / helpers ─────────────────────────────────────────────────
 function QuickReplies({ replies, onPick }: { replies: string[]; onPick: (r: string) => void }) {
+  // Defensive: never show duplicate chips, and never more than 3 (the brain
+  // already caps at 3, this guards any path that doesn't).
+  const shown = [...new Set(replies.map((r) => r.trim()).filter(Boolean))].slice(0, 3);
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-      {replies.map((r) => (
+      {shown.map((r) => (
         <button key={r} onClick={() => onPick(r)} style={quickReplyStyle()}
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(139,92,246,0.15)"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
