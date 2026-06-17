@@ -1879,6 +1879,9 @@ export default function MiraWidget() {
   const [tryOnProduct, setTryOn]  = useState<Product | null>(null);
   const [nudge, setNudge]         = useState(false);
   const [nudgeProduct, setNudgeProduct] = useState<Product | null>(null);
+  // Intent-specific nudge copy — set by the intent triggers so Mira reads as a
+  // floor associate noticing a real signal, not a chatbot greeting on entry.
+  const [nudgeText, setNudgeText] = useState<string | null>(null);
   const [showSizeForm, setShowSizeForm] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartValue, setCartValue] = useState(0);
@@ -2115,39 +2118,100 @@ export default function MiraWidget() {
     return () => document.removeEventListener("toggle", onToggle, true);
   }, [open, currentProduct]);
 
-  // Passive proactivity: a quiet nudge after real PDP dwell. Never auto-opens the
-  // panel, never fires on home/collection pages.
+  // INTENT-DRIVEN PROACTIVITY (founder: "it's not a chatbot — it should appear at
+  // INTENT, not as soon as we enter the store"). Mira NEVER pops on store entry or
+  // a blunt timer. She approaches ONLY on a genuine buying-intent signal, like a
+  // floor associate reading the room. Four signals, the nudge fires once per
+  // session (never auto-opens the panel), each with its own honest line:
+  //   1. Multi-article browsing  — ≥3 distinct PDPs viewed, no checkout
+  //   2. Variant interaction      — color/size toggled twice (comparing fit/colour)
+  //   3. Exit / zoom-out intent   — cursor leaves toward the top of the window
+  //   4. Stranded                 — long PDP dwell with no scroll, no add-to-cart
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (sessionStorage.getItem("mira_opened")) return;
-    if (sessionStorage.getItem("mira_nudged")) return;
-    const onPdp = /\/products?\//.test(window.location.pathname);
     let fired = false;
-    const fire = () => {
+    const fire = (text: string, product: Product | null) => {
       if (fired) return;
-      if (sessionStorage.getItem("mira_opened")) return;
+      if (sessionStorage.getItem("mira_opened") || sessionStorage.getItem("mira_nudged")) return;
       fired = true;
-      sessionStorage.setItem("mira_nudged", "1");
-      // On a PDP, pitch the REAL piece they're viewing (read fresh — hydration
-      // may have landed after mount). Off-PDP (home/collection) leave it null →
-      // the nudge shows a generic greeting, NEVER a random or demo product. This
-      // is what stops "Onyx Silk Slip" (a demo piece) popping up on a live home page.
-      setNudgeProduct(currentProduct());
+      try { sessionStorage.setItem("mira_nudged", "1"); } catch { /* ignore */ }
+      setNudgeProduct(product);
+      setNudgeText(text);
       setNudge(true);
-      setTimeout(() => setNudge(false), 11000);
+      window.setTimeout(() => setNudge(false), 12000);
     };
-    // Engagement-weighted timing (panel rank 9): fire on real READING intent, 
-    // the shopper has scrolled past ~40% of the page, instead of a blunt absolute
-    // timer that interrupts fast browsers. A longer dwell is the fallback so a
-    // shopper who lingers without scrolling still gets the approach.
-    const onScroll = () => {
-      const doc = document.documentElement;
-      const depth = (window.scrollY + window.innerHeight) / (doc.scrollHeight || 1);
-      if (depth > 0.4) fire();
+
+    const onPdp = /\/products?\//.test(window.location.pathname);
+
+    // ── Signal 1: multi-article browsing without checkout ──────────────────
+    // Record each distinct PDP this session; on the 3rd, approach with help to
+    // narrow it down (strong discovery intent — they're hunting, not buying).
+    if (onPdp) {
+      const cur = currentProduct();
+      if (cur) {
+        let viewed: string[] = [];
+        try { viewed = JSON.parse(sessionStorage.getItem("mira_viewed") ?? "[]"); } catch { /* ignore */ }
+        if (!viewed.includes(cur.handle)) {
+          viewed.push(cur.handle);
+          try { sessionStorage.setItem("mira_viewed", JSON.stringify(viewed.slice(-12))); } catch { /* ignore */ }
+        }
+        if (viewed.length >= 3) {
+          fire(`You've looked across a few pieces — want me to narrow it to the one that's right for you?`, cur);
+        }
+      }
+    }
+
+    // ── Signal 2: color / size interaction (comparing variants) ────────────
+    // A shopper toggling colours or sizes is deep in the fit/look decision. After
+    // the SECOND variant click, offer to size or show it on them.
+    let variantClicks = 0;
+    const looksLikeVariant = (el: HTMLElement): boolean => {
+      const t = (el.closest("button,[role=button]") as HTMLElement | null);
+      if (!t) return false;
+      const label = (t.getAttribute("aria-label") || t.textContent || "").trim();
+      if (!label || label.length > 16) return false;
+      if (/^(XXS|XS|S|M|L|XL|XXL|XXXL|\d{1,2})$/i.test(label)) return true;          // size token
+      const inSizeOrColor = !!t.closest("[class*=size i],[class*=color i],[class*=colour i],[class*=swatch i],[class*=variant i]");
+      const colorish = /charcoal|camel|ink|black|white|ivory|onyx|navy|beige|olive|cream|grey|gray|blue|green|red|pink|tan|brown|gold|silver/i.test(label);
+      return inSizeOrColor || colorish;
     };
+    const onVariantClick = (e: MouseEvent) => {
+      if (!onPdp) return;
+      if (looksLikeVariant(e.target as HTMLElement)) {
+        variantClicks += 1;
+        if (variantClicks >= 2) fire(`Comparing the colours and sizes? Tell me your usual and I'll pin the right one.`, currentProduct());
+      }
+    };
+    document.addEventListener("click", onVariantClick, true);
+
+    // ── Signal 3: exit / zoom-out intent ───────────────────────────────────
+    // Cursor leaving toward the top (address bar / close / new tab) = about to
+    // bounce. One honest save-the-sale beat, never a guilt trip.
+    const onExit = (e: MouseEvent) => {
+      if (e.clientY <= 0) {
+        const cur = onPdp ? currentProduct() : null;
+        fire(cur ? `Before you go — want me to save your size on the ${cur.name}, or build the look first?`
+                 : `Before you go — tell me the occasion and I'll find the one piece worth it.`, cur);
+      }
+    };
+    document.addEventListener("mouseout", onExit);
+
+    // ── Signal 4: stranded (long PDP dwell, no scroll, no add-to-cart) ──────
+    // Only on a PDP, only if they HAVEN'T scrolled (genuinely stuck, not reading)
+    // and haven't added to bag — a real "need a hand?" moment, not an entry greet.
+    let scrolled = false;
+    const onScroll = () => { scrolled = true; };
     window.addEventListener("scroll", onScroll, { passive: true });
-    const fallback = setTimeout(fire, onPdp ? 13000 : 18000);
-    return () => { window.removeEventListener("scroll", onScroll); clearTimeout(fallback); };
+    const strandTimer = onPdp ? window.setTimeout(() => {
+      if (!scrolled) fire(`Still deciding? I can give you my honest read or size it in a few seconds.`, currentProduct());
+    }, 22000) : undefined;
+
+    return () => {
+      document.removeEventListener("click", onVariantClick, true);
+      document.removeEventListener("mouseout", onExit);
+      window.removeEventListener("scroll", onScroll);
+      if (strandTimer) window.clearTimeout(strandTimer);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // RE-APPROACH ON NAVIGATION (founder: "when I go to another product it still
@@ -2694,9 +2758,11 @@ export default function MiraWidget() {
         {nudge && !open && (
           <button onClick={() => { setNudge(false); openMira("pdp-dwell", nudgeProduct ?? undefined); }} style={{ background: "#12101A", border: "1px solid rgba(139,92,246,0.4)", borderRadius: 14, padding: "11px 16px", fontFamily: "var(--sans)", fontSize: 13, color: "#F4F2EE", maxWidth: 240, lineHeight: 1.5, textAlign: "left", cursor: "pointer", animation: "miraFadeUp 400ms var(--ease-spring) both", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
             <em style={{ fontFamily: "var(--serif)", fontSize: 15 }}>Hi,</em>{" "}
-            {nudgeProduct
-              ? `that ${nudgeProduct.name} has caught a lot of eyes${nudgeProduct.lowStock ? ", and we're low on it" : ""}. Want my honest read, or shall I size it for you?`
-              : "looking for something? Tell me the occasion and I'll find the one piece."}
+            {nudgeText
+              ? nudgeText
+              : nudgeProduct
+                ? `that ${nudgeProduct.name} has caught a lot of eyes${nudgeProduct.lowStock ? ", and we're low on it" : ""}. Want my honest read, or shall I size it for you?`
+                : "looking for something? Tell me the occasion and I'll find the one piece."}
           </button>
         )}
         {open ? (

@@ -1340,3 +1340,45 @@ typecheck 11/11 · build 5/5 · test 247/248 (only the pre-existing TRYON_BODY) 
 ### Merge recommendation
 MERGE — no P0 blockers; the one proven P1 (dress-pairing) is fixed + verified. P2 items are
 polish, not pilot-blocking.
+
+---
+
+## Step 2H — Intent-driven proactivity (Mira is not a chatbot) — 2026-06-17
+
+### Why
+Founder: "as soon as we enter the store Mira pops up — but it's not a chatbot. It should
+appear at INTENT: when the user is stranded a long time, shifts to multiple articles without
+checking out, looks at different colours/sizes, or zooms out." The old proactive nudge fired on
+a blunt timer / 40%-scroll on ANY page (incl. the homepage on entry) — that reads as a chatbot.
+
+### What changed (apps/web/.../MiraWidget.tsx)
+Replaced the timer/scroll nudge effect with an INTENT-driven trigger system. Mira never pops on
+store entry or a plain timer; she approaches once per session (never auto-opens) on a real
+buying-intent signal, each with its own honest line + intent-specific `nudgeText`:
+1. **Multi-article browsing** — ≥3 distinct PDPs viewed this session (`mira_viewed` sessionStorage
+   set), no checkout → "You've looked across a few pieces — want me to narrow it to the one…?"
+2. **Variant interaction** — color/size toggled twice (capture-phase click detector: size tokens
+   XS–XXXL/numeric, or buttons inside size/colour/swatch/variant containers, or colour-word labels)
+   → "Comparing the colours and sizes? Tell me your usual and I'll pin the right one."
+3. **Exit / zoom-out intent** — `mouseout` with `clientY<=0` (cursor leaves toward the address
+   bar/close) → "Before you go — want me to save your size on the {piece}, or build the look first?"
+4. **Stranded** — long PDP dwell (22s) with NO scroll and no add-to-cart → "Still deciding? I can
+   give you my honest read or size it in a few seconds."
+The homepage/collection timer pop was removed entirely.
+
+### Verified live (port 3002, fresh server)
+- **No pop on store entry** — homepage, scrolled 60%, waited: NO nudge. PASS.
+- **Variant interaction** — clicked XS then L on a PDP → "Comparing the colours and sizes…". PASS.
+- **Exit intent** — `mouseout clientY:0` on a PDP → "Before you go — want me to save your size on
+  the Atelier Wide-Leg Trouser…". PASS.
+- **Stranded** — 22s on a PDP without scrolling → "Still deciding?…". PASS (fired during testing).
+- **Multi-article** — 3rd distinct PDP → fire() executed (`mira_nudged=1`, `mira_viewed` length 3);
+  bubble auto-hid before capture due to tool latency, text is the deterministic source line. PASS
+  (functional).
+
+### Verification
+typecheck 11/11 · anti-chatbot-eval 15/15 · runtime-ux-regression 11/11.
+
+### Note
+Each signal fires at most once per session (`mira_nudged` guard) and only when the panel isn't
+already open — no spam, no double-greet on a restored conversation.
