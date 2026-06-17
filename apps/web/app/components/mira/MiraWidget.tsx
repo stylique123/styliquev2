@@ -196,10 +196,10 @@ type ChatMsg =
   | { from: "mira"; kind: "look"; look: LookBoard }
   | { from: "mira"; kind: "insight"; label: string; text: string; quickReplies?: string[] }
   | { from: "mira"; kind: "cart"; productName: string }
-  // Visual context divider when the shopper moves to a new product — keeps the
-  // thread oriented without a wall of text (founder: "differentiate new product
-  // in chat with cards / highlight different context").
-  | { from: "mira"; kind: "context"; product: Product; prevName?: string };
+  // Quiet chapter-break divider when the shopper moves to a new product — orients
+  // the thread without a wall of text (founder + panel: "differentiate new product,
+  // make it prominent but premium").
+  | { from: "mira"; kind: "context"; product: Product };
 
 type KnowledgeEntry = { id: string; text: string; createdAt: string };
 
@@ -424,6 +424,39 @@ function contextualOpener(p: Product): string {
     `The ${p.name} is the kind of ${noun} that works for more than one moment.`,
   ];
   return variants[Math.floor(Math.random() * variants.length)];
+}
+
+// ── Garment slot + switch intelligence (panel: complement vs compare) ─────────
+// A trouser and a turtleneck aren't rivals to "compare" — they're a top + bottom
+// that COMPLEMENT into one outfit. Only two pieces in the SAME slot (two trousers,
+// two coats, two dresses) are real alternatives. Branch on slot, never on "the
+// shopper switched products". Default to complement when unsure — it's the safer,
+// more on-brand read for a stylist.
+type GarmentSlot = "upper" | "lower" | "layer" | "full" | "accent";
+function garmentSlot(p: Product): GarmentSlot {
+  switch (p.category) {
+    case "top": case "knitwear": return "upper";
+    case "bottom": return "lower";
+    case "outerwear": return "layer";
+    case "dress": return "full";
+    case "accessory": return "accent";
+    default: return "upper";
+  }
+}
+// The single short line + slot-aware chips Mira says when the shopper lands on a
+// new piece having just viewed another. Same slot → compare; different slot →
+// pair (and be honest when they don't actually go together).
+function switchLine(cur: Product, prev: Product): { text: string; chips: string[] } {
+  const prevShort = prev.name.split(" ").slice(-1)[0];
+  if (garmentSlot(cur) === garmentSlot(prev)) {
+    return { text: `Two takes on the same slot — want them side by side?`, chips: [`Compare with the ${prevShort}`, "Style this", "My size?"] };
+  }
+  // Different slots → they build one outfit. Read whether they genuinely pair.
+  const e = buildLook(cur, [prev])[0];
+  const pairs = !e || e.score >= 0.6;
+  return pairs
+    ? { text: `This pairs with the ${prevShort}. Want the full look?`, chips: ["Build the look", "Style this", "My size?"] }
+    : { text: `Different lane from the ${prevShort} — want this on its own?`, chips: ["Style this", "See it on me", "My size?"] };
 }
 
 // ── Editorial edit names for look boards ──────────────────────────────────────
@@ -1745,7 +1778,6 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
           <button onClick={() => onAddLook(look.anchor, look.pieces)} style={primaryBtn()}>Add entire look · {money(look.total)}</button>
           <button onClick={() => onTryOn(look.anchor)} style={secondaryBtn()}>Try the look ↗</button>
         </div>
-        <div style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--mute)" }}>Tap any piece to view it</div>
       </div>
     </div>
   );
@@ -1761,25 +1793,25 @@ function InsightCard({ label, text }: { label: string; text: string }) {
   );
 }
 
-// Compact context divider — marks a product switch in the thread with a small
-// thumbnail + name + price, so the new context reads at a glance (no wall of text).
-function ContextCard({ product, prevName }: { product: Product; prevName?: string }) {
+// Chapter-break divider (panel redesign): a single faint full-width hairline
+// interrupted at center by a squared thumbnail + the product name in serif italic
+// (the loudest element) + a muted price. No pill, no box, no "NOW VIEWING" caps —
+// prominence comes from the full-width rule + serif name + whitespace, so a
+// product switch reads like turning a page in a lookbook.
+function ContextCard({ product }: { product: Product }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "4px 0 2px" }}>
-      <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.35))" }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 9, background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.28)", borderRadius: 999, padding: "5px 12px 5px 5px" }}>
-        <div style={{ position: "relative", width: 30, height: 30, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "var(--surface)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0", animation: "miraFadeUp 320ms var(--ease-spring) both" }}>
+      <div style={{ flex: 1, height: 1, background: "rgba(139,92,246,0.18)" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
+        <div style={{ position: "relative", width: 28, height: 28, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: "var(--surface)" }}>
           {product.images[0]
-            ? <Image src={product.images[0]} alt={product.name} fill sizes="30px" style={{ objectFit: "cover" }} />
+            ? <Image src={product.images[0]} alt={product.name} fill sizes="28px" style={{ objectFit: "cover" }} />
             : null}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.15 }}>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 7.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--electric)" }}>{prevName ? "Now viewing" : "Viewing"}</span>
-          <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 13, color: "#F4F2EE" }}>{product.name}</span>
-        </div>
-        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(244,242,238,0.6)", paddingLeft: 2 }}>{money(product.priceUsd)}</span>
+        <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14.5, color: "#F4F2EE", whiteSpace: "nowrap" }}>{product.name}</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "rgba(244,242,238,0.42)" }}>{money(product.priceUsd)}</span>
       </div>
-      <div style={{ flex: 1, height: 1, background: "linear-gradient(90deg, rgba(139,92,246,0.35), transparent)" }} />
+      <div style={{ flex: 1, height: 1, background: "rgba(139,92,246,0.18)" }} />
     </div>
   );
 }
@@ -1901,10 +1933,10 @@ export default function MiraWidget() {
       if (switched) {
         approachedHandle.current = cur.handle;
         activeProductHandle.current = cur.handle;
-        const prevShort = prev.name.split(" ").slice(-1)[0];
+        const sw = switchLine(cur, prev);
         restoredMsgs = [...snap.messages,
-          { from: "mira", kind: "context", product: cur, prevName: prev.name },
-          { from: "mira", kind: "say", text: `Compare with the ${prevShort}, or style this one?`, quickReplies: [`Compare with the ${prevShort}`, "Style this", "Will it fit me?"] },
+          { from: "mira", kind: "context", product: cur },
+          { from: "mira", kind: "say", text: sw.text, quickReplies: sw.chips },
         ];
       }
       setMessages(restoredMsgs);
@@ -2123,10 +2155,10 @@ export default function MiraWidget() {
       // many words" + "differentiate new product with cards"). Lead with the
       // compare when we know the piece they came from.
       if (prev && prev.handle !== p.handle) {
-        const prevShort = prev.name.split(" ").slice(-1)[0];
+        const sw = switchLine(p, prev);
         setMessages((prev2) => [...prev2,
-          { from: "mira", kind: "context", product: p, prevName: prev.name },
-          { from: "mira", kind: "say", text: `Compare with the ${prevShort}, or style this one?`, quickReplies: [`Compare with the ${prevShort}`, "Style this", "Will it fit me?"] },
+          { from: "mira", kind: "context", product: p },
+          { from: "mira", kind: "say", text: sw.text, quickReplies: sw.chips },
         ]);
       } else {
         setMessages((prev2) => [...prev2,
@@ -2685,7 +2717,7 @@ export default function MiraWidget() {
                 </div>
               );
               if (msg.kind === "cart") return <CartLine key={i} productName={msg.productName} />;
-              if (msg.kind === "context") return <ContextCard key={i} product={msg.product} prevName={msg.prevName} />;
+              if (msg.kind === "context") return <ContextCard key={i} product={msg.product} />;
               // say, each Mira line gets its own bubble so two messages never
               // read as one run-on block.
               return (

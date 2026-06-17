@@ -1193,3 +1193,21 @@ Founder: "too many words reduce value; differentiate a new product in chat with 
   or style this one?" → context card + "Compare with the {Short}, or style this one?";
   opener size offer → "Want me to size it? It's cut a little differently."; size-chart offer
   → "Checking sizes? Let me size the {piece} for you." VERIFIED LIVE on trouser→turtleneck.
+
+### Panel-driven — complement-vs-compare + context divider redesign (2026-06-17)
+Ran a 10-persona panel (6 shoppers + 4 consultants: luxury clienteling, conversational-UX,
+CRO, premium-UI). Headline: "Fix the slot-based compare-vs-complement bug, turn the context
+pill into a quiet serif-on-hairline divider, hard-cap every Mira line to one sentence."
+Implemented the HIGH-impact items:
+- **Complement vs compare (credibility fix):** new `garmentSlot()` (top/knitwear=upper,
+  bottom=lower, outerwear=layer, dress=full, accessory=accent) + `switchLine()`. Different
+  slot → "This pairs with the {prev}. Want the full look?" (and an honest "different lane" when
+  `buildLook(cur,[prev]).score < 0.6`); SAME slot → "Two takes on the same slot — want them side
+  by side?". Slot-aware chip #1 (cross-slot "Build the look", same-slot "Compare with the {x}").
+  Applied at both switch sites. VERIFIED LIVE: trouser→turtleneck pairs; trouser→denim compares.
+- **Context card → divider:** killed the glowing pill/box/"NOW VIEWING" caps. Now a single
+  faint full-width hairline interrupted at center by a squared 28px thumbnail + serif-italic
+  product name (loudest) + muted price, 14px breathing room, soft fade-in — reads like turning
+  a lookbook page. VERIFIED LIVE.
+- **Tighter copy:** dropped the look-card "Tap any piece to view" hint (thumbnails are visibly
+  tappable); switch line is now one short sentence.
