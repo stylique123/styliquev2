@@ -5,8 +5,6 @@ type Plan = {
   id: string; shopId: string; tier: "STARTER" | "GROWTH" | "ULTIMATE";
   monthlyTryOnPersonal: number | null;
   monthlyTryOnBody: number | null;
-  monthlyCreatives: number | null;
-  creativeSets: number | null;
   fairUseWarnAt: number;
 };
 type UsageRow = { shopId: string; metric: string; periodStart: Date; count: number };

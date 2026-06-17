@@ -8,7 +8,6 @@
 export interface FeatureFlags {
   mira: boolean;
   vto: boolean;
-  creative: boolean;
   sizeRecommendation: boolean;
   outfitRecommendation: boolean;
   bundleCart: boolean;
@@ -18,7 +17,6 @@ export function getFeatureFlags(): FeatureFlags {
   return {
     mira: envFlag('ENABLE_MIRA', true),
     vto: envFlag('ENABLE_VTO', true),
-    creative: envFlag('ENABLE_CREATIVE', false), // off by default in pilot
     sizeRecommendation: envFlag('ENABLE_SIZE_REC', true),
     outfitRecommendation: envFlag('ENABLE_OUTFIT_REC', true),
     bundleCart: envFlag('ENABLE_BUNDLE_CART', true),
@@ -38,7 +36,6 @@ export async function getShopFeatureFlags(
   return {
     mira: overrides.mira ?? global.mira,
     vto: overrides.vto ?? global.vto,
-    creative: overrides.creative ?? global.creative,
     sizeRecommendation: overrides.sizeRecommendation ?? global.sizeRecommendation,
     outfitRecommendation: overrides.outfitRecommendation ?? global.outfitRecommendation,
     bundleCart: overrides.bundleCart ?? global.bundleCart,
@@ -49,7 +46,6 @@ export function getDisabledMessage(feature: keyof FeatureFlags): string {
   const messages: Record<keyof FeatureFlags, string> = {
     mira: 'AI styling assistant is temporarily unavailable. Please browse our full collection.',
     vto: 'Virtual try-on is temporarily unavailable. Please consult our size guide.',
-    creative: 'Creative generation is currently disabled.',
     sizeRecommendation: 'Size recommendations are temporarily unavailable. Please see our size guide.',
     outfitRecommendation: 'Outfit suggestions are temporarily unavailable.',
     bundleCart: 'Bundle checkout is temporarily unavailable. Please add items individually.',

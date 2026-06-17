@@ -155,12 +155,12 @@ function capForMetric(f: PlanFeatures, metric: UsageMetric): number | null {
   switch (metric) {
     case "TRYON_PERSONAL":         return f.widget.monthlyTryOnPersonal;
     case "TRYON_BODY":             return f.widget.monthlyTryOnBody;
-    case "CREATIVE_GENERATED":     return f.studio.monthlyCreatives;
-    case "CREATIVE_SET_GENERATED": return f.studio.monthlyCreativeSets;
     case "STYLE_RECOMMENDATION":   return f.widget.monthlyStyleRecs;
     case "FIT_RECOMMENDATION":     return f.widget.monthlyFitRecs;
     case "VISION_TURN":            return f.stylist.monthlyVisionTurns;
     case "STYLIST_TURN":           return f.stylist.monthlyTurns;
+    // Creative metrics removed; residual/archival enum values are ungated.
+    default:                       return null;
   }
 }
 
@@ -188,10 +188,9 @@ export function tierForFeature(_key: FeatureKey): PlanTier {
   // We rely on PLAN_FEATURES at runtime; this is a hint for UI badges so the
   // dashboard can render "Upgrade to Growth" labels next to locked rows.
   return _key.startsWith("analytics.crossBrandBenchmarks")
-       || _key === "studio.autoFromGaps"
        || _key === "stylist.proactiveTriggers"
     ? "ULTIMATE"
-    : _key === "studio.video" || _key === "stylist.tasteVector" || _key === "widget.personalPhotoTryOn"
+    : _key === "stylist.tasteVector" || _key === "widget.personalPhotoTryOn"
     ? "GROWTH"
     : "STARTER";
 }

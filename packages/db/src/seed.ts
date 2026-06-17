@@ -154,8 +154,6 @@ async function main() {
       tier: "STARTER",
       monthlyTryOnPersonal: 500,
       monthlyTryOnBody: null,
-      monthlyCreatives: 100,
-      creativeSets: 5,
       analyticsLevel: "BASIC",
       supportLevel: "STANDARD",
       fairUseWarnAt: 0.8,

@@ -1,5 +1,5 @@
-// Source of truth for what each Stylique tier unlocks across all three
-// offerings: Creative Studio, VTO + Size + Style, and AI Stylist.
+// Source of truth for what each Stylique tier unlocks across the offerings:
+// VTO + Size + Style, and the AI Stylist (Mira).
 //
 // Rule: every tier gets every offering — what changes is LIMITS, FEATURE
 // FLAGS, and ANALYTICS DEPTH. Recommendations are also gated by tier.
@@ -12,19 +12,6 @@
 import type { PlanTier } from "@stylique/types";
 
 export type PlanFeatures = {
-  // ─── Creative Studio ──────────────────────────────────────────────────
-  studio: {
-    enabled: boolean;
-    monthlyCreatives: number | null;          // null = unlimited
-    monthlyCreativeSets: number | null;
-    videoEnabled: boolean;                     // motion creatives unlocked
-    brandKitDepth: "basic" | "full" | "ultimate";
-    abVariants: number;                        // max variants per generation
-    aiUpscaler: boolean;
-    apiAccess: boolean;
-    autoGenerationFromGaps: boolean;           // engine triggers Studio from catalog gaps
-  };
-
   // ─── VTO + Size + Style ──────────────────────────────────────────────
   widget: {
     enabled: boolean;
@@ -89,17 +76,6 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
   // For a brand running their first AI styling experiment. Limits low,
   // recommendations focused on quick wins.
   STARTER: {
-    studio: {
-      enabled: true,
-      monthlyCreatives: 60,
-      monthlyCreativeSets: 10,
-      videoEnabled: false,
-      brandKitDepth: "basic",
-      abVariants: 2,
-      aiUpscaler: false,
-      apiAccess: false,
-      autoGenerationFromGaps: false,
-    },
     widget: {
       enabled: true,
       monthlyTryOnPersonal: 300,
@@ -145,17 +121,6 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
   // Working brand running real campaigns. Everything visible, most caps
   // generous but not unlimited.
   GROWTH: {
-    studio: {
-      enabled: true,
-      monthlyCreatives: 600,
-      monthlyCreativeSets: 100,
-      videoEnabled: true,
-      brandKitDepth: "full",
-      abVariants: 4,
-      aiUpscaler: true,
-      apiAccess: false,
-      autoGenerationFromGaps: false,
-    },
     widget: {
       enabled: true,
       monthlyTryOnPersonal: 3000,
@@ -207,17 +172,6 @@ export const PLAN_FEATURES: Record<PlanTier, PlanFeatures> = {
   // full visibility into every recommendation kind, cross-brand benchmarks,
   // API access, dedicated rec digest.
   ULTIMATE: {
-    studio: {
-      enabled: true,
-      monthlyCreatives: null,
-      monthlyCreativeSets: null,
-      videoEnabled: true,
-      brandKitDepth: "ultimate",
-      abVariants: 8,
-      aiUpscaler: true,
-      apiAccess: true,
-      autoGenerationFromGaps: true,
-    },
     widget: {
       enabled: true,
       monthlyTryOnPersonal: null,
@@ -270,7 +224,6 @@ export function resolveFeatures(
   // Shallow-merge each top-level section. Override JSON should only contain
   // partials of the inner objects.
   return {
-    studio:          { ...base.studio,          ...(override.studio          ?? {}) },
     widget:          { ...base.widget,          ...(override.widget          ?? {}) },
     stylist:         { ...base.stylist,         ...(override.stylist         ?? {}) },
     analytics:       { ...base.analytics,       ...(override.analytics       ?? {}) },
@@ -284,7 +237,6 @@ export function resolveFeatures(
 // Single source now — both consumers import this.
 
 export type FeatureKey =
-  | "studio.enabled" | "studio.video" | "studio.upscaler" | "studio.api" | "studio.autoFromGaps"
   | "widget.enabled" | "widget.personalPhotoTryOn" | "widget.multiAngleTryOn" | "widget.sizeChartCustomization"
   | "stylist.enabled" | "stylist.tasteVector" | "stylist.signupOffer" | "stylist.cartActions"
   | "stylist.navigateActions" | "stylist.proactiveTriggers"
@@ -299,11 +251,6 @@ export type FeatureKey =
 // passing a FeatureKey-narrowed value still get IDE autocomplete.
 export function readFeatureFlag(f: PlanFeatures, key: FeatureKey | string): boolean {
   switch (key) {
-    case "studio.enabled":                    return f.studio.enabled;
-    case "studio.video":                      return f.studio.videoEnabled;
-    case "studio.upscaler":                   return f.studio.aiUpscaler;
-    case "studio.api":                        return f.studio.apiAccess;
-    case "studio.autoFromGaps":               return f.studio.autoGenerationFromGaps;
     case "widget.enabled":                    return f.widget.enabled;
     case "widget.personalPhotoTryOn":         return f.widget.personalPhotoTryOn;
     case "widget.multiAngleTryOn":            return f.widget.multiAngleTryOn;

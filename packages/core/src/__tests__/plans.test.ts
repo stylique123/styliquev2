@@ -13,8 +13,6 @@ function setup(overrides: Partial<{ tier: "STARTER" | "GROWTH" | "ULTIMATE"; per
       tier,
       monthlyTryOnPersonal: personalQuota,
       monthlyTryOnBody: null,
-      monthlyCreatives: 100,
-      creativeSets: 5,
       fairUseWarnAt: overrides.warnAt ?? 0.8,
     }],
   });
@@ -45,13 +43,6 @@ describe("PlansService.canConsume", () => {
     await usage.increment("shop-1", "TRYON_PERSONAL", 2);
     const r = await plans.canConsume("shop-1", "TRYON_PERSONAL");
     expect(r).toEqual({ allowed: false, hideFromShopper: true, reason: "QUOTA_EXHAUSTED" });
-  });
-
-  it("returns hideFromShopper=false for exhausted non-shopper metrics (CREATIVE_GENERATED)", async () => {
-    const { plans, usage } = setup({ personalQuota: 10 });
-    await usage.increment("shop-1", "CREATIVE_GENERATED", 100);
-    const r = await plans.canConsume("shop-1", "CREATIVE_GENERATED");
-    expect(r).toEqual({ allowed: false, hideFromShopper: false, reason: "QUOTA_EXHAUSTED" });
   });
 
   it("treats null quota as unlimited (TRYON_BODY)", async () => {
@@ -116,6 +107,5 @@ describe("Plan defaults exist for Growth, Pro, Scale", () => {
     const { plans } = setup({ tier });
     const q = await plans.getQuotas("shop-1");
     expect(q.monthlyTryOnPersonal).toBeGreaterThan(0);
-    expect(q.creativeSets).toBeGreaterThan(0);
   });
 });

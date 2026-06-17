@@ -24,7 +24,6 @@ import { env } from "../env.server";
 
 const QUEUE_NAMES = [
   "catalog-sync",
-  "creative-set",
   "brand-install",
   "recommendations",
   "tryon-render",

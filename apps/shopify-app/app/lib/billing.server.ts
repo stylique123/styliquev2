@@ -137,20 +137,18 @@ export async function getBillingStatus(shopId: string): Promise<BillingStatus> {
     switch (metric) {
       case "TRYON_PERSONAL":         return features.widget.monthlyTryOnPersonal;
       case "TRYON_BODY":             return features.widget.monthlyTryOnBody;
-      case "CREATIVE_GENERATED":     return features.studio.monthlyCreatives;
-      case "CREATIVE_SET_GENERATED": return features.studio.monthlyCreativeSets;
       case "STYLE_RECOMMENDATION":   return features.widget.monthlyStyleRecs;
       case "FIT_RECOMMENDATION":     return features.widget.monthlyFitRecs;
       case "VISION_TURN":            return features.stylist.monthlyVisionTurns;
       case "STYLIST_TURN":           return features.stylist.monthlyTurns;
+      // Creative metrics removed; residual/archival enum values are ungated.
+      default:                       return null;
     }
   }
 
   const ALL_METRICS: UsageMetric[] = [
     "TRYON_PERSONAL",
     "TRYON_BODY",
-    "CREATIVE_GENERATED",
-    "CREATIVE_SET_GENERATED",
     "STYLE_RECOMMENDATION",
     "FIT_RECOMMENDATION",
     "VISION_TURN",

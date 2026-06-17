@@ -33,8 +33,8 @@ export * from "./crypto.js";
 // PB6 reversal — multi-language infrastructure stub.
 export { t, detectLocale } from "./i18n/index.js";
 export type { SupportedLocale, TranslationKey } from "./i18n/index.js";
-// Creative Studio — provider-agnostic image generation (Vertex Imagen primary,
-// Replicate FLUX fallback, stub for dev). See packages/core/src/studio/service.ts.
+// Brand DNA — palette / tone / style extracted from the catalog. Feeds Mira's
+// voice + the recommendations engine. (Creative Studio generation was removed.)
 export * from "./studio/index.js";
 // Shared Vertex AI auth helpers (JWT signing, OAuth token exchange, token cache).
 export * from "./vertex/auth.js";

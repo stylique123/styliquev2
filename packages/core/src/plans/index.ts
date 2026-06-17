@@ -13,13 +13,10 @@ export type EntitlementCheck =
 export interface PlanQuotas {
   monthlyTryOnPersonal: number | null;
   monthlyTryOnBody: number | null;
-  monthlyCreatives: number | null;
-  monthlyCreativeSets: number | null;
   monthlyStyleRecs: number | null;
   monthlyFitRecs: number | null;
   monthlyVisionTurns: number | null;
   monthlyTurns: number | null; // STYLIST_TURN cap (P1)
-  creativeSets: number | null;
 }
 
 // Quota-only view of the three tiers. The full feature set lives in
@@ -33,13 +30,10 @@ function quotasFromFeatures(tier: PlanTier): PlanQuotas {
   return {
     monthlyTryOnPersonal: f.widget.monthlyTryOnPersonal,
     monthlyTryOnBody:     f.widget.monthlyTryOnBody,
-    monthlyCreatives:     f.studio.monthlyCreatives,
-    monthlyCreativeSets:  f.studio.monthlyCreativeSets,
     monthlyStyleRecs:     f.widget.monthlyStyleRecs,
     monthlyFitRecs:       f.widget.monthlyFitRecs,
     monthlyVisionTurns:   f.stylist.monthlyVisionTurns,
     monthlyTurns:         f.stylist.monthlyTurns,
-    creativeSets:         f.studio.monthlyCreativeSets,
   };
 }
 
@@ -54,12 +48,12 @@ export function quotaForMetric(quotas: PlanQuotas, metric: UsageMetric): number 
   switch (metric) {
     case "TRYON_PERSONAL":         return quotas.monthlyTryOnPersonal;
     case "TRYON_BODY":             return quotas.monthlyTryOnBody;
-    case "CREATIVE_GENERATED":     return quotas.monthlyCreatives;
-    case "CREATIVE_SET_GENERATED": return quotas.monthlyCreativeSets;
     case "STYLE_RECOMMENDATION":   return quotas.monthlyStyleRecs;
     case "FIT_RECOMMENDATION":     return quotas.monthlyFitRecs;
     case "VISION_TURN":            return quotas.monthlyVisionTurns;
     case "STYLIST_TURN":           return quotas.monthlyTurns;
+    // Creative metrics are removed; any residual/archival enum value is ungated.
+    default:                       return null;
   }
 }
 

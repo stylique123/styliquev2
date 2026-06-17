@@ -21,7 +21,6 @@ export async function POST(req: Request) {
     domain: string;
     monthlyTryOnPersonal?: number;
     monthlyTryOnBody?: number;
-    monthlyCreatives?: number;
     monthlyStyleRecs?: number;
     monthlyFitRecs?: number;
     supportLevel?: string;
@@ -48,7 +47,6 @@ export async function POST(req: Request) {
         tier: "ULTIMATE",
         monthlyTryOnPersonal: body.monthlyTryOnPersonal ?? null,
         monthlyTryOnBody: body.monthlyTryOnBody ?? null,
-        monthlyCreatives: body.monthlyCreatives ?? null,
         monthlyStyleRecs: body.monthlyStyleRecs ?? null,
         monthlyFitRecs: body.monthlyFitRecs ?? null,
         supportLevel,
@@ -58,7 +56,6 @@ export async function POST(req: Request) {
         tier: "ULTIMATE",
         monthlyTryOnPersonal: body.monthlyTryOnPersonal ?? null,
         monthlyTryOnBody: body.monthlyTryOnBody ?? null,
-        monthlyCreatives: body.monthlyCreatives ?? null,
         monthlyStyleRecs: body.monthlyStyleRecs ?? null,
         monthlyFitRecs: body.monthlyFitRecs ?? null,
         supportLevel,

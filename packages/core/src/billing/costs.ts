@@ -111,12 +111,6 @@ export const PROVIDER_RATES = {
     providerKey: "replicate-catvton",
     usdPerCall: 0.012, // cuuupid/idm-vton or zsxkib/catvton
   },
-  // Creative Studio (FLUX 1.1-pro via Replicate).
-  "replicate-flux-1.1-pro": {
-    kind: "flat",
-    providerKey: "replicate-flux-1.1-pro",
-    usdPerCall: 0.04,
-  },
   // Depth maps (one-time per product at install pre-warm).
   "replicate-midas": {
     kind: "flat",
@@ -171,12 +165,12 @@ export function computeCost(
       if (!rate) return quantity * unitCostUsd("vertex-vto-001");
       return quantity * unitCostUsd(key);
     }
-    case "CREATIVE_GENERATED":
-    case "CREATIVE_SET_GENERATED":
-      return quantity * unitCostUsd("replicate-flux-1.1-pro");
     case "STYLE_RECOMMENDATION":
     case "FIT_RECOMMENDATION":
       // Deterministic engine — zero provider cost. The work is CPU-only.
+      return 0;
+    // Creative metrics removed; residual/archival enum values carry no cost.
+    default:
       return 0;
   }
 }

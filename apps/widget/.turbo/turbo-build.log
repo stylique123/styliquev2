@@ -2,5 +2,5 @@
 > @stylique/widget@0.0.0 build /Users/apple/Desktop/stylique  re build/fashion/apps/widget
 > node esbuild.config.mjs
 
-✓ widget.js  100.7 KB  →  /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/extensions/stylique-widget/assets/widget.js
-✓ stylist.js  126.7 KB  →  /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/extensions/stylique-widget/assets/stylist.js
+✓ tryon.js  197.3 KB  →  /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/extensions/stylique-widget/assets/tryon.js
+✓ mirrored tryon.js → shopify-app/public/widget.js (ScriptTag bundle)

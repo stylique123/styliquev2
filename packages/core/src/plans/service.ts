@@ -30,13 +30,10 @@ export function createPlansService(prisma: PrismaClient, usage: UsageService = c
     return {
       monthlyTryOnPersonal: plan.monthlyTryOnPersonal ?? defaults.monthlyTryOnPersonal,
       monthlyTryOnBody:     plan.monthlyTryOnBody     ?? defaults.monthlyTryOnBody,
-      monthlyCreatives:     plan.monthlyCreatives     ?? defaults.monthlyCreatives,
-      monthlyCreativeSets:  plan.monthlyCreativeSets  ?? defaults.monthlyCreativeSets,
       monthlyStyleRecs:     plan.monthlyStyleRecs     ?? defaults.monthlyStyleRecs,
       monthlyFitRecs:       plan.monthlyFitRecs       ?? defaults.monthlyFitRecs,
       monthlyVisionTurns:   defaults.monthlyVisionTurns,
       monthlyTurns:         plan.monthlyStylistTurns  ?? defaults.monthlyTurns,
-      creativeSets:         plan.creativeSets         ?? defaults.creativeSets,
     };
   }
 

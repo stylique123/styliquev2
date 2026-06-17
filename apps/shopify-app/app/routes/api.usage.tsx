@@ -74,8 +74,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const allMetrics = [
       "TRYON_PERSONAL",
       "TRYON_BODY",
-      "CREATIVE_GENERATED",
-      "CREATIVE_SET_GENERATED",
       "STYLE_RECOMMENDATION",
       "FIT_RECOMMENDATION",
       "VISION_TURN",

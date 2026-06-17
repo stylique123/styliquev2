@@ -9,7 +9,7 @@
 // outcomes feed OutcomeService.getOutcomeWeights(), which the recommendations
 // engine reads to learn which recommendation kinds actually work per shop.
 //
-// Wiring mirrors the other worker jobs (catalog-sync, creative-set,
+// Wiring mirrors the other worker jobs (catalog-sync,
 // recommendations): a processor function consumed by a BullMQ Worker, plus a
 // scheduler that registers a repeating cron job (idempotent on jobId).
 

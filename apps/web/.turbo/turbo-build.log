@@ -3,7 +3,7 @@
 > next build
 
  ⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
- We detected multiple lockfiles and selected the directory of /Users/apple/package-lock.json as the root directory.
+ We detected multiple lockfiles and selected the directory of /Users/apple/pnpm-lock.yaml as the root directory.
  To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
    See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
  Detected additional lockfiles: 
@@ -15,7 +15,7 @@
      · serverActions
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 2.5s
+ ✓ Compiled successfully in 8.9s
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/14) ...
@@ -23,23 +23,23 @@
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  ⚠ Unsupported metadata themeColor is configured in metadata export in /. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
- ⚠ Unsupported metadata themeColor is configured in metadata export in /terms. Please move it to viewport export instead.
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /demo. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
- ⚠ Unsupported metadata themeColor is configured in metadata export in /admin/enterprise. Please move it to viewport export instead.
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /terms. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
    Generating static pages (3/14) 
    Generating static pages (6/14) 
- ⚠ Unsupported metadata themeColor is configured in metadata export in /admin/login. Please move it to viewport export instead.
-Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
- ⚠ Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
-Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
- ⚠ Unsupported metadata themeColor is configured in metadata export in /demo. Please move it to viewport export instead.
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /privacy. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  ⚠ Unsupported metadata themeColor is configured in metadata export in /dashboard. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /admin/enterprise. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /admin/login. Please move it to viewport export instead.
+Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
  ⚠ Unsupported metadata themeColor is configured in metadata export in /auth/callback. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
- ⚠ Unsupported metadata themeColor is configured in metadata export in /privacy. Please move it to viewport export instead.
+ ⚠ Unsupported metadata themeColor is configured in metadata export in /login. Please move it to viewport export instead.
 Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
    Generating static pages (10/14) 
  ✓ Generating static pages (14/14)
@@ -47,44 +47,45 @@ Read more: https://nextjs.org/docs/app/api-reference/functions/generate-viewport
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                      176 B         111 kB
-├ ○ /_not-found                            995 B         103 kB
-├ ƒ /admin                                 170 B         105 kB
-├ ƒ /admin/brands                          170 B         105 kB
-├ ƒ /admin/brands/[shopId]                1.6 kB         103 kB
-├ ○ /admin/enterprise                    2.06 kB         104 kB
+┌ ○ /                                      177 B         111 kB
+├ ○ /_not-found                            998 B         103 kB
+├ ƒ /admin                                 175 B         105 kB
+├ ƒ /admin/brands                          175 B         105 kB
+├ ƒ /admin/brands/[shopId]                1.6 kB         104 kB
+├ ○ /admin/enterprise                    2.05 kB         104 kB
 ├ ○ /admin/login                         1.37 kB         103 kB
-├ ƒ /admin/revenue                         167 B         102 kB
-├ ƒ /admin/system                          167 B         102 kB
-├ ƒ /api/admin/auth                        167 B         102 kB
-├ ƒ /api/admin/brands/[shopId]             167 B         102 kB
-├ ƒ /api/admin/enterprise                  167 B         102 kB
-├ ƒ /api/chat                              167 B         102 kB
-├ ƒ /api/mira                              167 B         102 kB
-├ ƒ /api/mira/insights                     167 B         102 kB
-├ ƒ /api/mira/insights/merchant            167 B         102 kB
-├ ƒ /api/mira/intelligence                 167 B         102 kB
-├ ƒ /api/mira/knowledge                    167 B         102 kB
-├ ƒ /api/mira/train                        167 B         102 kB
-├ ƒ /api/tryon                             167 B         102 kB
-├ ƒ /api/tryon/events                      167 B         102 kB
-├ ƒ /api/tryon/insights                    167 B         102 kB
-├ ƒ /api/tryon/prewarm                     167 B         102 kB
-├ ○ /auth/callback                         854 B         103 kB
-├ ƒ /collection/[slug]                     176 B         111 kB
-├ ○ /dashboard                           10.1 kB         115 kB
+├ ƒ /admin/revenue                         183 B         102 kB
+├ ƒ /admin/system                          183 B         102 kB
+├ ƒ /api/admin/auth                        183 B         102 kB
+├ ƒ /api/admin/brands/[shopId]             183 B         102 kB
+├ ƒ /api/admin/enterprise                  183 B         102 kB
+├ ƒ /api/mira                              183 B         102 kB
+├ ƒ /api/mira/conversion                   183 B         102 kB
+├ ƒ /api/mira/insights                     183 B         102 kB
+├ ƒ /api/mira/insights/merchant            183 B         102 kB
+├ ƒ /api/mira/intelligence                 183 B         102 kB
+├ ƒ /api/mira/knowledge                    183 B         102 kB
+├ ƒ /api/mira/train                        183 B         102 kB
+├ ƒ /api/tryon                             183 B         102 kB
+├ ƒ /api/tryon/events                      183 B         102 kB
+├ ƒ /api/tryon/image/[key]                 183 B         102 kB
+├ ƒ /api/tryon/insights                    183 B         102 kB
+├ ƒ /api/tryon/prewarm                     183 B         102 kB
+├ ○ /auth/callback                         858 B         103 kB
+├ ƒ /collection/[slug]                     177 B         111 kB
+├ ○ /dashboard                           9.92 kB         115 kB
 ├ ○ /demo                                41.5 kB         152 kB
-├ ○ /login                               1.44 kB         107 kB
-├ ○ /privacy                               170 B         105 kB
-├ ƒ /product/[handle]                     2.5 kB         130 kB
-└ ○ /terms                                 170 B         105 kB
+├ ○ /login                               1.46 kB         107 kB
+├ ○ /privacy                               175 B         105 kB
+├ ƒ /product/[handle]                    2.68 kB         137 kB
+└ ○ /terms                                 175 B         105 kB
 + First Load JS shared by all             102 kB
-  ├ chunks/554-3041f63b9be53141.js       45.7 kB
-  ├ chunks/7921259a-20f1688affae4dd7.js  54.2 kB
+  ├ chunks/3554-9864e56948bc254a.js      45.8 kB
+  ├ chunks/7921259a-abf9fecd76b0c627.js  54.2 kB
   └ other shared chunks (total)          1.92 kB
 
 
-ƒ Middleware                             32.5 kB
+ƒ Middleware                             32.4 kB
 
 ○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand

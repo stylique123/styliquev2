@@ -28,6 +28,5 @@ export const DASHBOARD_VIEWS = [
   "size_up_down_distribution",
   "outfit_click_rate",
   "color_combo_engagement",
-  "creative_impressions_by_set",
   "pdp_improvement_opportunities",
 ] as const;

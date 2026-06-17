@@ -5,124 +5,132 @@
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 vite v5.4.21 building for production...
 transforming...
-✓ 1628 modules transformed.
+✓ 1630 modules transformed.
+Generated an empty chunk: "api.admin.cohorts.mira-engaged_.csv_".
 Generated an empty chunk: "api.admin.products.generate-details".
 Generated an empty chunk: "api.admin.recommendations._id._verb".
 Generated an empty chunk: "api.admin.image-quality.backfill".
-Generated an empty chunk: "api.admin.replenishment.notify".
+Generated an empty chunk: "webhooks.customers.data-request".
 Generated an empty chunk: "api.admin.size-charts.backfill".
-Generated an empty chunk: "app.studio.generate-from-combo".
 Generated an empty chunk: "api.admin.embeddings.backfill".
 Generated an empty chunk: "api.admin.recommendations.run".
 Generated an empty chunk: "api.admin.sentiment.extract".
-Generated an empty chunk: "api.admin.products.create".
 Generated an empty chunk: "api.admin.recommendations".
-Generated an empty chunk: "api.admin.studio.generate".
 Generated an empty chunk: "api.external-token-verify".
+Generated an empty chunk: "webhooks.customers.redact".
 Generated an empty chunk: "webhooks.orders.fulfilled".
 Generated an empty chunk: "webhooks.app-uninstalled".
 Generated an empty chunk: "webhooks.orders.returned".
 Generated an empty chunk: "api.admin.brand-profile".
-Generated an empty chunk: "api.admin.creative-sets".
 Generated an empty chunk: "api.admin.observability".
-Generated an empty chunk: "api.admin.studio.plans".
 Generated an empty chunk: "api.external-overview".
+Generated an empty chunk: "webhooks.shop.redact".
 Generated an empty chunk: "public.stylist_.js_".
 Generated an empty chunk: "api.admin.overview".
 Generated an empty chunk: "api.admin.products".
 Generated an empty chunk: "api.billing.status".
 Generated an empty chunk: "public.widget_.js_".
-Generated an empty chunk: "api.admin.credits".
 Generated an empty chunk: "api.external-auth".
 Generated an empty chunk: "webhooks.products".
 Generated an empty chunk: "proxy.shopper._".
 Generated an empty chunk: "webhooks.orders".
 Generated an empty chunk: "api.mira.event".
+Generated an empty chunk: "api.demo.mira".
+Generated an empty chunk: "public.health".
 Generated an empty chunk: "api.health".
 Generated an empty chunk: "auth.login".
 Generated an empty chunk: "api.ready".
 Generated an empty chunk: "api.usage".
+Generated an empty chunk: "privacy".
 Generated an empty chunk: "auth._".
+Generated an empty chunk: "health".
+Generated an empty chunk: "terms".
 rendering chunks...
 computing gzip size...
-build/client/.vite/manifest.json                                      16.83 kB │ gzip:  1.81 kB
-build/client/assets/styles-C7YjYK5e.css                              445.00 kB │ gzip: 52.44 kB
-build/client/assets/api.admin.products.generate-details-l0sNRNKZ.js    0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.recommendations._id._verb-l0sNRNKZ.js    0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.image-quality.backfill-l0sNRNKZ.js       0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.replenishment.notify-l0sNRNKZ.js         0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.size-charts.backfill-l0sNRNKZ.js         0.00 kB │ gzip:  0.02 kB
-build/client/assets/app.studio.generate-from-combo-l0sNRNKZ.js         0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.embeddings.backfill-l0sNRNKZ.js          0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.recommendations.run-l0sNRNKZ.js          0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.sentiment.extract-l0sNRNKZ.js            0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.products.create-l0sNRNKZ.js              0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.recommendations-l0sNRNKZ.js              0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.studio.generate-l0sNRNKZ.js              0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.external-token-verify-l0sNRNKZ.js              0.00 kB │ gzip:  0.02 kB
-build/client/assets/webhooks.orders.fulfilled-l0sNRNKZ.js              0.00 kB │ gzip:  0.02 kB
-build/client/assets/webhooks.app-uninstalled-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
-build/client/assets/webhooks.orders.returned-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.brand-profile-l0sNRNKZ.js                0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.creative-sets-l0sNRNKZ.js                0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.observability-l0sNRNKZ.js                0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.studio.plans-l0sNRNKZ.js                 0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.external-overview-l0sNRNKZ.js                  0.00 kB │ gzip:  0.02 kB
-build/client/assets/public.stylist_.js_-l0sNRNKZ.js                    0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.overview-l0sNRNKZ.js                     0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.products-l0sNRNKZ.js                     0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.billing.status-l0sNRNKZ.js                     0.00 kB │ gzip:  0.02 kB
-build/client/assets/public.widget_.js_-l0sNRNKZ.js                     0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.admin.credits-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.external-auth-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
-build/client/assets/webhooks.products-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
-build/client/assets/proxy.shopper._-l0sNRNKZ.js                        0.00 kB │ gzip:  0.02 kB
-build/client/assets/webhooks.orders-l0sNRNKZ.js                        0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.mira.event-l0sNRNKZ.js                         0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.health-l0sNRNKZ.js                             0.00 kB │ gzip:  0.02 kB
-build/client/assets/auth.login-l0sNRNKZ.js                             0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.ready-l0sNRNKZ.js                              0.00 kB │ gzip:  0.02 kB
-build/client/assets/api.usage-l0sNRNKZ.js                              0.00 kB │ gzip:  0.02 kB
-build/client/assets/auth._-l0sNRNKZ.js                                 0.00 kB │ gzip:  0.02 kB
-build/client/assets/_index-DxUw1meN.js                                 0.92 kB │ gzip:  0.54 kB
-build/client/assets/app.catalog-BQzif9VD.js                            0.93 kB │ gzip:  0.53 kB
-build/client/assets/app.billing-Dv_O5XDA.js                            1.25 kB │ gzip:  0.70 kB
-build/client/assets/root-RJ5ef6hv.js                                   1.52 kB │ gzip:  0.87 kB
-build/client/assets/internal.login-B-9n_wL7.js                         3.30 kB │ gzip:  1.08 kB
-build/client/assets/entry.client-D1zR37Rp.js                           3.74 kB │ gzip:  1.41 kB
-build/client/assets/app.settings.stylist-D7JMHqAv.js                   5.13 kB │ gzip:  2.00 kB
-build/client/assets/app._index-D-RoqNyz.js                             5.56 kB │ gzip:  1.96 kB
-build/client/assets/internal.pilot-DsEmKEUb.js                         5.60 kB │ gzip:  1.99 kB
-build/client/assets/app.settings.tryon-Dh8b34-t.js                     6.89 kB │ gzip:  2.41 kB
-build/client/assets/internal.jobs-Bihgq4AB.js                          9.15 kB │ gzip:  2.43 kB
-build/client/assets/app.studio-7tAtrpwf.js                             9.68 kB │ gzip:  2.93 kB
-build/client/assets/internal._index-TG3IuvD9.js                       10.57 kB │ gzip:  3.20 kB
-build/client/assets/internal._shopId-CtVPa2HC.js                      11.45 kB │ gzip:  3.46 kB
-build/client/assets/app.settings.beauty-ByJRz_Ti.js                   12.49 kB │ gzip:  3.75 kB
-build/client/assets/app.products.new-C3-PeVA4.js                      17.66 kB │ gzip:  5.71 kB
-build/client/assets/app.settings.brand-vqtQSNfd.js                    17.97 kB │ gzip:  4.78 kB
-build/client/assets/app-DXGynIHB.js                                   43.01 kB │ gzip: 14.37 kB
-build/client/assets/app.dashboard-RfPLywQV.js                         94.05 kB │ gzip: 19.93 kB
-build/client/assets/Page-lGnX0m2Z.js                                  98.54 kB │ gzip: 29.44 kB
-build/client/assets/context-BcJK0r6U.js                              102.43 kB │ gzip: 10.26 kB
-build/client/assets/components-B2vvdPX7.js                           257.73 kB │ gzip: 83.03 kB
-✓ built in 2.17s
+build/client/.vite/manifest.json                                       16.90 kB │ gzip:  1.84 kB
+build/client/assets/styles-C7YjYK5e.css                               445.00 kB │ gzip: 52.44 kB
+build/client/assets/api.admin.cohorts.mira-engaged_.csv_-l0sNRNKZ.js    0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.products.generate-details-l0sNRNKZ.js     0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.recommendations._id._verb-l0sNRNKZ.js     0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.image-quality.backfill-l0sNRNKZ.js        0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.customers.data-request-l0sNRNKZ.js         0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.size-charts.backfill-l0sNRNKZ.js          0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.embeddings.backfill-l0sNRNKZ.js           0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.recommendations.run-l0sNRNKZ.js           0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.sentiment.extract-l0sNRNKZ.js             0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.recommendations-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.external-token-verify-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.customers.redact-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.orders.fulfilled-l0sNRNKZ.js               0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.app-uninstalled-l0sNRNKZ.js                0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.orders.returned-l0sNRNKZ.js                0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.brand-profile-l0sNRNKZ.js                 0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.observability-l0sNRNKZ.js                 0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.external-overview-l0sNRNKZ.js                   0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.shop.redact-l0sNRNKZ.js                    0.00 kB │ gzip:  0.02 kB
+build/client/assets/public.stylist_.js_-l0sNRNKZ.js                     0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.overview-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.admin.products-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.billing.status-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
+build/client/assets/public.widget_.js_-l0sNRNKZ.js                      0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.external-auth-l0sNRNKZ.js                       0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.products-l0sNRNKZ.js                       0.00 kB │ gzip:  0.02 kB
+build/client/assets/proxy.shopper._-l0sNRNKZ.js                         0.00 kB │ gzip:  0.02 kB
+build/client/assets/webhooks.orders-l0sNRNKZ.js                         0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.mira.event-l0sNRNKZ.js                          0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.demo.mira-l0sNRNKZ.js                           0.00 kB │ gzip:  0.02 kB
+build/client/assets/public.health-l0sNRNKZ.js                           0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.health-l0sNRNKZ.js                              0.00 kB │ gzip:  0.02 kB
+build/client/assets/auth.login-l0sNRNKZ.js                              0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.ready-l0sNRNKZ.js                               0.00 kB │ gzip:  0.02 kB
+build/client/assets/api.usage-l0sNRNKZ.js                               0.00 kB │ gzip:  0.02 kB
+build/client/assets/privacy-l0sNRNKZ.js                                 0.00 kB │ gzip:  0.02 kB
+build/client/assets/auth._-l0sNRNKZ.js                                  0.00 kB │ gzip:  0.02 kB
+build/client/assets/health-l0sNRNKZ.js                                  0.00 kB │ gzip:  0.02 kB
+build/client/assets/terms-l0sNRNKZ.js                                   0.00 kB │ gzip:  0.02 kB
+build/client/assets/_index-DQmae1YD.js                                  0.92 kB │ gzip:  0.54 kB
+build/client/assets/app.catalog-BXVEuI2z.js                             0.93 kB │ gzip:  0.53 kB
+build/client/assets/app.billing-x7YiqRb0.js                             1.25 kB │ gzip:  0.69 kB
+build/client/assets/root-EbKNUlaE.js                                    1.52 kB │ gzip:  0.87 kB
+build/client/assets/internal.themes-DJLWsF5z.js                         2.63 kB │ gzip:  1.06 kB
+build/client/assets/internal.login-DFWZJdbE.js                          3.30 kB │ gzip:  1.08 kB
+build/client/assets/entry.client-B__n5ilH.js                            3.74 kB │ gzip:  1.41 kB
+build/client/assets/app.settings.stylist-BIytDPEa.js                    5.13 kB │ gzip:  2.00 kB
+build/client/assets/app.dashboard-B8D-gzeF.js                           5.29 kB │ gzip:  1.82 kB
+build/client/assets/app._index-DXesx8Ry.js                              5.56 kB │ gzip:  1.96 kB
+build/client/assets/internal.pilot-xvPkwuTF.js                          5.60 kB │ gzip:  1.99 kB
+build/client/assets/app.reports.monthly-0KOVWOYc.js                     5.88 kB │ gzip:  2.29 kB
+build/client/assets/app.settings.tryon-DZAd6-hZ.js                      6.89 kB │ gzip:  2.41 kB
+build/client/assets/internal.jobs-VSVDicMR.js                           9.15 kB │ gzip:  2.43 kB
+build/client/assets/internal._index-drOJkCio.js                         9.88 kB │ gzip:  3.12 kB
+build/client/assets/internal._shopId-Ds-rLJwx.js                       11.17 kB │ gzip:  3.57 kB
+build/client/assets/app.settings.brand-CpiHIV5x.js                     17.98 kB │ gzip:  4.80 kB
+build/client/assets/app-CS_nVbF0.js                                    42.85 kB │ gzip: 14.33 kB
+build/client/assets/Page-Bmx78ELT.js                                   98.54 kB │ gzip: 29.44 kB
+build/client/assets/context-DyoqR0IN.js                               102.43 kB │ gzip: 10.26 kB
+build/client/assets/components-C9-Wdu8O.js                            257.13 kB │ gzip: 82.82 kB
+✓ built in 9.72s
 vite v5.4.21 building SSR bundle for production...
 transforming...
-".prisma/client/default" is imported by " .prisma/client/default?commonjs-external", but could not be resolved – treating it as an external dependency.
-✓ 166 modules transformed.
+✓ 150 modules transformed.
 rendering chunks...
 [plugin:vite:reporter] [plugin vite:reporter] 
-(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/queue.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/shopify.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/shopify.server.ts but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/brain.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/recommendations.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/tryon.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.admin.products.create.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.admin.replenishment.notify.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.admin.sentiment.extract.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.admin.studio.generate.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app._index.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app.catalog.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app.studio.generate-from-combo.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app.studio.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.products.tsx, dynamic import will not move module into another chunk.
+(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/queue.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/shopify.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/shopify.server.ts but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/tryon.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.admin.sentiment.extract.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app._index.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/app.catalog.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.products.tsx, dynamic import will not move module into another chunk.
 
 [plugin:vite:reporter] [plugin vite:reporter] 
-(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/taste.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/session.server.ts but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/brain.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/chat.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/shopper.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.mira.event.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.orders.fulfilled.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.orders.returned.tsx, dynamic import will not move module into another chunk.
+(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/shopper-helpers.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/mira-adapter.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/mira-adapter.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/proxy.shopper.$.tsx but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/account.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/shopper-events.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/shopper.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/taste.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.mira.event.tsx, dynamic import will not move module into another chunk.
 
 [plugin:vite:reporter] [plugin vite:reporter] 
-(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/internal-auth.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.login.tsx but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.usage.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.$shopId.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal._index.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.jobs.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.login.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.pilot.tsx, dynamic import will not move module into another chunk.
+(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/taste.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/mira-adapter.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/session.server.ts but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/shopper.server.ts, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.mira.event.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.orders.fulfilled.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/webhooks.orders.returned.tsx, dynamic import will not move module into another chunk.
 
-build/server/.vite/manifest.json                      0.97 kB
-build/server/assets/styles-C7YjYK5e.css             445.00 kB
-build/server/assets/scriptTag.server-CLjcreTw.js      3.12 kB
-build/server/index.js                             1,092.76 kB
-✓ built in 697ms
+[plugin:vite:reporter] [plugin vite:reporter] 
+(!) /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/lib/internal-auth.server.ts is dynamically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.login.tsx but also statically imported by /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/api.usage.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.$shopId.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal._index.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.jobs.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.login.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.pilot.tsx, /Users/apple/Desktop/stylique  re build/fashion/apps/shopify-app/app/routes/internal.themes.tsx, dynamic import will not move module into another chunk.
+
+build/server/.vite/manifest.json                       1.84 kB
+build/server/assets/styles-C7YjYK5e.css              445.00 kB
+build/server/index.js                                  0.83 kB
+build/server/assets/scriptTag.server-CtcNeRHC.js       3.06 kB
+build/server/assets/mira-adapter.server-CWDnpoL0.js   28.14 kB
+build/server/assets/index-BGLjUCHu.js                133.42 kB
+build/server/assets/server-build-B6aY9OI1.js         632.71 kB
+✓ built in 1.76s
