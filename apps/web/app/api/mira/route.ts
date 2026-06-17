@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { source: responseSource, model: modelUsed, decision } = await decideMira(parsed.data, demoDeps);
+    const { source: responseSource, model: modelUsed, decision, support } = await decideMira(parsed.data, demoDeps);
     // ── Full event mesh emission ──────────────────────────────────────────────
     // Every turn flows through the event bridge, writes to the JSON debug
     // mirror AND forwards to the production Prisma event mesh when configured.
@@ -95,6 +95,9 @@ export async function POST(req: Request) {
       nearMissCategory: isNearMiss ? decision.nearMissCategory : undefined,
       nearMissAttribute: isNearMiss ? (decision.nearMissAttribute ?? "") : undefined,
       nearMissReason: isNearMiss ? (decision.nearMissReason ?? "") : undefined,
+      // Phase 2 / P2-T11: capture the support intent (return/shipping/order-status/
+      // handoff) so the brand sees support DEMAND. Captured only — never automated.
+      supportIntent: support?.intent ?? undefined,
     }).catch(() => {});
 
     // ── Production event mesh forwarding ONLY (no local duplicate rows) ───────

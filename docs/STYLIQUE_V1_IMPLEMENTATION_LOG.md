@@ -510,3 +510,99 @@ UI/API/code references remain:
 ### Next action
 - Ready for Step 2H Phase 2 (Mira Sales Engine). Recommend a human live-install smoke on
   the dev/pilot store to flip the widget-live banner green and exercise the real cart path.
+
+---
+
+## Step 2H Phase 2 — Mira Sales Engine — 2026-06-17
+
+### Branch state
+- Branch `chore/phase2-mira-sales-engine` off `chore/phase1-safety-shopify-foundation`
+  (Phase 1 pushed: `e4c0005`). Not merged, not deployed.
+- ONE brain only. Phase 2 adds a deterministic sales-engine ENVELOPE that the single
+  `decideMira` runs every decision through (`applySalesEngine`) — no second brain. Both
+  callers (demo `apps/web/api/mira/route.ts`, production `mira-adapter.server.ts` which
+  calls `decideMira` in-process) inherit every guarantee automatically.
+
+### Tickets completed
+- **P2-T01 server-side session objective** — `SessionObjective` (pageContext, current
+  product, intent, funnel stage, lastRecommended, rejectedHandles, lastRejectionReason,
+  nextBestMove, turnCount). `emptyObjective()` (new session = empty) + `updateObjective()`.
+  Threaded via `body.priorObjective` (caller-injected, session-scoped per Phase 1) and
+  returned in the result for the caller to persist. Shop-scoped by construction (operates
+  on the injected shop catalog); no body/size persisted.
+- **P2-T02 planner + funnel + boundaries** — `planner.ts`: 10 funnel stages, 10 sales
+  moves, `planTurn()` classifies intent → stage → nextMove → actionType + allowedActions
+  (per stage) + GLOBAL_FORBIDDEN (fake cart/stock/discount, unsupported policy, invented
+  product, auto-return, order mutation, strategy claims) + verificationRequired. Routes
+  support to the safe hook only.
+- **P2-T03 action router** — `router.ts`: every route maps to one WHITELISTED action;
+  unknown/empty route FAILS CLOSED to `hesitation_capture`. Emits an `ActionAttempt` audit
+  entry (route, action, failClosed, verified, notes). LLM never claims execution.
+- **P2-T04 verification layer (no fake success)** — `verify.ts`: handle exists + shop-
+  scoped; sellable (photo + in stock) for visual/cart routes; compareHandles exist;
+  NO fake cart success (past-tense "in your bag" → intent, client does the real add);
+  NO fake try-on render claim (→ fitting-room offer); NO fake ticket/SLA/order-mutation;
+  policy answers require a real source else refuse + handoff. Unverifiable claims are
+  DOWNGRADED, returning a `VerificationReport`.
+- **P2-T05 deterministic services** — reuses the existing grounded services (validateHandle,
+  isSellable, buildLook, budgetFacts, recommendSize, policy/closing) — facts come from the
+  catalog; the LLM picks a route + entities, the deterministic layer renders/verifies.
+- **P2-T06 rejection handling** — `rejection.ts`: detects price/fit/color/style/generic
+  rejection + a steer directive. The envelope never re-recommends a piece in the
+  rejected set / lastRecommended, and on "too expensive" swaps to a cheaper sellable piece.
+- **P2-T07 card-first + voice/chip** — `enforce.ts`: voice trimmed to ≤2 sentences / 240
+  chars, chips capped at 3. PDP cold-open leads with the product (no generic "what are you
+  looking for"). Verified by eval #1/#2.
+- **P2-T08 regex fallback through verification** — the server `buildResilientFallback`
+  decision flows through the SAME `applySalesEngine` (router + verify) inside `decideMira`
+  (eval #1/#2 exercise the fallback). The client-side last-resort regex engine is catalog-
+  grounded (can't invent a product) and its cart add is the real `/cart/add.js` with P1
+  rollback (can't fake the actual cart).
+- **P2-T09 anti-chatbot eval harness** — `packages/mira-brain/scripts/anti-chatbot-eval.mts`,
+  15 scenarios, exercises the REAL `applySalesEngine` code path with adversarial inputs.
+  Result below.
+- **P2-T10 policy grounding** — `support.ts groundPolicyAnswer()`: returns/shipping answered
+  ONLY from `injectedBrand.returns/.shipping` (merchant) or the demo default; no source →
+  null → refuse + handoff. Never invents a window/percentage/rule.
+- **P2-T11 support intent + events** — `classifySupportIntent()` (9 intents); the envelope
+  returns `support: { intent, needsHandoff }`; the demo records it on the turn signal
+  (`MiraSignal.supportIntent`, flat-file). Order/return/exchange/complaint/order-status/
+  human are NEVER automated (forced safe handoff). NOTE: a granular PRODUCTION support
+  analytics event needs a new Prisma `EventName` enum value → a DB migration, which is
+  forbidden this phase; the envelope sets `intent="support"` which the existing capture
+  records DB-safely. Granular production event deferred (migration-gated).
+- **P2-T12 safe handoff** — `buildSafeHandoff()`: captures session/product/issue summary,
+  speaks an honest OFFER to connect; never claims a ticket was created, a human replied,
+  or an order/return was processed.
+
+### Anti-chatbot eval
+- **15/15 scenarios PASS** (deterministic, no Gemini key). Covers: PDP cold-open shirt +
+  coat (card-first, no generic open); "is this premium?" (verified explanation); "show me
+  beige" (real product); "not this" (pick changes); "too expensive" (cheaper pick:
+  wrap-coat→silk-slip); size (size_help_start); try-on (offer, fake render claim rewritten);
+  complete outfit; add-to-cart (fake "in your bag" → intent); return policy (sourced, cites
+  14-day); order status (safe handoff, invented "shipped yesterday" stripped); discount (no
+  discount-applying action exists); invalid handle (dropped, no phantom card); not-sellable
+  piece (can't be cart-claimed). Run: `pnpm --filter @stylique/mira-brain exec tsx scripts/anti-chatbot-eval.mts`.
+
+### Typecheck/build/test
+- `pnpm typecheck` 11/11 · `pnpm build` 5/5 · `pnpm test` 233 passed / 1 pre-existing
+  unrelated `TRYON_BODY` failure (reproduces on parent `345a034`) · eval 15/15.
+
+### Phase 2 gate status
+- PASSED. Planner/router/verification ✓ · card-first sales behavior ✓ · support hooks ✓ ·
+  anti-chatbot eval 15/15 ✓ · one brain (no second) ✓ · no fake success (structural) ✓ ·
+  no DB migration · stash untouched · Creative not resurrected · Phase 3 not started.
+
+### Blockers
+- None for Phase 2. Non-blockers: pre-existing TRYON_BODY test; granular production support
+  analytics event is migration-gated (deferred); cross-turn rejection memory in production
+  needs the caller to persist `objective` on the ShopperSession (session-scoped store) —
+  the brain returns it; demo can thread it via sessionStorage. A live-LLM eval pass (with a
+  Gemini key) would additionally confirm the model's own outputs, on top of the structural
+  guarantees proven here.
+
+### Next action
+- Ready for Step 2H Phase 3 (Try-On & Sizing Trust). Recommend persisting `objective` on
+  the production ShopperSession to light up cross-turn rejection memory, and a live-LLM
+  eval pass on a pilot store.

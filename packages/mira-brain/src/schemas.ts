@@ -104,5 +104,10 @@ export const BodySchema = z.object({
   // Audit P1: currency code (ISO 4217) so catalogDigest can prefix the right
   // symbol — PKR/INR/JPY stores see ₹/Rs/¥ instead of fictitious `$`.
   injectedCurrency: z.string().regex(/^[A-Za-z]{3}$/).optional(),
+  // Phase 2 / P2-T01: the prior server-side SessionObjective (session-scoped),
+  // injected by the caller so the brain reasons about where the shopper is, not
+  // just the last message. The brain returns the UPDATED objective for the caller
+  // to persist. Loose object — the brain casts it to SessionObjective.
+  priorObjective: z.any().optional(),
 });
 export type MiraBody = z.infer<typeof BodySchema>;

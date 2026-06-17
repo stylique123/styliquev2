@@ -14,4 +14,11 @@ export * from "./gemini.js";
 export * from "./policy.js";
 export * from "./look.js";
 export * from "./closing.js";
+// Phase 2 — sales-engine structure (planner, router, verify, support, rejection).
+export * from "./planner.js";
+export * from "./rejection.js";
+export * from "./router.js";
+export * from "./verify.js";
+export * from "./enforce.js";
+export * from "./support.js";
 export * from "./brain.js";

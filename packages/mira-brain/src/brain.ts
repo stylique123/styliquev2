@@ -11,6 +11,14 @@ import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
 import { buildLook } from "./look.js";
 import { extractSignals, decideClose, buildClosingContextBlock } from "./closing.js";
+// Phase 2 — sales-engine structure that the ONE brain runs THROUGH (no 2nd brain).
+import { planTurn, updateObjective, emptyObjective, type TurnPlan, type SessionObjective } from "./planner.js";
+import { detectRejection } from "./rejection.js";
+import { routeToAction, type ActionAttempt } from "./router.js";
+import { verifyDecision, type VerificationReport } from "./verify.js";
+import { enforceCardVoiceChips } from "./enforce.js";
+import { classifySupportIntent, supportNeedsHandoff, buildSafeHandoff, type SupportIntent } from "./support.js";
+import { isSellable } from "./products.js";
 
 // The complete-the-look engine AND the closing-intelligence are now part of the
 // package, so there are NO per-surface injected seams left. decideMira needs only
@@ -26,6 +34,13 @@ export interface MiraResult {
   source: "gemini" | "fallback";
   model: string | null;
   decision: MiraDecision;
+  // Phase 2 — the sales-engine envelope. The caller persists `objective` on the
+  // shopper session (session-scoped) and emits `support`/`action` events.
+  plan: TurnPlan;
+  objective: SessionObjective;
+  verification: VerificationReport;
+  action: ActionAttempt;
+  support: { intent: SupportIntent | null; needsHandoff: boolean } | null;
 }
 
 // A model outage must degrade into a smaller salesperson, never a blank bubble.
@@ -287,5 +302,117 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
       }
     }
   }
-  return { source: rawDecision ? "gemini" : "fallback", model: modelUsed, decision };
+
+  // ── PHASE 2 SALES-ENGINE ENVELOPE ───────────────────────────────────────────
+  // The one brain produced a grounded decision above; now it flows through the
+  // deterministic planner → router → verification → rejection/enforcement rails.
+  // Factored into applySalesEngine() so the anti-chatbot eval exercises the EXACT
+  // same code path (not a reimplementation).
+  return applySalesEngine({
+    decision,
+    body,
+    activeCatalog,
+    activeBrand,
+    source: rawDecision ? "gemini" : "fallback",
+    model: modelUsed,
+  });
+}
+
+export interface SalesEngineInput {
+  decision: MiraDecision;              // post-guard-chain decision (LLM or fallback)
+  body: MiraBody;
+  activeCatalog: MiraProduct[];
+  activeBrand: BrandIdentity;
+  source: "gemini" | "fallback";
+  model: string | null;
+}
+
+// Deterministic sales-engine envelope (Phase 2). Pure given its inputs — no LLM,
+// no I/O — so it is fully unit/eval testable. This is where "behaves like a sales
+// associate, never claims a fake success" is structurally guaranteed.
+export function applySalesEngine(input: SalesEngineInput): MiraResult {
+  const { body, activeCatalog, activeBrand, source, model } = input;
+  let decision = input.decision;
+
+  const isDemo = !(body.injectedCatalog && body.injectedCatalog.length > 0);
+  const prevObjective: SessionObjective =
+    (body.priorObjective as SessionObjective | undefined) ?? emptyObjective();
+  const plan = planTurn(body, activeCatalog);
+  const rejection = detectRejection(body.message);
+
+  // Support — order/return/exchange/complaint/order-status/human are NEVER
+  // automated. Force a safe handoff (no order mutation, no fake ticket).
+  const supportIntent: SupportIntent | null = classifySupportIntent(body.message);
+  if (supportIntent && supportNeedsHandoff(supportIntent)) {
+    const ho = buildSafeHandoff(supportIntent, body.message, body.currentProductHandle ?? null);
+    decision = {
+      ...decision,
+      route: "talk_only",
+      voice: ho.voice,
+      productHandle: undefined,
+      quickReplies: ["Connect me", "Keep shopping"],
+      intent: "support",
+    };
+  }
+
+  // Route the (possibly support-overridden) decision to a whitelisted action;
+  // unknown routes fail closed to hesitation_capture.
+  const attempt = routeToAction(decision);
+
+  // VERIFICATION — the no-fake-success guarantee.
+  const { decision: verifiedDecision, report } = verifyDecision(decision, activeCatalog, {
+    action: attempt.action,
+    brand: activeBrand,
+    isDemo,
+    message: body.message,
+    currentProductHandle: body.currentProductHandle,
+  });
+  decision = verifiedDecision;
+  attempt.verified = report.ok;
+
+  // REJECTION ADAPTATION — never re-recommend a piece the shopper just turned
+  // down; swap to a genuinely different sellable piece (cheaper on "too
+  // expensive"). Only fires on a product route carrying a handle.
+  if (rejection.rejected && decision.productHandle) {
+    const rejectedSet = new Set([
+      ...prevObjective.rejectedHandles,
+      ...(prevObjective.lastRecommendedHandle ? [prevObjective.lastRecommendedHandle] : []),
+    ]);
+    if (rejectedSet.has(decision.productHandle)) {
+      const current = activeCatalog.find((p) => p.handle === decision.productHandle);
+      const candidates = activeCatalog.filter(
+        (p) => isSellable(p) && !rejectedSet.has(p.handle) && p.handle !== decision.productHandle,
+      );
+      const pick =
+        rejection.reason === "price" && current
+          ? candidates.filter((p) => p.priceUsd < current.priceUsd).sort((a, b) => b.priceUsd - a.priceUsd)[0] ?? candidates[0]
+          : candidates[0];
+      if (pick) {
+        decision = {
+          ...decision,
+          productHandle: pick.handle,
+          voice: rejection.reason === "price"
+            ? `Got it — here's ${pick.name} instead, a lighter spend in the same direction.`
+            : `Understood — let me show you ${pick.name} instead.`,
+        };
+      }
+    }
+  }
+
+  // CARD-FIRST + VOICE/CHIP ENFORCEMENT — short voice, ≤3 chips, no wall-of-text.
+  decision = enforceCardVoiceChips(decision);
+
+  // Update the server-side objective for the caller to persist (session-scoped).
+  const objective = updateObjective(prevObjective, body, decision, plan, rejection);
+
+  return {
+    source,
+    model,
+    decision,
+    plan,
+    objective,
+    verification: report,
+    action: attempt,
+    support: supportIntent ? { intent: supportIntent, needsHandoff: supportNeedsHandoff(supportIntent) } : null,
+  };
 }

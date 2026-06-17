@@ -69,6 +69,8 @@ export type MiraSignal = {
   nearMissCategory?: string | null; // the broader bucket we DO stock ("linen shirts")
   nearMissAttribute?: string | null; // the single missing attribute ("cropped", "in black", "petite")
   nearMissReason?: string | null; // one short human line for the dashboard
+  // ── Support intent (Phase 2 / P2-T11) — captured, never automated ─────────
+  supportIntent?: string | null; // return_policy | order_status | human_handoff | …
   source: "gemini" | "fallback"; // which brain produced it (quality signal)
 };
 
@@ -119,6 +121,7 @@ export type RecordSignalInput = {
   nearMissCategory?: string | null;
   nearMissAttribute?: string | null;
   nearMissReason?: string | null;
+  supportIntent?: string | null;
   source: "gemini" | "fallback";
 };
 
@@ -139,6 +142,7 @@ export async function recordSignal(input: RecordSignalInput): Promise<void> {
     nearMissCategory: input.nearMissCategory?.trim().slice(0, 60) ?? null,
     nearMissAttribute: input.nearMissAttribute?.trim().slice(0, 40) ?? null,
     nearMissReason: input.nearMissReason?.trim().slice(0, 160) ?? null,
+    supportIntent: input.supportIntent?.trim().slice(0, 40) ?? null,
     source: input.source,
   };
   // newest first; cap
