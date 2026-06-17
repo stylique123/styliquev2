@@ -26,6 +26,7 @@ import {
   calculateZoneFit,
   buildOutfit,
   buildColorCombos,
+  sizingConfidenceLevel,
   type StyleProduct,
   type SizeChartEntry,
   type ZoneFitResult,
@@ -298,6 +299,19 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
     fitZones = {};
   }
 
+  // P3-T08/T09: record the honest confidence LEVEL + the SOURCE the size came
+  // from (chart / body / fallback) on the FitSession, so a future Fit-Truth pass
+  // (Phase 4+) can weight by signal quality. Session-scoped; GDPR-redacted.
+  const hasSizeChart = !!product.sizeChartJson;
+  const hasMeasurements = !!(parsed.data.chestCm || parsed.data.waistCm || parsed.data.hipCm);
+  const conf = sizingConfidenceLevel({
+    hasSizeChart,
+    hasMeasurements,
+    hasHeightWeight: !!(parsed.data.heightCm && parsed.data.weightKg),
+    score: result.confidence,
+  });
+  const sizeSource =
+    hasSizeChart && hasMeasurements ? "chart+body" : hasSizeChart ? "chart" : hasMeasurements ? "body" : "fallback";
   void prisma.fitSession.create({
     data: {
       shopId,
@@ -310,6 +324,9 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
         fitPreference: parsed.data.fitPreference,
         bodyType: parsed.data.bodyType,
         fitZones,
+        // Phase 3 trust fields
+        confidenceLevel: conf.level,     // high | medium | low | unavailable
+        source: sizeSource,              // chart+body | chart | body | fallback
       } as object,
     },
   }).catch(() => undefined);

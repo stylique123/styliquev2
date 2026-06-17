@@ -6,25 +6,26 @@
  RUN  v2.1.9 /Users/apple/Desktop/stylique  re build/fashion/packages/core
 
  ✓ src/__tests__/combo-add-all-logic.test.ts (11 tests) 3ms
- ✓ src/__tests__/tryon-combo.test.ts (17 tests) 7ms
  ✓ src/__tests__/otp-lockout.test.ts (7 tests) 2ms
- ✓ src/__tests__/recommendations.test.ts (14 tests) 6ms
- ✓ src/__tests__/sizing-parsers.test.ts (19 tests) 7ms
- ✓ src/__tests__/style-score.test.ts (31 tests) 5ms
+ ✓ src/__tests__/sizing-parsers.test.ts (19 tests) 5ms
  ✓ src/__tests__/style-harmony.test.ts (25 tests) 5ms
- ✓ src/__tests__/fit-style.test.ts (23 tests) 42ms
- ✓ src/__tests__/catalog.test.ts (14 tests) 36ms
+ ✓ src/__tests__/style-score.test.ts (31 tests) 5ms
+ ✓ src/__tests__/recommendations.test.ts (14 tests) 5ms
+ ✓ src/__tests__/tryon-combo.test.ts (17 tests) 5ms
+ ✓ src/__tests__/fit-style.test.ts (23 tests) 9ms
+ ✓ src/__tests__/catalog.test.ts (14 tests) 7ms
  ✓ src/__tests__/i18n.test.ts (33 tests) 4ms
- ✓ src/__tests__/imagery-quality.test.ts (10 tests) 22ms
- ✓ src/__tests__/rate-limit.test.ts (6 tests) 2ms
- ❯ src/__tests__/plans.test.ts (11 tests | 1 failed) 11ms
+ ✓ src/__tests__/tryon-trust.test.ts (14 tests) 11ms
+ ✓ src/__tests__/imagery-quality.test.ts (10 tests) 4ms
+ ✓ src/__tests__/rate-limit.test.ts (6 tests) 3ms
+ ✓ src/__tests__/shopper-serialize.test.ts (4 tests) 5ms
+ ❯ src/__tests__/plans.test.ts (11 tests | 1 failed) 10ms
    × PlansService.canConsume > treats null quota as unlimited (TRYON_BODY) 4ms
      → expected false to be true // Object.is equality
- ✓ src/__tests__/analytics.test.ts (5 tests) 5ms
- ✓ src/__tests__/shopper-serialize.test.ts (4 tests) 2ms
- ✓ src/__tests__/tryon-cache.test.ts (4 tests) 42ms
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ ✓ src/__tests__/analytics.test.ts (5 tests) 7ms
+ ✓ src/__tests__/tryon-cache.test.ts (4 tests) 4ms
 
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
 
  FAIL  src/__tests__/plans.test.ts > PlansService.canConsume > treats null quota as unlimited (TRYON_BODY)
 AssertionError: expected false to be true // Object.is equality
@@ -36,12 +37,7 @@ AssertionError: expected false to be true // Object.is equality
 + false
 
  ❯ src/__tests__/plans.test.ts:52:23
- Test Files  1 failed | 15 passed (16)
-      Tests  1 failed | 233 passed (234)
-   Start at  11:27:34
-   Duration  1.18s (transform 599ms, setup 0ms, collect 1.16s, tests 201ms, environment 26ms, prepare 1.73s)
      50|     await usage.increment("shop-1", "TRYON_BODY", 999999);
-
      51|     const r = await plans.canConsume("shop-1", "TRYON_BODY");
      52|     expect(r.allowed).toBe(true);
        |                       ^
@@ -49,5 +45,10 @@ AssertionError: expected false to be true // Object.is equality
      54|   });
 
 ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 16 passed (17)
+      Tests  1 failed | 247 passed (248)
+   Start at  11:48:46
+   Duration  978ms (transform 740ms, setup 0ms, collect 1.26s, tests 93ms, environment 2ms, prepare 1.43s)
 
  ELIFECYCLE  Test failed. See above for more details.

@@ -606,3 +606,95 @@ UI/API/code references remain:
 - Ready for Step 2H Phase 3 (Try-On & Sizing Trust). Recommend persisting `objective` on
   the production ShopperSession to light up cross-turn rejection memory, and a live-LLM
   eval pass on a pilot store.
+
+---
+
+## Step 2H Phase 3 — Try-On & Sizing Trust — 2026-06-17
+
+### Branch state
+- Branch `chore/phase3-tryon-sizing-trust` off `chore/phase2-mira-sales-engine`
+  (Phase 2 pushed: `6365efa`). Not merged, not deployed. No DB migration applied.
+- Deterministic trust primitives live in `@stylique/core/tryon/trust.ts` (unit-tested);
+  the demo render engine + API route enforce them; harnesses prove them.
+
+### Tickets completed
+- **P3-T01 full try-on cache key** — rewrote the demo render key (`buildTryOnCacheKey`,
+  exported) to encode shop · muse · product handle · **variant** · **colour** · size ·
+  ease-bucket · **pose** · **garment-image hash** · look/per-piece fits · **model** ·
+  cache-version · prompt-version. Debuggable via `TRYON_DEBUG_KEYS=1` (paths/ids only, no
+  secrets). Added `color`/`variantId`/`pose` to `TryOnRequest` + the `/api/tryon` Zod body.
+- **P3-T02 cache invalidation / versioning** — new `TRYON_CACHE_VERSION="c1"` (distinct
+  from PROMPT_VERSION) folded into every key → ALL pre-Phase-3 keys are different now →
+  guaranteed cache MISS → fresh render. No destructive bulk delete; old wrong-colour/wrong-
+  size keys can never resolve again.
+- **P3-T03 product/color/variant correctness** — the route already validated handle+size
+  against the real catalog; added colourway validation (an explicit `color` must be a real
+  colour of THIS product → `invalid_color` else). THE REAL BUG FIXED: the focus piece's
+  colourway was NOT in the old key (it used `handle`, no colour) → two colourways shared a
+  render. Now `focusColorFromImage()` derives the colourway from the focus image filename
+  AND an explicit `color` is folded in → ivory vs onyx never collide.
+- **P3-T04 size-ladder harness** — `apps/web/scripts/size-ladder-harness.mts` runs every
+  product across all sizes, asserts a DISTINCT cache key per size, and classifies each path
+  honestly. **PASS: all sizes distinct; 13 products fit-visual, the one-size tote correctly
+  style-preview-only.** Run: `pnpm --filter @stylique/web exec tsx scripts/size-ladder-harness.mts`.
+- **P3-T05 render state machine** — `trust.ts`: explicit states (requested/queued/rendering/
+  completed/failed/expired/blocked) + `canTransition` + `stateToDbStatus` (maps onto the DB
+  JobStatus PENDING/RUNNING/SUCCEEDED/FAILED — no migration) + `resolveTerminalState()` which
+  makes `completed` legitimate ONLY with real output (timeout→failed, error→failed, no
+  output→failed, invalid input→blocked). Unit-tested. The demo render already throws on
+  failure (returns success only with a real imageUrl), so no fake success at runtime.
+- **P3-T06 TryOnSession without shopper-photo** — model already carries shop/shopper/
+  product/status/provider/cacheKey/output/error/latency; product/variant/size/colour/muse
+  are encoded in the (now-full) cacheKey (no new columns → no migration). `inputPhotoUrl`
+  is NEVER written (only comments confirm "stays NULL").
+- **P3-T07 no-photo verification** — grep of every render/route/server path for shopper-
+  photo ingestion/persistence (`photoDataUrl`/`inputPhoto`/`selfie`/`userPhoto`/etc.)
+  returns EMPTY (only removal comments). Try-on is muse/avatar ONLY; no shopper photo is
+  accepted or stored anywhere.
+- **P3-T08 sizing confidence fallback** — `sizingConfidenceLevel()`: high (chart+body) /
+  medium (chart OR body) / low (height-weight estimate) / **unavailable** (no chart AND no
+  body → honest "I can't size it accurately, want me to size you?"). `stripFitGuarantee()`
+  backstops any "guaranteed/perfect fit/exact fit" language. Unit-tested.
+- **P3-T09 FitSession row** — already created on size help (`shopper.server.ts`), shop+
+  session scoped, GDPR-redacted (customers/shop redact). Enriched the `reasoning` JSON with
+  the explicit **confidenceLevel** + **source** (chart+body / chart / body / fallback) — no
+  migration (reasoning is Json). No body data persisted beyond the consented fit submission.
+- **P3-T10 fit feedback / return-reason hook** — `classifyFitFeedback()` (10 reasons:
+  too_small/too_large/tight_chest/tight_waist/too_long/too_short/wrong_color/fabric_issue/
+  changed_mind/other) + `buildFitFeedback()` which flags `needsHandoff` when the shopper
+  wants a return/exchange. HOOK ONLY — never automates a return/exchange/order; a
+  return/exchange REQUEST routes to the Phase-2 safe handoff. Unit-tested.
+
+### Product rule (honesty)
+- `classifyRenderHonesty()` + `honestTryOnLabel()` label a render "Style preview" unless the
+  ease genuinely varies across sizes ("fit-visual"). We never claim "this size fits",
+  "rendered your body", "fit guaranteed", or "try-on completed" without verification.
+
+### Verification results
+- Trust unit tests: **14/14 pass** (`packages/core/src/__tests__/tryon-trust.test.ts`).
+- Size-ladder harness: **PASS** (distinct keys + honest classification).
+- No-photo grep: **clean** (no shopper-photo ingestion/persistence).
+- Phase 2 anti-chatbot eval: **15/15** (no regression).
+
+### Typecheck/build/test
+- `pnpm typecheck` 11/11 · `pnpm build` 5/5 · `pnpm test` 247 passed / 1 pre-existing
+  unrelated `TRYON_BODY` failure (reproduces on parent `345a034`).
+
+### Phase 3 gate status
+- PASSED. Try-on trust ✓ (full cache key, versioned, colour/variant correct) · sizing trust ✓
+  (confidence levels + honest unavailable, no fit guarantee) · no-photo/privacy ✓ (muse-only,
+  inputPhotoUrl never written) · harness ✓ · render state machine honest ✓ · FitSession +
+  fit-feedback hook ✓ · no DB migration · stash untouched · Creative not resurrected · Phase 4
+  not started.
+
+### Blockers
+- None for Phase 3. Non-blockers: pre-existing TRYON_BODY test; wiring `sizingConfidenceLevel`
+  + the fit-feedback hook into the live UI/conversation surfaces is incremental (helpers are
+  ready + tested; the post-purchase fit-feedback surface itself is Phase 4+ territory); a
+  live render pass (with a Gemini key) would visually confirm colourway/size distinctness on
+  top of the deterministic key-distinctness proven here.
+
+### Next action
+- Ready for Step 2H Phase 4 (Outcome Proof). Recommend a live render pass on a pilot store to
+  visually confirm colourway + size distinctness, and surfacing the sizing confidence level
+  in Mira's voice + the fitting-room UI.

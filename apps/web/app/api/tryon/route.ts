@@ -29,6 +29,12 @@ const Body = z.object({
   // placed by type — see accessoryClause in tryon-render.server.ts.
   garmentKind: z.enum(["top", "bottom", "dress", "outerwear", "accessory"]).optional(),
   handle: z.string().max(120).optional(),
+  // P3-T01/T03: explicit colourway + variant + pose of the focus piece, folded
+  // into the cache key so colourways/variants/poses never share a render. All
+  // optional — when absent the colourway is derived from the focus image filename.
+  color: z.string().max(48).optional(),
+  variantId: z.string().max(64).optional(),
+  pose: z.string().max(24).optional(),
   // Honest fit signal from the brand-exact size map (per shopper body).
   easeCm: z.number().min(-40).max(60).optional(),
   tightness: z.number().min(-1).max(1).optional(),
@@ -112,6 +118,16 @@ export async function POST(req: Request) {
       logErr("invalid_input");
       return NextResponse.json({ error: "invalid_input" }, { status: 400 });
     }
+    // P3-T03: if an explicit colourway is requested, it must be a real colour of
+    // THIS product. A wrong/foreign colour is rejected (no silent mis-render).
+    if (b.color && product.colors.length) {
+      const want = b.color.toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const known = product.colors.some((c) => c.toLowerCase().replace(/[^a-z0-9]+/g, "") === want);
+      if (!known) {
+        logErr("invalid_input");
+        return NextResponse.json({ error: "invalid_color", productColors: product.colors }, { status: 400 });
+      }
+    }
   }
 
   const startedAt = Date.now();
@@ -125,6 +141,9 @@ export async function POST(req: Request) {
       garmentKind: b.garmentKind,
       museId: b.museId,
       handle: b.handle,
+      color: b.color,
+      variantId: b.variantId,
+      pose: b.pose,
       easeCm: b.easeCm,
       tightness: b.tightness,
       bindLabel: b.bindLabel,

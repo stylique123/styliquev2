@@ -16,6 +16,7 @@ export * from "./style/score.js";
 // D40 — multi-garment sequential VTO chain.
 export * from "./tryon/combo.js";
 export * from "./tryon/cache.js";
+export * from "./tryon/trust.js";
 export * from "./recommendations/service.js";
 // Intelligence loop — measure→learn (Outcome tracking).
 export * from "./outcomes/index.js";

@@ -102,6 +102,16 @@ export interface TryOnRequest {
   /** Stable handle for the focus product, used in the cache key. */
   handle?: string;
   /**
+   * P3-T01/T03: explicit colourway + variant of the FOCUS piece, folded into the
+   * cache key so two colourways (ivory vs onyx) or two variants of the SAME handle
+   * NEVER share a cached render. Absent → derived from the focus garment image
+   * filename's colour suffix; `_` when truly unknown.
+   */
+  color?: string;
+  variantId?: string;
+  /** P3-T01: pose of the muse render (default "front"). Distinct pose → distinct key. */
+  pose?: string;
+  /**
    * Per-brand cache partition (founder: "muse renders should not only be cached
    * in session, but per brand so it's speed-cached to their own storage").
    * Two brands with the same product handle "midnight-silk-gown" would
@@ -505,6 +515,42 @@ function easeBucket(easeCm?: number): string {
 // new dramatic clauses re-render fresh.
 const PROMPT_VERSION = "v3";
 
+// P3-T02: render-PIPELINE version, distinct from PROMPT_VERSION. Bumping this
+// invalidates EVERY pre-Phase-3 cache key at once (different key → guaranteed
+// cache miss → fresh render) — no destructive bulk delete needed. Phase 3 bumps
+// to c1 because the key now also encodes colour + variant + pose + model, so the
+// old keys (which omitted colour for the focus piece → wrong-colourway hits) must
+// never resolve again.
+const TRYON_CACHE_VERSION = "c1";
+
+// Short, non-secret hash of a garment image PATH so two different focus images
+// for the same handle never collide (and the key stays debuggable, no bytes).
+function shortHash(input: string): string {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) h = ((h << 5) + h + input.charCodeAt(i)) >>> 0;
+  return h.toString(36).slice(0, 8);
+}
+
+// A filesystem-safe token from any free-form value (colour, variant, pose, model).
+function slugToken(v: string | undefined, fallback = "_"): string {
+  if (!v) return fallback;
+  const s = v.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24);
+  return s || fallback;
+}
+
+// Derive the focus colourway from the focus garment image filename. The demo
+// encodes colourway in the filename (`onyx-silk-slip-ivory.png`); the handle is
+// the product (`onyx-silk-slip`). The trailing token after the handle is the
+// colour. Returns "_" when no colour suffix is present.
+function focusColorFromImage(handle: string, focusImage?: string): string {
+  if (!focusImage) return "_";
+  const base = focusImage.split("/").pop()?.replace(/\.png$/i, "").replace(/-\d+$/, "") ?? "";
+  if (base === handle || !base.startsWith(handle + "-")) return "_";
+  return slugToken(base.slice(handle.length + 1));
+}
+
+const MODEL_SLUG = slugToken(MODEL, "model");
+
 // Sanitise shop identifier into a filesystem-safe slug. Brand domain comes in
 // as `stylee.myshopify.com` or similar; collapse to alphanumerics + dashes so
 // it composes safely with the rest of the cache key + survives any disk write.
@@ -514,31 +560,45 @@ function shopKey(shopSlug?: string): string {
   return s.slice(0, 40) || "_";
 }
 
-function museCacheKey(
-  shopSlug: string | undefined,
-  museId: string, handle: string, size: string,
-  lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[],
-): string {
-  const look = lookHandles.length ? `_look-${[...lookHandles].sort().join("-")}` : "";
-  // Combined looks: fold each non-focus piece's size + ease bucket into the key
-  // so the same look rendered at different per-piece fits caches as distinct
-  // assets (and a body that fits a look piece differently re-renders correctly).
+// ── Full try-on cache key (P3-T01) ───────────────────────────────────────────
+// Every dimension that changes the rendered pixels is in the key, so a different
+// shop / muse / product / variant / colour / size / ease / pose / garment image /
+// model / pipeline-version NEVER reuses another's render. Debuggable (no secrets).
+export function buildTryOnCacheKey(input: {
+  shopSlug?: string; museId: string; handle: string; size: string;
+  color?: string; variantId?: string; pose?: string;
+  focusImage?: string; lookHandles: string[]; easeCm?: number; garmentFits?: GarmentFit[];
+}): string {
+  const look = input.lookHandles.length ? `_look-${[...input.lookHandles].sort().join("-")}` : "";
   let perPiece = "";
-  if (garmentFits && garmentFits.length > 1) {
+  if (input.garmentFits && input.garmentFits.length > 1) {
     perPiece =
       "_fits-" +
-      garmentFits
-        .slice(1)
+      input.garmentFits.slice(1)
         .map((f) => `${f.size.toLowerCase()}${easeBucket(f.easeCm)}`)
         .sort()
         .join("");
   }
-  // Brand-partitioned. Two brands that happen to share a product handle
-  // (e.g. both have "midnight-silk-gown") never collide, and each brand's
-  // warmed renders are reused across every subsequent shopper from that
-  // brand — the per-brand cache the founder asked for.
-  const s = shopKey(shopSlug);
-  return `s-${s}_m-${museId}-${handle}-${size.toLowerCase()}-${easeBucket(easeCm)}${look}${perPiece}-${PROMPT_VERSION}`;
+  const s = shopKey(input.shopSlug);
+  const color = input.color ? slugToken(input.color) : focusColorFromImage(input.handle, input.focusImage);
+  const variant = slugToken(input.variantId);
+  const pose = slugToken(input.pose, "front");
+  const ghash = shortHash(input.focusImage ?? input.handle);
+  // Order: shop → muse → product → variant → colour → size → ease → pose →
+  // garment-hash → look/per-piece → model → cache-version → prompt-version.
+  return [
+    `s-${s}`, `m-${input.museId}`, `p-${input.handle}`, `v-${variant}`, `c-${color}`,
+    `z-${input.size.toLowerCase()}`, easeBucket(input.easeCm), `pose-${pose}`, `g-${ghash}`,
+  ].join("-") + `${look}${perPiece}-mdl-${MODEL_SLUG}-${TRYON_CACHE_VERSION}-${PROMPT_VERSION}`;
+}
+
+function museCacheKey(
+  shopSlug: string | undefined,
+  museId: string, handle: string, size: string,
+  lookHandles: string[], easeCm?: number, garmentFits?: GarmentFit[],
+  color?: string, variantId?: string, pose?: string, focusImage?: string,
+): string {
+  return buildTryOnCacheKey({ shopSlug, museId, handle, size, color, variantId, pose, focusImage, lookHandles, easeCm, garmentFits });
 }
 
 export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
@@ -560,7 +620,12 @@ export async function renderTryOn(req: TryOnRequest): Promise<TryOnResult> {
   const lookHandles = garmentImages
     .slice(1)
     .map((g) => g.split("/").pop()?.replace(/\.png$/i, "").replace(/-\d+$/, "") ?? "");
-  const key = museCacheKey(req.shopSlug, req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits);
+  const key = museCacheKey(
+    req.shopSlug, req.museId, req.handle, req.size, lookHandles, req.easeCm, req.garmentFits,
+    req.color, req.variantId, req.pose, garmentImages[0],
+  );
+  // P3-T01: cache key is debuggable (no secrets — paths/ids only).
+  if (process.env.TRYON_DEBUG_KEYS === "1") console.debug("[tryon] cacheKey", key);
   const url = museRenderUrl(key);
 
   // Cache hit anywhere (memory → writable disk → baked) → instant.
