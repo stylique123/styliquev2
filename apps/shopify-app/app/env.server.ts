@@ -12,7 +12,7 @@ const schema = z.object({
   SHOPIFY_API_KEY: z.string().min(1, "Set to your Partners app client_id (same value as `client_id` in apps/shopify-app/shopify.app.toml)"),
   SHOPIFY_API_SECRET: z.string().min(1, "Partners → App → Client credentials → Client secret"),
   SHOPIFY_APP_URL: z.string().url("Must be the public URL the app is reachable at — your Cloudflare tunnel URL in dev"),
-  SHOPIFY_SCOPES: z.string().default("read_products,read_product_listings,read_inventory,read_orders,write_products"),
+  SHOPIFY_SCOPES: z.string().default("read_products,read_inventory,read_orders,write_script_tags"),
   SHOPIFY_APP_PROXY_SUBPATH: z.string().default("stylique"),
 
   GEMINI_API_KEY: z.string().min(1, "Required — chat is non-functional without it (get from https://aistudio.google.com)"),
@@ -53,7 +53,7 @@ if (!parsed.success) {
     "  SHOPIFY_API_KEY     <client_id from shopify.app.toml>",
     "  SHOPIFY_API_SECRET  <Client secret from Shopify Partners dashboard>",
     "  SHOPIFY_APP_URL     https://<your-tunnel>.trycloudflare.com",
-    "  SHOPIFY_SCOPES             read_products,read_product_listings,read_inventory,read_orders,write_products",
+    "  SHOPIFY_SCOPES             read_products,read_inventory,read_orders,write_script_tags",
     "  STYLIQUE_INTERNAL_SECRET   $(openssl rand -hex 32)  # required in production",
     "",
     "Then re-run the command. See docs/LOCAL_SHOPIFY_DEV.md for the full flow.",

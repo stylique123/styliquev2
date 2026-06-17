@@ -71,9 +71,26 @@ export default function Dashboard() {
   const cat = d.catalog;
   const f = d.stylist.funnel;
 
+  const widgetLive = d.widget.placement.widgetLive;
+
   return (
     <Page title="Dashboard" subtitle={`Last ${h.windowDays} days`}>
       <Layout>
+        {/* ── Widget-live status (P1-T08) — never a silent pass ─────────── */}
+        <Layout.Section>
+          {widgetLive ? (
+            <Banner tone="success" title="Your Stylique widget is live on your storefront">
+              <p>We&apos;ve confirmed the widget is mounted and shoppers can reach Mira.</p>
+            </Banner>
+          ) : (
+            <Banner tone="critical" title="We haven&apos;t detected your widget on your storefront yet">
+              <p>Enable the Stylique app embed in your theme (Online Store → Themes →
+                Customize → App embeds), then open a product page to confirm. Until a
+                shopper loads it, this stays red.</p>
+            </Banner>
+          )}
+        </Layout.Section>
+
         {/* ── MEASURED ROI hero ─────────────────────────────────────────── */}
         <Layout.Section>
           <Card>

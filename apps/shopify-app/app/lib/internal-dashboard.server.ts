@@ -20,6 +20,9 @@ export type BrandSummary = {
   totalShopperSessions: number;
   sessionsLast7Days: number;
 
+  // Widget-live (P1-T08): true = placement beacon seen in last 7 days.
+  widgetLive: boolean;
+
   // VTO
   totalTryOnSessions: number;
   tryOnSuccessRate: number; // 0-1
@@ -152,6 +155,7 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
     tryOnFailed,
     usageCounters,
     lastEvents,
+    widgetAudits7d,
   ] = await Promise.all([
     // Sessions last 7 days per shop
     prisma.shopperSession.groupBy({
@@ -195,7 +199,15 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       orderBy: { createdAt: "desc" },
       distinct: ["shopId"],
     }),
+    // P1-T08: widget-live — any placement beacon in the last 7 days means the
+    // widget was confirmed mounted on that shop's storefront.
+    prisma.analyticsEvent.groupBy({
+      by: ["shopId"],
+      where: { shopId: { in: shopIds }, name: "WIDGET_PLACEMENT_AUDIT", createdAt: { gte: since7d } },
+      _count: { _all: true },
+    }),
   ]);
+  const widgetLiveShopIds = new Set(widgetAudits7d.map((w) => w.shopId));
 
   return shops.map((shop) => {
     const domain = shop.shopifyDomain;
@@ -236,6 +248,7 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
       lastActiveAt,
       totalShopperSessions: totalSessions,
       sessionsLast7Days: s7,
+      widgetLive: widgetLiveShopIds.has(shop.id),
       totalTryOnSessions: shop._count.tryOnSessions,
       tryOnSuccessRate: vtoRate,
       totalChatMessages: chatMsgs,
@@ -355,6 +368,11 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     ? (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
     : 250;
 
+  // P1-T08: widget-live — placement beacon in the last 7 days.
+  const widgetLive = (await prisma.analyticsEvent.count({
+    where: { shopId, name: "WIDGET_PLACEMENT_AUDIT", createdAt: { gte: since7d } },
+  })) > 0;
+
   return {
     shopId: shop.id,
     shopifyDomain: shop.shopifyDomain,
@@ -364,6 +382,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     lastActiveAt: lastActiveEvt,
     totalShopperSessions: sessionsAllTime,
     sessionsLast7Days: sessions7d,
+    widgetLive,
     totalTryOnSessions: shop._count.tryOnSessions,
     tryOnSuccessRate: vtoRate,
     totalChatMessages: chatMsgCount,

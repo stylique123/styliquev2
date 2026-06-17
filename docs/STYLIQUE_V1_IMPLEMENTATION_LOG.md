@@ -402,3 +402,111 @@ UI/API/code references remain:
 ### Next action
 - Phase 0 is closed. Ready to begin Step 2H Phase 1 (Safety & Shopify Pilot Foundation)
   on a new branch off this one (or off main after a reviewed merge — founder's call).
+
+---
+
+## Step 2H Phase 1 — Safety & Shopify Pilot Foundation — 2026-06-17
+
+### Branch state
+- Branch `chore/phase1-safety-shopify-foundation` off `chore/phase0-remove-creative`.
+- Not merged, not deployed. Investigation-first (2 Explore agents mapped identity/
+  session/consent + Shopify integration), then trust-but-verify on every claim before
+  editing — several sub-agent claims were wrong and corrected against source.
+
+### Tickets completed
+- **P1-T01 session-safe identity — CODE.** Body + size are now SESSION-SCOPED.
+  `MiraWidget.tsx` (`mira_size_memory_v1`, `mira_body_v1`) and `TryOnPanel.tsx`
+  (`mira_body_v1`) moved localStorage→sessionStorage; added `purgeLegacyBodyStorage()`/
+  `purgeLegacyBody()` that wipe any pre-Phase-1 device-wide localStorage residue on
+  first read. A new shopper/session on the same browser can no longer inherit a prior
+  shopper's body/size. (`mira_units_v1` left as localStorage — UI preference, not body
+  data. Conversation/nudge keys were already sessionStorage.)
+- **P1-T02 storefront cookie/session identity — VERIFIED.** `sq_shopper_id` cookie is
+  `Secure; HttpOnly; SameSite=None` (session.server.ts); shop is resolved ONLY from the
+  HMAC-verified App Proxy `session.shop` (proxy.shopper.$.tsx `resolveShopDomain`, query
+  fallback regex-gated to `*.myshopify.com` after HMAC). Every handler scopes queries by
+  `shopifyDomain`/`shopId`. Cross-shop is impossible by construction. No change needed.
+- **P1-T03 save-at-end consent — VERIFIED + documented.** Soft-account claim is OTP-gated
+  (account.server.ts: SHA-256 OTP, 15-min TTL, 5-try lockout, `accountClaimedAt`).
+  Anonymous body lives on the per-cookie `ShopperSession` (a NEW shopper = NEW cookie =
+  NEW empty session → no cross-shopper inheritance); explicit consent upgrades to a named,
+  GDPR-redactable profile. Photo path fully removed (muse-only) — no shopper photo is
+  ever persisted. (Flagged non-blocker: 180-day anonymous-body retention on the cookie
+  session is a privacy-policy decision, not a leak.)
+- **P1-T04 demo cart label + isolation — CODE + VERIFIED.** Added a visible "DEMO" pill
+  to the floating cart badge when `!ASSET_BASE` (marketing demo) with a "simulated cart"
+  tooltip. Storefront isolation already enforced (P1.3): `activeProducts()`/`byHandle()`
+  return `[]`/null on a real storefront (never the 14-product demo catalog), and
+  `storefront-cart.ts onStorefront()` gates the simulated path so the real `/cart/add.js`
+  is the ONLY cart path on a storefront.
+- **P1-T05 storefront smoke test — runbook.** Existing assets: `scripts/smoke-test.ts`
+  (health/proxy/chat/VTO/dashboard) + `scripts/setup-live-test.sh` + `docs/live-test-
+  checklist.md`. Storefront-isolation guarantees are code-enforced + verified (no demo
+  catalog, no simulated cart on storefront). Runbook for a pilot store: install → app
+  embed on → open a PDP → confirm widget mounts → real reco card with a real handle →
+  size → real `/cart/add.js` add (devtools `[stylique] cart:add status:200`) → cookie
+  `sq_shopper_id` present → dashboard widget-live banner turns green.
+- **P1-T06/T07 Theme App Extension primary / ScriptTag fallback — VERIFIED.** The theme
+  app embed (`extensions/stylique-widget/blocks/stylique_widget.liquid`, default-on)
+  injects `tryon.js`; the afterAuth ScriptTag injects `widget.js`. esbuild proves these
+  are BYTE-IDENTICAL (built from `src/mira-demo.tsx`, mirrored). Both run `mount()` whose
+  `if (document.getElementById("sq-mira-root")) return;` is a DOM-level guard → both
+  loaded = single mount, no double-widget. Uninstall removes the ScriptTag
+  (webhooks.app-uninstalled → deleteScriptTags). ScriptTag retained as the automatic
+  fallback per instruction. No risky change made.
+- **P1-T08 widget-live beacon + status — CODE.** Beacon already emitted once/session
+  (`WIDGET_PLACEMENT_AUDIT`, mira-demo.tsx). Added explicit `widgetLive`/`lastAuditAt` to
+  `buildPlacementSummary` (false/red when no beacon in window — never a silent pass) and a
+  red/green widget-live Banner at the top of the merchant dashboard (app.dashboard.tsx).
+  Super-admin: `getAllBrandSummaries`/`getBrandDetail` gained `widgetLive` (7-day beacon)
+  and `internal._index.tsx` shows a "● live / ● no widget" pill per brand (red when no
+  beacon) — so a not-live store shows red instead of being invisible.
+- **P1-T09 Shopify scope cleanup — CODE.** Verified ZERO call sites for `write_products`
+  (no productCreate/productUpdate anywhere; no `app.products.new` route) and
+  `read_product_listings` (catalog sync uses Admin `products` under read_products).
+  Trimmed both from `shopify.app.toml` AND `env.server.ts` SHOPIFY_SCOPES (also fixed a
+  pre-existing drift: the env default had omitted `write_script_tags`). New set:
+  `read_products,read_inventory,read_orders,write_script_tags`. Re-consent impact
+  documented inline — existing installs re-grant once on next deploy (scope set shrank;
+  Shopify managed install shows the prompt). No V1 flow depends on the dropped scopes.
+- **P1-T10 webhook idempotency — CODE + VERIFIED.** 6/8 handlers already dedup on
+  `x-shopify-webhook-id` via `seenRecently`. Added the missing guard to
+  `webhooks.orders.tsx` (orders/create — was double-emitting `PURCHASE` on retries;
+  10-min window). `app-uninstalled` is naturally idempotent (delete/mark/delete-tags).
+  GDPR handlers (customers.data-request/redact, shop.redact) dedup + return 200.
+- **P1-T11 billing comp — VERIFIED.** `BILLING_ENFORCED` env default OFF; when ON, a paid
+  tier degrades to STARTER unless `Plan.planFeaturesJson.comp === true` (pilot grandfather)
+  or `billingActive === true`. Single enforcement point (`getEffectivePlan`). Comp is
+  settable via the internal dashboard `set_comp` action. Pilot decision: keep enforcement
+  OFF; comp the pilot merchant. Mechanism ready, not enforced.
+- **P1-T12 security regression — VERIFIED (code-enforced).** App Proxy HMAC
+  (`authenticate.public.appProxy`); cross-shop impossible (shopId-scoped queries);
+  shop-from-body ignored (session.shop only); internal IDs/tokens not exposed
+  (serialize.ts + shopper-serialize.test passes); fake cart success impossible (real
+  `/cart/add.js`, ok:false on failure); invalid handle rejected (validateHandle);
+  prompt-injection boundary present (demo + production prompts); admin routes fail closed
+  (checkAuth → NODE_ENV!=="production" when secret unset); upload MIME/size locked (regex
+  + 6MB; photo path removed entirely); rate limits on shop+shopper; shopper photos never
+  persisted. No NEW automated suite added — invariants are code-enforced + verified;
+  a dedicated automated security suite is a future hardening item (non-blocker).
+
+### Typecheck/build/test
+- `pnpm typecheck` 11/11 · `pnpm build` 5/5 · `pnpm test` 233 passed / 1 pre-existing
+  unrelated `TRYON_BODY` failure (reproduces on parent `345a034`). Widget bundle rebuilt
+  (tryon.js 197.7 KB, mirrored to widget.js).
+
+### Phase 1 gate status
+- PASSED. Identity/demo safety ✓ · Shopify foundation ✓ · widget-live ✓ ·
+  scopes/webhooks/billing/security ✓ · green build · no Phase 2 work started ·
+  stash untouched · DB migration not applied · Creative not resurrected.
+
+### Blockers
+- None for Phase 1. Non-blockers logged: pre-existing TRYON_BODY test (product decision);
+  scope trim triggers one-time re-consent on next deploy (intended); 180-day anonymous-
+  body retention is a privacy-policy decision; a dedicated automated security suite is
+  future hardening; live storefront smoke (install→cart→beacon-green) needs one human
+  action on a pilot store.
+
+### Next action
+- Ready for Step 2H Phase 2 (Mira Sales Engine). Recommend a human live-install smoke on
+  the dev/pilot store to flip the widget-live banner green and exercise the real cart path.

@@ -44,9 +44,13 @@ async function buildPlacementSummary(shopId: string, since: Date) {
   }).catch(() => [] as Array<{ payload: unknown; createdAt: Date }>);
 
   if (rows.length === 0) {
+    // P1-T08: no audit beacon in the window → the widget has NOT been confirmed
+    // live on the storefront. Surface this as an explicit false (red), never a
+    // silent pass.
     return {
       score: null, sampleCount: 0, themeHint: null,
       recentLowChecks: [], label: "unknown" as const, upsellTriggered: false,
+      widgetLive: false, lastAuditAt: null as Date | null,
     };
   }
 
@@ -93,6 +97,10 @@ async function buildPlacementSummary(shopId: string, since: Date) {
     recentLowChecks,
     label,
     upsellTriggered: score != null && score < 70,
+    // P1-T08: a beacon arrived in the window → the widget is confirmed mounted on
+    // the storefront. `lastAuditAt` is the most recent confirmed mount.
+    widgetLive: true,
+    lastAuditAt: rows[0]?.createdAt ?? null,
   };
 }
 
@@ -236,6 +244,11 @@ export async function buildOverview(args: {
       // True when score < 70: surfaces a "Want us to optimize? (Growth+/Scale)"
       // upsell tile. Below 50 we flag the store internally as a hot lead.
       upsellTriggered: boolean;
+      // P1-T08: explicit widget-live signal. true = a placement beacon was
+      // received in the window (widget confirmed mounted on the storefront);
+      // false = NOT confirmed live → dashboard shows red, never a silent pass.
+      widgetLive: boolean;
+      lastAuditAt: Date | null;          // most recent confirmed mount
     };
   };
   catalog: {

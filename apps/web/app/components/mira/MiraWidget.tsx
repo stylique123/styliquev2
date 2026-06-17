@@ -197,10 +197,17 @@ const FREE_SHIPPING_THRESHOLD = 500;
 const FREE_SHIPPING_CURRENCY = "USD";
 
 // ── Per-product size memory ─────────────────────────────────────────────────
-// Every piece here is cut differently, so a size is remembered PER PRODUCT, 
+// Every piece here is cut differently, so a size is remembered PER PRODUCT,
 // the made-to-order fitting model. We also remember the shopper's body once, so
 // the size form prefills on the next piece and they never re-enter measurements.
-// localStorage is the demo-weight stand-in for "remember in session / on signup".
+//
+// PRIVACY (Step 2H Phase 1 / P1-T01): body + size are SESSION-SCOPED only.
+// They live in sessionStorage so they evaporate when the tab/session ends and a
+// new shopper on the same device NEVER inherits a prior shopper's body/size.
+// Persisting beyond the session requires explicit consent (the OTP soft-account
+// claim, server-side on ShopperSession) — we never write body/size to
+// device-wide localStorage. purgeLegacyBodyStorage() wipes any pre-Phase-1
+// localStorage residue the first time the widget reads.
 const SIZE_MEM_KEY = "mira_size_memory_v1"; // { [handle]: size }
 const BODY_MEM_KEY = "mira_body_v1";        // { heightCm, weightKg, fitPref }
 
@@ -212,16 +219,24 @@ type BodyMemory = {
   usualBrandSize?: string;
 };
 
+// One-time cleanup: earlier builds stored body/size in device-wide localStorage.
+// Remove that residue so it can never be inherited cross-session.
+function purgeLegacyBodyStorage(): void {
+  if (typeof window === "undefined") return;
+  try { localStorage.removeItem(SIZE_MEM_KEY); localStorage.removeItem(BODY_MEM_KEY); } catch { /* ignore */ }
+}
+
 function loadSizeMemory(): Record<string, string> {
   if (typeof window === "undefined") return {};
-  try { return JSON.parse(localStorage.getItem(SIZE_MEM_KEY) ?? "{}") as Record<string, string>; } catch { return {}; }
+  purgeLegacyBodyStorage();
+  try { return JSON.parse(sessionStorage.getItem(SIZE_MEM_KEY) ?? "{}") as Record<string, string>; } catch { return {}; }
 }
 function rememberSize(handle: string, size: string): void {
   if (typeof window === "undefined") return;
   try {
     const m = loadSizeMemory();
     m[handle] = size;
-    localStorage.setItem(SIZE_MEM_KEY, JSON.stringify(m));
+    sessionStorage.setItem(SIZE_MEM_KEY, JSON.stringify(m));
   } catch { /* read-only storage, fine, just won't persist */ }
 }
 function recalledSize(handle?: string | null): string | null {
@@ -230,8 +245,9 @@ function recalledSize(handle?: string | null): string | null {
 }
 function loadBody(): BodyMemory | null {
   if (typeof window === "undefined") return null;
+  purgeLegacyBodyStorage();
   try {
-    const b = JSON.parse(localStorage.getItem(BODY_MEM_KEY) ?? "null") as BodyMemory | null;
+    const b = JSON.parse(sessionStorage.getItem(BODY_MEM_KEY) ?? "null") as BodyMemory | null;
     return b && b.heightCm ? b : null;
   } catch { return null; }
 }
@@ -247,7 +263,7 @@ function rememberBody(b: BodyMemory): void {
       age: b.age ?? existing?.age,
       usualBrandSize: b.usualBrandSize ?? existing?.usualBrandSize,
     };
-    localStorage.setItem(BODY_MEM_KEY, JSON.stringify(merged));
+    sessionStorage.setItem(BODY_MEM_KEY, JSON.stringify(merged));
   } catch { /* ignore */ }
 }
 
@@ -2387,6 +2403,13 @@ export default function MiraWidget() {
       {/* Floating cart badge */}
       {cartCount > 0 && (
         <div style={{ position: "fixed", top: 24, right: 24, zIndex: 91, background: "var(--grad)", borderRadius: 999, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", color: "#0E0A14", boxShadow: "0 4px 16px rgba(139,92,246,0.4)", animation: "miraFadeUp 300ms ease both" }}>
+          {/* P1-T04: honest demo-cart label. On the marketing demo (ASSET_BASE === "")
+              add-to-cart is a SIMULATED success (storefront-cart.ts real:false); on a
+              real storefront the badge reflects the real /cart/add.js cart and this
+              pill is hidden. */}
+          {!ASSET_BASE && (
+            <span title="Simulated cart — no real checkout on the demo" style={{ background: "rgba(0,0,0,0.28)", borderRadius: 999, padding: "1px 7px", fontSize: 9, letterSpacing: "0.12em" }}>DEMO</span>
+          )}
           <span>Bag</span>
           <span style={{ background: "rgba(0,0,0,0.2)", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>{cartCount}</span>
           <span>{money(cartValue)}</span>

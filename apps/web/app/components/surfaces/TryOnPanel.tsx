@@ -169,10 +169,19 @@ type StorefrontFitResult = {
   bodyValue: number;
 };
 
+// PRIVACY (Step 2H Phase 1 / P1-T01): body is SESSION-SCOPED (sessionStorage),
+// never device-wide localStorage. Wipe any pre-Phase-1 localStorage residue so a
+// new shopper on the same device can't inherit a prior shopper's measurements.
+function purgeLegacyBody(): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.removeItem("mira_body_v1"); } catch { /* ignore */ }
+}
+
 function readSavedBody(): SavedBody | null {
   if (typeof window === "undefined") return null;
+  purgeLegacyBody();
   try {
-    const raw = window.localStorage.getItem("mira_body_v1");
+    const raw = window.sessionStorage.getItem("mira_body_v1");
     if (!raw) return null;
     const b = JSON.parse(raw) as Partial<SavedBody>;
     if (typeof b?.heightCm === "number" && typeof b?.weightKg === "number") {
@@ -451,18 +460,19 @@ export default function TryOnPanel({
   const fitResult = ASSET_BASE && storefrontFit ? storefrontFit : localFitResult;
   const fitReady = !ASSET_BASE || Boolean(storefrontFit);
   // Persist age + usualBrandSize into the shared body store whenever they change
-  // so Mira and the sizing engine both see the most-complete profile next session.
+  // so Mira and the sizing engine both see the most-complete profile THIS session
+  // (session-scoped; cleared when the tab closes — P1-T01).
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      const raw = window.localStorage.getItem("mira_body_v1");
+      const raw = window.sessionStorage.getItem("mira_body_v1");
       const existing = raw ? (JSON.parse(raw) as SavedBody) : { heightCm: height, weightKg: weight };
       const updated: SavedBody = {
         ...existing,
         age: fitAge > 0 ? fitAge : undefined,
         usualBrandSize: usualSize !== "none" ? usualSize : undefined,
       };
-      window.localStorage.setItem("mira_body_v1", JSON.stringify(updated));
+      window.sessionStorage.setItem("mira_body_v1", JSON.stringify(updated));
     } catch { /* quota / SSR */ }
   }, [fitAge, usualSize, height, weight]);
   // Complete-the-look is SLOT-AWARE and DYNAMIC (founder P3a/b/c): it suggests only

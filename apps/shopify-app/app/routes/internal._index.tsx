@@ -20,6 +20,7 @@ type SerializedBrandSummary = {
   lastActiveAt: string | null;
   totalShopperSessions: number;
   sessionsLast7Days: number;
+  widgetLive: boolean;
   totalTryOnSessions: number;
   tryOnSuccessRate: number;
   totalChatMessages: number;
@@ -379,6 +380,17 @@ function BrandCard({
           {healthDot(brand.brandHealthStatus)}
           <span style={{ fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {brand.shopifyDomain.replace(".myshopify.com", "")}
+          </span>
+          {/* P1-T08: widget-live ✓/✗ — red when no placement beacon in 7d. */}
+          <span
+            title={brand.widgetLive ? "Widget confirmed live on storefront (7d)" : "No widget beacon in 7 days — not confirmed live"}
+            style={{
+              fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 999, whiteSpace: "nowrap",
+              background: brand.widgetLive ? "#dcfce7" : "#fee2e2",
+              color: brand.widgetLive ? "#166534" : "#b91c1c",
+            }}
+          >
+            {brand.widgetLive ? "● live" : "● no widget"}
           </span>
         </div>
         {tierBadge(brand.planTier)}

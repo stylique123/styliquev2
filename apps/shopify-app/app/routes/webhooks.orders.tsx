@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { createAnalyticsService } from "@stylique/core";
+import { seenRecently } from "../lib/ratelimit.server";
 
 const analytics = createAnalyticsService(prisma as any);
 
@@ -14,6 +15,12 @@ function hash(input: string): string {
 
 export async function action({ request }: ActionFunctionArgs) {
   const { shop, payload } = await authenticate.webhook(request);
+
+  // Idempotency (P1-T10): Shopify retries deliveries; dedup on the webhook id so a
+  // retry never double-emits the PURCHASE event. 10-min window covers retry burst.
+  const webhookId = request.headers.get("x-shopify-webhook-id");
+  if (webhookId && (await seenRecently(`wh:${webhookId}`, 600))) return new Response(null, { status: 200 });
+
   const shopRecord = await prisma.shop.findUnique({ where: { shopifyDomain: shop }, select: { id: true } });
   if (!shopRecord) return new Response();
 

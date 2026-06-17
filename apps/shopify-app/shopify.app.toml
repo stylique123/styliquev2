@@ -60,7 +60,13 @@ customer_deletion_url = "https://stylique-app-production.up.railway.app/webhooks
 shop_deletion_url = "https://stylique-app-production.up.railway.app/webhooks/shop/redact"
 
 [access_scopes]
-scopes = "read_products,read_product_listings,read_inventory,read_orders,write_products,write_script_tags"
+# P1-T09 scope cleanup: dropped write_products (zero V1 call sites — no
+# productCreate/productUpdate anywhere) and read_product_listings (zero usage;
+# catalog sync uses the Admin `products` query under read_products). write_script_tags
+# stays while the ScriptTag fallback mount remains. Re-consent: existing installs
+# must re-grant on next deploy (scope set shrank) — Shopify managed install handles
+# the prompt; merchants click "Update" once. No V1 flow depends on the dropped scopes.
+scopes = "read_products,read_inventory,read_orders,write_script_tags"
 optional_scopes = []
 use_legacy_install_flow = false
 
