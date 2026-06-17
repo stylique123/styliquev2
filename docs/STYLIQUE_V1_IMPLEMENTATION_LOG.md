@@ -1211,3 +1211,49 @@ Implemented the HIGH-impact items:
   a lookbook page. VERIFIED LIVE.
 - **Tighter copy:** dropped the look-card "Tap any piece to view" hint (thumbnails are visibly
   tappable); switch line is now one short sentence.
+
+---
+
+## Step 2H (close-out) — Action executor + abandon nudge + regression test — 2026-06-17
+
+### Tasks closed
+- **Task B — whitelisted action executor:** new `executeAction(action, params)` in `MiraWidget.tsx`
+  — the ONE strict entry point for the 7 allowed actions (`navigate_to_product`, `open_tryon`,
+  `open_fit_helper`, `show_outfit_builder`, `focus_product_card`, `open_cart`, `add_to_bag`).
+  Fails closed on an unknown action; navigation/focus/add require a real product (`byHandle`);
+  `open_tryon` mounts `TryOnPanel`; `open_fit_helper` opens `SizeForm`; **cart success is never
+  claimed by the executor** — `add_to_bag` only INITIATES the add and the real Shopify
+  `CartResult` (`r.real && !r.ok` → rollback) owns success. Returns `{ executed, reason, action }`.
+  Wired: `emitResponses` sentinels (SIZE_FORM/TRYON/NAV → executor), reco/look card try-on +
+  add-to-bag, and LookCard piece navigation (new `onView` prop) all route through it.
+- **Task C — try-on-abandon nudge:** in the `TryOnPanel onClose`, when the room is closed
+  WITHOUT a completed render, Mira drops ONE nudge — "No rush on the {piece}. Want me to try a
+  different size or colour instead?" + chips [Try another size / Try another colour / Build the
+  look]. Guarded once-per-product/session (`sessionStorage mira_abandon_<handle>`); never after a
+  completed render (`abandoned = !tryOnCompleted.current`); never claims a render happened.
+- **Task D — runtime regression harness:** new `apps/web/scripts/runtime-ux-regression.mts`
+  (deterministic, local, no Gemini/browser — same convention as `size-ladder-harness.mts`).
+  Asserts all 10 sprint UX guarantees at the source/logic level + a live `buildLook` pairing
+  check. **11/11 pass.** (The live-store browser E2E remains `scripts/storefront-e2e.spec.mjs`,
+  which needs a tunnelled Shopify store.)
+
+### Manual browser smoke (port 3002, storage cleared) — VERIFIED LIVE
+- See them on me → fitting room opens (THE FITTING ROOM panel) — PASS
+- Close without generating → abandon nudge "…try a different size or colour instead?" + 3 chips — PASS
+- Re-open + close again → NO second nudge (`mira_abandon_…=1`, spammed=false) — PASS (no spam)
+- Completed-render → abandon nudge suppressed — logic-verified (`abandoned = !tryOnCompleted`)
+  + asserted by the regression harness.
+
+### Verification (Task F)
+- `pnpm typecheck` — 11/11 successful.
+- `pnpm build` — 5/5 successful.
+- `pnpm test` — 247/248; the ONE failure is the pre-existing `TRYON_BODY` case
+  (`packages/core/src/__tests__/plans.test.ts:52`) the founder said NOT to fix here.
+- anti-chatbot-eval — 15/15. size-ladder-harness — PASS. runtime-ux-regression — 11/11.
+
+### Runtime artifacts (NOT committed)
+`.turbo/*.log`, `apps/web/data/*.json`, `apps/shopify-app/vite.config.ts.timestamp-*.mjs`.
+
+### Next action
+Branch `chore/phase4-outcome-proof` pushed. Founder: review, then decide on merge/deploy
+(held per sprint instructions). Billing enforcement (Task #24) remains a founder decision.

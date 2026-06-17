@@ -1742,7 +1742,7 @@ function Stat({ label, tone }: { label: string; tone: "accent" | "mute" }) {
 
 // Complete-the-look board, the AOV lever. Named edit, harmonised pieces, total,
 // add the entire look in one tap, or try the whole look (escalation).
-function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: Product) => void; onAddLook: (anchor: Product, pieces: Product[]) => void }) {
+function LookCard({ look, onTryOn, onAddLook, onView }: { look: LookBoard; onTryOn: (p: Product) => void; onAddLook: (anchor: Product, pieces: Product[]) => void; onView?: (p: Product) => void }) {
   const all = [look.anchor, ...look.pieces];
   return (
     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(139,92,246,0.22)", borderRadius: 16, overflow: "hidden" }}>
@@ -1757,7 +1757,7 @@ function LookCard({ look, onTryOn, onAddLook }: { look: LookBoard; onTryOn: (p: 
         {all.map((p) => (
           // Tap a piece → navigate to its PDP (founder: "navigate to recommended
           // products"). Whole-look try-on lives on the "Try the look" button below.
-          <button key={p.handle} onClick={() => { if (typeof window !== "undefined") window.location.href = productUrl(p.handle); }} title={`${p.name} · ${money(p.priceUsd)} — view`} aria-label={`View ${p.name}`} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
+          <button key={p.handle} onClick={() => { if (onView) onView(p); else if (typeof window !== "undefined") window.location.href = productUrl(p.handle); }} title={`${p.name} · ${money(p.priceUsd)} — view`} aria-label={`View ${p.name}`} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
             {p.images[0] ? (
               <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
             ) : (
@@ -1826,6 +1826,12 @@ function secondaryBtn(): React.CSSProperties {
 // ── Main widget ───────────────────────────────────────────────────────────────
 export default function MiraWidget() {
   const [open, setOpen]           = useState(false);
+  // Forward-ref holders so the whitelisted action executor (defined before
+  // these callbacks) can call them without a circular dependency. Populated by
+  // an effect once the callbacks exist.
+  const emitResponsesRef = useRef<((r: ChatMsg[]) => void) | null>(null);
+  const goToCheckoutRef  = useRef<(() => void) | null>(null);
+  const addToBagRef      = useRef<((p: Product) => void) | null>(null);
   // URL signal — polled (not next/navigation, which doesn't exist in the
   // esbuild/preact widget bundle). Drives re-approach when the shopper navigates
   // to a different product, on both the Next demo AND the Shopify storefront.
@@ -2368,6 +2374,70 @@ export default function MiraWidget() {
       .catch(rollbackLook);
   }, []);
 
+  // ── Whitelisted client action executor (Task B) ──────────────────────────
+  // ONE strict entry point for every Mira UI action. Unknown actions fail
+  // closed; navigation requires a real handle; try-on/fit need the panel to
+  // exist; cart success is NEVER claimed here (the cart helpers own the real
+  // Shopify result). Returns { executed, reason, action } so callers/tests can
+  // assert what actually happened — no fake success language.
+  const executeAction = useCallback((
+    action: "navigate_to_product" | "open_tryon" | "open_fit_helper" | "show_outfit_builder" | "focus_product_card" | "open_cart" | "add_to_bag",
+    params?: { handle?: string; product?: Product },
+  ): { executed: boolean; reason: string; action: string } => {
+    const resolve = (): Product | null =>
+      params?.product ?? (params?.handle ? byHandle(params.handle) ?? null : null);
+    switch (action) {
+      case "navigate_to_product": {
+        const p = resolve();
+        if (!p) return { executed: false, reason: "no_such_product", action };
+        if (typeof window === "undefined") return { executed: false, reason: "no_window", action };
+        activeProductHandle.current = p.handle;
+        window.location.href = productUrl(p.handle);
+        return { executed: true, reason: "navigated", action };
+      }
+      case "open_tryon": {
+        const p = resolve() ?? currentProduct();
+        if (!p) return { executed: false, reason: "no_product_for_tryon", action };
+        activeProductHandle.current = p.handle;
+        setTryOn(p); // TryOnPanel mounts on tryOnProduct truthy
+        return { executed: true, reason: "tryon_opened", action };
+      }
+      case "open_fit_helper": {
+        // SizeForm renders when showSizeForm is true (the fit helper exists).
+        setShowSizeForm(true);
+        sizeAsked.current = true;
+        return { executed: true, reason: "fit_helper_opened", action };
+      }
+      case "show_outfit_builder": {
+        const p = resolve() ?? currentProduct();
+        if (!p) return { executed: false, reason: "no_anchor_for_look", action };
+        const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: lastTopic.current, turnCount, sizeAsked: sizeAsked.current, cartValue, lastLookPieces: lastLookPieces.current };
+        emitResponsesRef.current?.([lookMsg(p, ctx)]);
+        return { executed: true, reason: "outfit_builder_shown", action };
+      }
+      case "focus_product_card": {
+        const p = resolve();
+        if (!p) return { executed: false, reason: "no_such_product", action };
+        emitResponsesRef.current?.([recoMsg(p, { relativeTo: currentProduct() })]);
+        return { executed: true, reason: "card_focused", action };
+      }
+      case "open_cart": {
+        goToCheckoutRef.current?.();
+        return { executed: true, reason: "cart_opened", action };
+      }
+      case "add_to_bag": {
+        const p = resolve();
+        if (!p) return { executed: false, reason: "no_such_product", action };
+        // Cart success is owned by addToBag's real Shopify result — the executor
+        // only INITIATES the add and never claims it succeeded.
+        addToBagRef.current?.(p);
+        return { executed: true, reason: "add_initiated", action };
+      }
+      default:
+        return { executed: false, reason: "unknown_action", action: String(action) };
+    }
+  }, [currentProduct, turnCount, cartValue]);
+
   // Stream a batch of Mira cards into the transcript with natural pacing,
   // handling the studio/size/cart sentinels and the trailing memory note.
   const emitResponses = useCallback((responses: ChatMsg[]) => {
@@ -2375,17 +2445,16 @@ export default function MiraWidget() {
       setTimeout(() => {
         if (r.from === "mira" && r.kind === "say") {
           if (r.text === SIZE_FORM_TRIGGER) {
-            setShowSizeForm(true);
-            // Record that a size form opened, feeds closing intelligence
-            sizeAsked.current = true;
+            // Route through the whitelisted executor (Task B) — the fit helper.
+            executeAction("open_fit_helper");
             return;
           }
           if (r.text.startsWith(TRYON_TRIGGER)) {
             const handle = r.text.slice(TRYON_TRIGGER.length);
-            const p = catalog.find((x) => x.handle === handle) ?? currentProduct();
-            if (p) {
-              setTryOn(p);
-              // Update shared try-on context so PDP component and Mira both see it
+            // Executor guards the panel + a real product; only stamp the shared
+            // try-on context if it actually opened (no fake success).
+            const res = executeAction("open_tryon", { handle });
+            if (res.executed) {
               const epoch = Math.floor(new Date().getTime() / 1000);
               updateTryOnCtxStatus("opened", epoch);
             }
@@ -2393,18 +2462,14 @@ export default function MiraWidget() {
           }
           if (r.text.startsWith(NAV_TRIGGER)) {
             const handle = r.text.slice(NAV_TRIGGER.length);
-            if (typeof window !== "undefined" && handle) {
-              // On the DEMO (same-origin) we auto-walk the shopper to the product
-              // page. On the STOREFRONT (ASSET_BASE set) we do NOT auto-redirect, 
-              // the recommended product may be a demo-catalog handle that isn't a
-              // real product page on the merchant's store yet (→ 404). The reco
-              // card is already shown in-widget (preview works); the card's "View
-              // product" button lets the shopper navigate deliberately. This is a
-              // safe interim until the storefront runs the merchant's own catalog.
-              if (!ASSET_BASE) {
-                sessionStorage.setItem("mira_opened", "1"); // keep panel state across nav
-                setTimeout(() => { window.location.href = productUrl(handle); }, 650);
-              }
+            // On the DEMO (same-origin) we auto-walk the shopper to the product
+            // page via the executor (which fails closed on an unknown handle). On
+            // the STOREFRONT (ASSET_BASE set) we do NOT auto-redirect — a demo
+            // handle may 404 on the merchant store; the card's "View product"
+            // button lets the shopper navigate deliberately.
+            if (!ASSET_BASE && handle) {
+              sessionStorage.setItem("mira_opened", "1"); // keep panel state across nav
+              setTimeout(() => { executeAction("navigate_to_product", { handle }); }, 650);
             }
             return;
           }
@@ -2427,7 +2492,7 @@ export default function MiraWidget() {
         }
       }, i * 850);
     });
-  }, [remember, maybeSurfaceMemory, currentProduct]);
+  }, [remember, maybeSurfaceMemory, currentProduct, executeAction]);
 
   // CHECKOUT HANDOFF (conversion panel #1, the single biggest funnel leak). A
   // checkout intent must NAVIGATE to the register, not loop back as a chat turn.
@@ -2445,6 +2510,11 @@ export default function MiraWidget() {
     if (onStore) { window.location.href = "/checkout"; return; }
     setMessages((prev) => [...prev, { from: "mira", kind: "say", text: cartCount > 0 ? "Your bag's locked in, on your live store this takes you straight to checkout." : "Add a piece first and I'll walk you to checkout." }]);
   }, [cartCount]);
+
+  // Keep the executor's forward-refs pointed at the live callbacks.
+  emitResponsesRef.current = emitResponses;
+  goToCheckoutRef.current  = goToCheckout;
+  addToBagRef.current      = addToBag;
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim()) return;
@@ -2708,8 +2778,8 @@ export default function MiraWidget() {
                   <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "rgba(139,92,246,0.16)", border: "1px solid rgba(139,92,246,0.24)", borderRadius: 12, padding: "9px 14px", fontFamily: "var(--sans)", fontSize: 14.5, lineHeight: 1.5, color: "#F4F2EE" }}>{msg.text}</div>
                 );
               }
-              if (msg.kind === "reco") return <RecoCard key={i} reco={msg.reco} onTryOn={(p) => setTryOn(p)} onAddToBag={addToBag} />;
-              if (msg.kind === "look") return <LookCard key={i} look={msg.look} onTryOn={(p) => setTryOn(p)} onAddLook={addLook} />;
+              if (msg.kind === "reco") return <RecoCard key={i} reco={msg.reco} onTryOn={(p) => executeAction("open_tryon", { product: p })} onAddToBag={(p) => executeAction("add_to_bag", { product: p })} />;
+              if (msg.kind === "look") return <LookCard key={i} look={msg.look} onTryOn={(p) => executeAction("open_tryon", { product: p })} onAddLook={addLook} onView={(p) => executeAction("navigate_to_product", { product: p })} />;
               if (msg.kind === "insight") return (
                 <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <InsightCard label={msg.label} text={msg.text} />
@@ -2808,6 +2878,9 @@ export default function MiraWidget() {
           }}
           onClose={() => {
             const epoch = Math.floor(new Date().getTime() / 1000);
+            const abandoned = !tryOnCompleted.current;
+            const closedHandle = tryOnProduct?.handle ?? null;
+            const closedName = tryOnProduct?.name ?? "this piece";
             if (tryOnCompleted.current) {
               updateTryOnCtxStatus("completed", epoch);
             } else {
@@ -2815,6 +2888,24 @@ export default function MiraWidget() {
               updateTryOnCtxStatus("abandoned", epoch);
             }
             setTryOn(null);
+            // TASK C — abandon nudge: opened the fitting room, closed WITHOUT a
+            // completed render → offer ONE helpful next step. Never after a
+            // completed render; never claims a render happened; once per
+            // product/session (sessionStorage guard); never during checkout.
+            if (abandoned && closedHandle) {
+              const key = `mira_abandon_${closedHandle}`;
+              let already = true;
+              try { already = !!sessionStorage.getItem(key); } catch { /* ignore */ }
+              if (!already) {
+                try { sessionStorage.setItem(key, "1"); } catch { /* ignore */ }
+                activeProductHandle.current = closedHandle;
+                setTimeout(() => setMessages((prev) => [...prev, {
+                  from: "mira", kind: "say",
+                  text: `No rush on the ${closedName}. Want me to try a different size or colour instead?`,
+                  quickReplies: ["Try another size", "Try another colour", "Build the look"],
+                }]), 500);
+              }
+            }
           }}
         />
       )}
