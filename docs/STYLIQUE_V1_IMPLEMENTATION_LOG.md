@@ -1606,3 +1606,45 @@ clean; trigger verified in 2442a55).
 ### Merge recommendation
 MERGE — stage model + stage-aware chips live-verified, pairing matrix correct (incl. shirt+skirt),
 all gates green, deterministic regression 21/21.
+
+---
+
+## Step 2H — Final Stage-Aware Mira Visual Confirmation — 2026-06-17
+
+### Browser confirmation (live, port 3002, DOM-verified — not just API)
+1. Entry chips → [Find my size · See it on me · Build a look] — PASS (after fix below)
+2. "Will it fit me?" → size helper opens + ONE size chip [Find my size · See it on me · Build a look] — PASS
+3. "Show me something similar" → 3 same-slot reco CARDS + "Here are a few pieces close to the …" +
+   [Compare options · Show cheaper · Build a look], no "why?" — PASS (after fix below)
+4. "Build the look" → outfit card "THE EDIT", total $2,040, 4 clickable pieces, match %,
+   [Add the look · Try the look · Find my size] — PASS
+5. "I have an order issue" → distinct STORE SUPPORT bubble + [Connect me · Keep shopping], no styling — PASS
+6. "What's your return policy?" → grounded 14-day + [Start a return · Talk to support · Keep shopping] — PASS (API + live)
+7. "Is delivery available?" → grounded shipping (no praise) + [Track an order · Talk to support · Keep shopping] — PASS (API + live)
+8. Homepage landing + scroll → NO pop (mira_nudged null) — PASS
+9. **Proactive nudge seeding (the previously-pending item)** — variant nudge fired ONCE with
+   intent-specific copy ("deciding between size or colour"); clicking it opened Mira and SEEDED the
+   conversation with stage-specific chips [Find my size · Compare colours · See it on me] (not
+   generic) — PASS
+10. trouser→turtleneck → "This pairs with the Trouser…" + context card + [Build the look · Style this
+    · My size?] (complement); trouser→denim → "Two takes on the same slot…" + [Compare with the
+    Trouser · Style this · My size?] (compare) — PASS
+
+### Two small fixes needed for full visual pass
+- `MiraWidget.tsx` openMira arrival opener chips: "Size this one / What goes with it? / Is it right
+  for me?" → canonical [Find my size · See it on me · Build a look] (matches the stage planner).
+- `contract.ts` "similar" branch: now forces same-slot reco_category multi-cards regardless of the
+  LLM's route (was gated to talk_only/suitability), so "show me similar" always renders alternatives
+  + [Compare options · Show cheaper · Build a look], never a single piece or a "why?".
+
+### Quality gates
+typecheck 11/11 · build 5/5 · test 247/248 (only pre-existing TRYON_BODY) · anti-chatbot-eval 15/15
+· size-ladder PASS · runtime-ux-regression 11/11 · contract-regression 21/21.
+
+### Delta safety
+No schema.prisma / migrations / shopify.app.toml / env / Railway changes — brain + widget
+conversation logic only.
+
+### Merge recommendation
+MERGE — all 10 user-visible behaviours confirmed in the browser; the pending nudge-seeding item is
+now visually verified; gates green.

@@ -195,8 +195,11 @@ export function enforceConversationContract(decision: MiraDecision, ctx: Contrac
     return d;
   }
 
-  // 6) "SHOW ME SIMILAR / ALTERNATIVES / NOT THIS" → product CARDS, not a "why?".
-  if (RE_SIMILAR.test(msg) && (d.route === "talk_only" || d.route === "suitability")) {
+  // 6) "SHOW ME SIMILAR / ALTERNATIVES / NOT THIS" → same-slot product CARDS (plural),
+  // not a "why?" and not a single piece. Force multi-card regardless of what the LLM
+  // routed (talk_only / suitability / a single reco_handle), as long as it isn't an
+  // explicit different intent (look / add / try-on / sizing).
+  if (RE_SIMILAR.test(msg) && d.route !== "look" && d.route !== "add_to_cart" && d.route !== "try_on" && d.route !== "size_form") {
     const cur = ctx.currentProduct;
     const alts = cur ? ctx.catalog.filter((p) => p.handle !== cur.handle && p.category === cur.category && isSellable(p)) : [];
     if (cur && alts.length > 0) {

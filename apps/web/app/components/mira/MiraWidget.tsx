@@ -2361,8 +2361,9 @@ export default function MiraWidget() {
           ]
         : [
             { from: "mira", kind: "say", text: isReturn ? `Back on the ${cp.name}? It's a good one.` : contextualOpener(cp) },
-            // Per-product sizing offered proactively, every piece is cut differently.
-            { from: "mira", kind: "say", text: "Want me to size it? It's cut a little differently.", quickReplies: ["Size this one", "What goes with it?", "Is it right for me?"] },
+            // ARRIVAL stage — canonical next-move chips (match the stage planner):
+            // size it, see it on you, or build the look. No vague "what are you after".
+            { from: "mira", kind: "say", text: "I can size it, show it on you, or build the cleanest look around it.", quickReplies: ["Find my size", "See it on me", "Build a look"] },
           ];
     } else {
       greeting = [
