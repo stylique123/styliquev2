@@ -31,7 +31,7 @@ const SI = {
   exchange_request: /\b(i want to exchange|how do i exchange|swap (it|this)|exchange this|different size instead)\b/i,
   return_policy: /\b(return policy|can i return|returnable|refund policy|do you (accept|take) returns|how long.* return)\b/i,
   exchange_policy: /\b(exchange policy|can i exchange|do you (do|accept|offer) exchanges)\b/i,
-  shipping_policy: /\b(shipping (policy|cost|time)|delivery (policy|time|cost)|how long.* (ship|deliver)|do you ship|free shipping|when will it ship)\b/i,
+  shipping_policy: /\b(shipping (policy|cost|time)?|delivery (policy|time|cost|available|option)?|is delivery|do you (ship|deliver)|how long.* (ship|deliver)|free shipping|when will it ship|ship to)\b/i,
   fit_feedback: /\b(ran (small|large|big)|didn.?t fit|too (small|big|tight|loose) when it arrived|sizing was off)\b/i,
   complaint: /\b(complaint|disappointed|terrible|awful|broken|damaged|defective|wrong item|not what i ordered|unhappy|refund me)\b/i,
 };

@@ -17,6 +17,7 @@ import { detectRejection } from "./rejection.js";
 import { routeToAction, type ActionAttempt } from "./router.js";
 import { verifyDecision, type VerificationReport } from "./verify.js";
 import { enforceCardVoiceChips } from "./enforce.js";
+import { enforceConversationContract } from "./contract.js";
 import { classifySupportIntent, supportNeedsHandoff, buildSafeHandoff, type SupportIntent } from "./support.js";
 import { isSellable } from "./products.js";
 
@@ -397,6 +398,21 @@ export function applySalesEngine(input: SalesEngineInput): MiraResult {
         };
       }
     }
+  }
+
+  // ROUTE-BY-ROUTE CONVERSATION CONTRACT — support chips on support/policy turns,
+  // cards on "show me similar", help-split on ambiguous help, black-tie reject,
+  // canonical de-duped chips. Runs before the voice/chip cap.
+  {
+    const cur = activeCatalog.find((p) => p.handle === body.currentProductHandle) ?? null;
+    decision = enforceConversationContract(decision, {
+      message: body.message,
+      catalog: activeCatalog,
+      currentProduct: cur,
+      supportNeedsHandoff: !!supportIntent && supportNeedsHandoff(supportIntent),
+      isPolicyReturns: supportIntent === "return_policy" || supportIntent === "exchange_policy",
+      isPolicyShipping: supportIntent === "shipping_policy",
+    });
   }
 
   // CARD-FIRST + VOICE/CHIP ENFORCEMENT — short voice, ≤3 chips, no wall-of-text.

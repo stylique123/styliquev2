@@ -20,5 +20,6 @@ export * from "./rejection.js";
 export * from "./router.js";
 export * from "./verify.js";
 export * from "./enforce.js";
+export * from "./contract.js";
 export * from "./support.js";
 export * from "./brain.js";

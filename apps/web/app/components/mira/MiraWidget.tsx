@@ -976,6 +976,9 @@ type MiraDecision = {
   searchQuery?: string;
   disagree?: boolean;
   quickReplies?: string[];
+  // The brain's classified intent — used to render support turns as a distinct
+  // "Store support" bubble (set on every /api/mira decision).
+  intent?: string;
 };
 
 // ─── ONE-BACKEND MIGRATION, real per-tenant catalog registry ────────────────
@@ -1163,7 +1166,12 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
   // `catalog` with the real set so the hero() fallbacks here can never surface a
   // phantom demo piece. On the demo page activeProducts() === the demo catalog.
   const catalog = activeProducts();
-  const voice: ChatMsg = { from: "mira", kind: "say", text: d.voice, quickReplies: d.quickReplies };
+  // SUPPORT BUBBLE — a support/policy/order turn renders as a visually distinct
+  // "Store support" insight card (accent border + label), never a normal styling
+  // bubble, so support never reads like a sales line.
+  const voice: ChatMsg = d.intent === "support"
+    ? { from: "mira", kind: "insight", label: "Store support", text: d.voice, quickReplies: d.quickReplies }
+    : { from: "mira", kind: "say", text: d.voice, quickReplies: d.quickReplies };
   // Price-truth guard: on card/cart routes the card below is the authoritative
   // total, so strip any price the LLM spoke in `voice` to prevent the
   // "$1950 voice vs $3,540 card" contradiction. Budget/talk routes keep prices.
@@ -1186,7 +1194,8 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
     }
 
     case "returns":
-      out.push({ from: "mira", kind: "insight", label: "Returns", text: "14-day window, unworn, original packaging, handled directly through the Stylique Maison team." });
+      // The support voice (now a "Store support" insight card) already carries the
+      // grounded policy + support chips — no second card needed.
       return out;
 
     case "fit": {
@@ -1244,14 +1253,14 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
           const all = [anchor, ...lookPieces.filter((p) => p.handle !== anchor.handle)];
           const total = all.reduce((s, p) => s + p.priceUsd, 0);
           // Collapse to 2 bubbles: voice (with quickReplies) + one bundle cart chip
-          out[0] = { ...voice, text: `Done, the full look is in your bag. ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`, quickReplies: ["Go to checkout", "Keep shopping"] };
+          out[0] = { ...voice, text: `Adding the full look now — ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`, quickReplies: ["Go to checkout", "Keep shopping"] };
           out.push({ from: "mira", kind: "cart", productName: `${all.length} pieces, ${anchor.name} look` });
           return out;
         }
       }
 
       // SINGLE item add (standard path) — 2 bubbles: voice (with quickReplies) + cart
-      out[0] = { ...voice, text: `${anchor.name} is in your bag. Want me to complete the look before you check out?`, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Complete the look", "Keep shopping"] };
+      out[0] = { ...voice, text: `Adding the ${anchor.name} to your bag now. Want me to complete the look before you check out?`, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Complete the look", "Keep shopping"] };
       out.push({ from: "mira", kind: "cart", productName: anchor.name });
       return out;
     }

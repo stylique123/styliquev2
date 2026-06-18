@@ -1441,3 +1441,86 @@ fix). 0 fabrications, 0 fake cart success.
 
 ### Verification
 typecheck 11/11 · anti-chatbot-eval 15/15 · runtime-ux-regression 11/11.
+
+---
+
+## Step 2H — Final Mira Conversation Contract Fix — 2026-06-17
+
+### Why this pass was run
+Founder reviewed the real `/api/mira` transcript and found Mira identifies intent but the
+user-facing behaviour still drifts: support/policy turns sell, "show me similar" asks "why?"
+instead of showing cards, ambiguous "help" gives a styling pitch, chips duplicate meaning, and
+cart language claims success early. This pass enforces a deterministic route-by-route contract.
+
+### Real transcript failures (from the live run)
+- "Show me something similar" → talk_only, "What made you want similar?", NO cards.
+- "I need help" → styling pitch, no support option.
+- "I have an order issue" → previously sold (fixed bc75c89; re-tested).
+- "What's your return policy?" → policy then SALES chips (Size this trouser / Build a look).
+- "Is delivery available?" → product praise + shipping + styling chips.
+- "The fabric" → answer + a vague "what are you after?" tail.
+- sizing → near-duplicate sizing chips risk.
+- "I need it for office" → only a follow-up question.
+- black tie on a casual piece → didn't reject the piece.
+
+### Conversation contract changes
+New `packages/mira-brain/src/contract.ts` → `enforceConversationContract()`, run after the LLM
+decision + support handoff, before the voice/chip cap (`brain.ts`). Deterministic, pure:
+- support handoff → ["Connect me", "Keep shopping"], no styling.
+- returns/exchange policy → grounded answer (non-policy sentences stripped) + ["Start a return",
+  "Talk to support", "Keep shopping"].
+- shipping/delivery → grounded fact only (product praise stripped) + ["Track an order", "Talk to
+  support", "Keep shopping"]. Broadened `shipping_policy` regex (`support.ts`) to catch "delivery
+  available / do you deliver / is delivery / ship to".
+- "show me similar / alternatives / not this" + valid same-category alternatives → route
+  reco_category (same slot) → PRODUCT CARDS + ["Compare options", "Show cheaper", "Build a look"].
+- ambiguous "I need help" → shopping-vs-support split + ["Shopping help", "Talk to support",
+  "Keep shopping"].
+- black tie / gala on a CASUAL piece (top/knit/bottom/accessory) → honest reject + a real formal
+  alternative as a card + ["Show formal options", "Build a look", "Keep it casual"].
+- fabric → trailing follow-up question dropped.
+- canonical, de-duplicated chips per route (one sizing chip = "Find my size").
+
+### Chip/bubble normalization
+Canonical vocabulary (Find my size · See it on me · Build a look · Compare options · Show cheaper ·
+Talk to support · Connect me · Keep shopping · View bag · Track an order · Start a return · Shopping
+help). Max 3, deduped, route-specific override of the LLM chips; one sizing chip only.
+
+### Support bubble / handoff
+Client renders every `intent==="support"` turn as a visually distinct **"STORE SUPPORT"** insight
+card (accent border + label), never a normal styling bubble. Verified live (DOM): "I have an order
+issue" → STORE SUPPORT card + [Connect me | Keep shopping]. No fake ticket / SLA / order mutation.
+
+### Cart truth fix
+Client add bubbles no longer claim success before the result: single → "Adding the {name} to your
+bag now…", bundle → "Adding the full look now…"; the CartLine + optimistic-rollback toast carry the
+real outcome.
+
+### Before/after transcript proof (live /api/mira, verbatim)
+| # | user | BEFORE | AFTER |
+|---|------|--------|-------|
+| 1 | Show me something similar | talk_only · "What made you want similar?" · no cards | **reco_category** · "Here are a few pieces close to the Atelier Wide-Leg Trouser." · [Compare options \| Show cheaper \| Build a look] · CARDS |
+| 2 | I need help | talk_only styling pitch · no support | "I can help with fit or styling… or connect you to the store team — which way?" · [Shopping help \| Talk to support \| Keep shopping] |
+| 3 | I have an order issue | sold the trouser | "Let me get the store's team onto your order… Want me to connect you?" · [Connect me \| Keep shopping] |
+| 4 | What's your return policy? | policy + Size/Build chips | "We offer returns within a 14-day window for unworn items with original packaging." · [Start a return \| Talk to support \| Keep shopping] |
+| 5 | Is delivery available? | praise + shipping + styling chips | "We offer complimentary worldwide shipping… Duties settled at checkout." · [Track an order \| Talk to support \| Keep shopping] |
+| 7 | The fabric | "…linen. What are you after?" | "The Linen Relaxed Shirt is a beautiful, breathable linen, meant to drape." · [Find my size \| See it on me \| Build a look] |
+| 8 | Will it fit me? | sizing | size_form · [Find my size \| See it on me \| Build a look] (one size chip) |
+| 9 | I need it for office | only a question | qualifier + [Build a look \| Show me options \| Find my size] |
+| 10 | black tie + casual knit | didn't reject | **reco_handle** → Onyx Silk Slip · "The Cashmere V-Neck is too casual for black tie — I'd put you in the Onyx Silk Slip instead." · [Show formal options \| Build a look \| Keep it casual] |
+
+### Regression coverage
+New `packages/mira-brain/scripts/contract-regression.mts` (deterministic, no Gemini) — 11 cases
+covering all 10 contract rules → **11/11 pass**.
+
+### Verification results
+typecheck 11/11 · build 5/5 · test 247/248 (only the pre-existing TRYON_BODY) · anti-chatbot-eval
+15/15 · size-ladder PASS · runtime-ux-regression 11/11 · contract-regression 11/11.
+
+### Remaining P2 deferred
+Shipping/returns voice praise-strip is sentence-level (keeps any sentence mentioning the policy) —
+an unusual phrasing could keep a stray clause; chips are always correct. "I need help with my
+order" (mid case) → support chip offered but not a full handoff. Bare "I need help" → split (done).
+
+### Merge recommendation
+MERGE — all 10 transcript failures fixed + verified live, deterministic regression added, gates green.
