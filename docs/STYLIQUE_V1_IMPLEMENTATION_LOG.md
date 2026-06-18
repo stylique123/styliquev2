@@ -1524,3 +1524,85 @@ order" (mid case) → support chip offered but not a full handoff. Bare "I need 
 
 ### Merge recommendation
 MERGE — all 10 transcript failures fixed + verified live, deterministic regression added, gates green.
+
+---
+
+## Step 2H — Stage-Aware Mira Sales Associate Fix — 2026-06-17
+
+### Why this pass was run
+Founder: Mira still behaves like a reactive chatbot — chips are random options, not
+stage-aware next moves. A shopper unsure about fabric doesn't need "Build the look"; an
+"office?" shopper needs a direction, not another question; a comparison shopper needs
+"Pick this one / Compare / Show cheaper". Founder correction: a shirt CAN go with a skirt —
+block bad pairing logic (shirt+shirt, bottom+bottom, dress+trouser), not shirt+skirt.
+
+### Conversation stage model
+New `deriveStage(message, decision, isSupport)` (`packages/mira-brain/src/contract.ts`) →
+10 stages: arrival · product_understanding · fit_sizing · style_direction · outfit_building ·
+comparison · alternative_search · try_on_decision · cart_decision · support_policy. Derived
+from route + intent + message regex, support-first.
+
+### Stage-aware chip planner
+`planStageChips(stage)` returns ≤3 distinct, mutually-supportive next-move chips, replacing the
+route-canonical defaults. Verified live per stage:
+- product_understanding / fit_sizing → Find my size · See it on me · Build a look (ONE size chip)
+- style_direction → Build a look · Show me options · Find my size (actionable, never only a question)
+- outfit_building → Add the look · Try the look · Find my size
+- comparison → Pick this one · Compare options · Show cheaper
+- alternative_search → Compare options · Show cheaper · Build a look (+ product CARDS)
+- try_on_decision → See it on me · Find my size · Build a look
+- cart_decision → View bag · Complete the look · Keep shopping
+- support_policy → Connect me · Keep shopping
+
+### Product knowledge / outfit logic
+Slot compatibility verified 8/8 (client `switchLine` slot + buildLook colour/proportion score):
+shirt+skirt → **PAIR (valid)**, shirt+shirt → COMPARE, trouser+turtleneck → PAIR, trouser+denim →
+COMPARE, dress+trouser → COMPARE (a dress is a whole look), dress+coat → PAIR (layer), bottom+bottom
+→ COMPARE, coat+coat → COMPARE. The founder's correction (shirt+skirt valid) holds.
+
+### Color harmony / navigation
+buildLook already scores colour harmony (HSL) + proportion + slot + formality + desirability; reco
++ look cards render image/price/why and navigate to the PDP via the whitelisted executor (prior
+passes). No regression. (Deeper named-colour prescriptions remain P2.)
+
+### Proactive behavior changes (Task I)
+The 4 intent nudges now carry stage-specific copy + chips and, when clicked, SEED Mira into that
+stage instead of the generic opener: multi-product → "narrow it to the best one" + [Pick the best
+one · Compare options · Build a look]; variant → "deciding between size or colour" + [Find my size
+· Compare colours · See it on me]; exit → "save you time" + [Find my size · Build a look · Show
+better option]; stranded → "worth it for you?" + [Give me the verdict · Find my size · Build a
+look]. Still: no entry/homepage pop, once per session, none during a support issue.
+
+### Support and policy behavior
+Unchanged from the contract pass (73db0f3): support/policy turns render as a distinct STORE
+SUPPORT bubble + support chips, grounded answers (no praise/styling), order issues hand off.
+
+### Before/after transcript proof (live /api/mira)
+| stage | user | BEFORE chips | AFTER chips |
+|-------|------|--------------|-------------|
+| product_understanding | What's it made of? | mixed | Find my size · See it on me · Build a look |
+| fit_sizing | Will it fit me? | dup-sizing risk | Find my size · See it on me · Build a look |
+| style_direction | I need it for office | only a question | Build a look · Show me options · Find my size |
+| outfit_building | Build the look | generic | Add the look · Try the look · Find my size |
+| comparison | compare these | poetic | Pick this one · Compare options · Show cheaper |
+| alternative_search | Show me similar | "why?" no cards | reco_category CARDS + Compare options · Show cheaper · Build a look |
+| cart_decision | Add it | mixed | View bag · Complete the look · Keep shopping |
+| support_policy | I have an order issue | sold | Connect me · Keep shopping |
+
+### Regression coverage
+`packages/mira-brain/scripts/contract-regression.mts` extended → **21/21** (10 contract rules +
+10 stage-model cases + one-size-chip). Pairing matrix verified 8/8 via the client engine.
+
+### Verification results
+typecheck 11/11 · build 5/5 · test 247/248 (only pre-existing TRYON_BODY) · anti-chatbot-eval
+15/15 · size-ladder PASS · runtime-ux-regression 11/11 · contract-regression 21/21 · pairing 8/8.
+
+### Remaining deferred items
+P2: named-colour prescriptions ("use ivory with this black trouser") — engine scores harmony but
+voice doesn't always name the exact colour; bare "I need help with my order" offers a support chip
+but not a full handoff. Live nudge-seeding DOM re-confirm pending a clean preview (logic typecheck-
+clean; trigger verified in 2442a55).
+
+### Merge recommendation
+MERGE — stage model + stage-aware chips live-verified, pairing matrix correct (incl. shirt+skirt),
+all gates green, deterministic regression 21/21.

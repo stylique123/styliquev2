@@ -1891,6 +1891,7 @@ export default function MiraWidget() {
   // Intent-specific nudge copy — set by the intent triggers so Mira reads as a
   // floor associate noticing a real signal, not a chatbot greeting on entry.
   const [nudgeText, setNudgeText] = useState<string | null>(null);
+  const nudgeChips = useRef<string[]>([]);
   const [showSizeForm, setShowSizeForm] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [cartValue, setCartValue] = useState(0);
@@ -2139,13 +2140,14 @@ export default function MiraWidget() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     let fired = false;
-    const fire = (text: string, product: Product | null) => {
+    const fire = (text: string, product: Product | null, chips: string[]) => {
       if (fired) return;
       if (sessionStorage.getItem("mira_opened") || sessionStorage.getItem("mira_nudged")) return;
       fired = true;
       try { sessionStorage.setItem("mira_nudged", "1"); } catch { /* ignore */ }
       setNudgeProduct(product);
       setNudgeText(text);
+      nudgeChips.current = chips;   // stage-specific next moves once Mira opens
       setNudge(true);
       window.setTimeout(() => setNudge(false), 12000);
     };
@@ -2165,7 +2167,7 @@ export default function MiraWidget() {
           try { sessionStorage.setItem("mira_viewed", JSON.stringify(viewed.slice(-12))); } catch { /* ignore */ }
         }
         if (viewed.length >= 3) {
-          fire(`You've looked across a few pieces — want me to narrow it to the one that's right for you?`, cur);
+          fire(`You've looked at a few pieces. I can narrow it to the best one for your occasion.`, cur, ["Pick the best one", "Compare options", "Build a look"]);
         }
       }
     }
@@ -2188,7 +2190,7 @@ export default function MiraWidget() {
       if (!onPdp) return;
       if (looksLikeVariant(e.target as HTMLElement)) {
         variantClicks += 1;
-        if (variantClicks >= 2) fire(`Comparing the colours and sizes? Tell me your usual and I'll pin the right one.`, currentProduct());
+        if (variantClicks >= 2) fire(`Looks like you're deciding between size or colour. I can pin the right one.`, currentProduct(), ["Find my size", "Compare colours", "See it on me"]);
       }
     };
     document.addEventListener("click", onVariantClick, true);
@@ -2199,8 +2201,9 @@ export default function MiraWidget() {
     const onExit = (e: MouseEvent) => {
       if (e.clientY <= 0) {
         const cur = onPdp ? currentProduct() : null;
-        fire(cur ? `Before you go — want me to save your size on the ${cur.name}, or build the look first?`
-                 : `Before you go — tell me the occasion and I'll find the one piece worth it.`, cur);
+        fire(cur ? `Before you go, I can save you time: size this, build a look, or show a better option.`
+                 : `Before you go, tell me the occasion and I'll find the one piece worth it.`,
+             cur, ["Find my size", "Build a look", "Show better option"]);
       }
     };
     document.addEventListener("mouseout", onExit);
@@ -2212,7 +2215,7 @@ export default function MiraWidget() {
     const onScroll = () => { scrolled = true; };
     window.addEventListener("scroll", onScroll, { passive: true });
     const strandTimer = onPdp ? window.setTimeout(() => {
-      if (!scrolled) fire(`Still deciding? I can give you my honest read or size it in a few seconds.`, currentProduct());
+      if (!scrolled) fire(`Still deciding? I can tell you if this is worth it for you.`, currentProduct(), ["Give me the verdict", "Find my size", "Build a look"]);
     }, 22000) : undefined;
 
     return () => {
@@ -2765,7 +2768,20 @@ export default function MiraWidget() {
       {/* Floating dock */}
       <div style={{ position: "fixed", bottom: 28, right: 28, zIndex: 90, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
         {nudge && !open && (
-          <button onClick={() => { setNudge(false); openMira("pdp-dwell", nudgeProduct ?? undefined); }} style={{ background: "#12101A", border: "1px solid rgba(139,92,246,0.4)", borderRadius: 14, padding: "11px 16px", fontFamily: "var(--sans)", fontSize: 13, color: "#F4F2EE", maxWidth: 240, lineHeight: 1.5, textAlign: "left", cursor: "pointer", animation: "miraFadeUp 400ms var(--ease-spring) both", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+          <button onClick={() => {
+            setNudge(false);
+            // Open Mira INTO the nudge's stage — seed the conversation with the
+            // proactive line + its stage-specific next-move chips (Task I), rather
+            // than the generic opener, so the shopper lands on the right next step.
+            if (nudgeText && nudgeChips.current.length) {
+              try { sessionStorage.setItem("mira_opened", "1"); } catch { /* ignore */ }
+              if (nudgeProduct) activeProductHandle.current = nudgeProduct.handle;
+              setMessages((prev) => prev.length ? prev : [{ from: "mira", kind: "say", text: nudgeText, quickReplies: nudgeChips.current }]);
+              setOpen(true);
+            } else {
+              openMira("pdp-dwell", nudgeProduct ?? undefined);
+            }
+          }} style={{ background: "#12101A", border: "1px solid rgba(139,92,246,0.4)", borderRadius: 14, padding: "11px 16px", fontFamily: "var(--sans)", fontSize: 13, color: "#F4F2EE", maxWidth: 240, lineHeight: 1.5, textAlign: "left", cursor: "pointer", animation: "miraFadeUp 400ms var(--ease-spring) both", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
             <em style={{ fontFamily: "var(--serif)", fontSize: 15 }}>Hi,</em>{" "}
             {nudgeText
               ? nudgeText

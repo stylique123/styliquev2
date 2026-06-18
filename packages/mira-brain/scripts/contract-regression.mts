@@ -9,8 +9,11 @@ import {
   enforceConversationContract,
   classifySupportIntent,
   supportNeedsHandoff,
+  deriveStage,
+  planStageChips,
   type MiraDecision,
   type MiraProduct,
+  type MiraStage,
 } from "../src/index.js";
 
 const CAT: MiraProduct[] = [
@@ -78,6 +81,27 @@ console.log("\nConversation-contract regression — Step 2H\n");
 // 10. black tie on a casual piece → reject + formal alternative card.
 { const d = enforceConversationContract(raw("talk_only", "occasion", "What do you want to pair?"), ctx("is this ok for a black tie gala?", "knit"));
   check("10 black-tie + knit → reject + formal alt", d.route === "reco_handle" && d.productHandle === "gown" && /too casual/i.test(d.voice), { route: d.route, handle: d.productHandle, voice: d.voice }); }
+
+// ── STAGE MODEL — derive the right stage + stage-specific chips ──────────────
+const stageCases: Array<[string, string, MiraDecision, MiraStage, string]> = [
+  ["S1 fabric→product_understanding", "What's it made of?", raw("fabric", "fabric"), "product_understanding", "Find my size"],
+  ["S2 size→fit_sizing", "Will it fit me?", raw("size_form", "size"), "fit_sizing", "Find my size"],
+  ["S3 office→style_direction", "I need it for office", raw("talk_only", "occasion"), "style_direction", "Build a look"],
+  ["S4 build→outfit_building", "Build the look", raw("look", "look"), "outfit_building", "Add the look"],
+  ["S5 compare→comparison", "compare these", raw("reco_category", "specific"), "comparison", "Pick this one"],
+  ["S6 similar→alternative_search", "show me similar", raw("reco_category", "discover"), "alternative_search", "Compare options"],
+  ["S7 tryon→try_on_decision", "see it on me", raw("try_on", "try_on"), "try_on_decision", "See it on me"],
+  ["S8 add→cart_decision", "add it", raw("add_to_cart", "specific"), "cart_decision", "View bag"],
+  ["S9 order→support_policy", "I have an order issue", raw("talk_only", "support"), "support_policy", "Connect me"],
+];
+for (const [label, msg, d, wantStage, wantChip] of stageCases) {
+  const stage = deriveStage(msg, d, d.intent === "support");
+  const chips = planStageChips(stage);
+  check(label, stage === wantStage && chips.some((c) => c.toLowerCase() === wantChip.toLowerCase()), { stage, chips });
+}
+// sizing stage never emits two sizing chips.
+{ const chips = planStageChips("fit_sizing"); const sizeN = chips.filter((c) => /size|fit/i.test(c)).length;
+  check("S10 fit_sizing → one size chip", sizeN === 1, chips); }
 
 console.log(`\nRESULT: ${pass}/${pass + fail} passed${fail ? " — REGRESSION" : ""}.\n`);
 process.exit(fail ? 1 : 0);

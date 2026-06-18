@@ -32,6 +32,10 @@ const C = {
   formal: "Show formal options",
   casual: "Keep it casual",
   options: "Show me options",
+  pick: "Pick this one",
+  complete: "Complete the look",
+  addLook: "Add the look",
+  tryLook: "Try the look",
 } as const;
 
 const RE_SIMILAR = /\b(similar|something (else|like (this|it|that))|other options?|alternatives?|different (one|style|option)|show me another|not (this|it|for me)|don'?t like (this|it)|something different)\b/i;
@@ -88,32 +92,57 @@ function dedupeChips(chips: string[]): string[] {
   return out;
 }
 
-// Route-canonical chips for the non-special cases.
-function canonicalChips(d: MiraDecision, fallback: string[]): string[] {
-  switch (d.route) {
-    case "fabric":
-    case "suitability":
-    case "fit":
-    case "size_form":
-    case "navigate":
-    case "reco_handle":
+// ── Conversation STAGE model ─────────────────────────────────────────────────
+// The shopper's current decision moment. Mira's chips are stage-aware NEXT MOVES,
+// not random options — a "what's it made of?" shopper gets fabric→size→look, a
+// comparison shopper gets pick/compare/cheaper, a cart shopper gets bag/look/keep.
+export type MiraStage =
+  | "arrival" | "product_understanding" | "fit_sizing" | "style_direction"
+  | "outfit_building" | "comparison" | "alternative_search" | "try_on_decision"
+  | "cart_decision" | "support_policy";
+
+const RE_CART = /\b(add (it|this|to bag|to cart|both|all)|buy (it|this)?|check ?out|in my bag|view bag)\b/i;
+const RE_TRYON = /\b(see it on|try (it|on|this)|on me|fitting room|how does it look on)\b/i;
+const RE_OUTFIT = /\b(goes with|go with|build (the|a|my) (look|outfit)|complete (the|my) (look|outfit)|what matches|style (it|this) (up|out)|full (look|outfit))\b/i;
+const RE_COMPARE = /\bcompare\b|\bside by side\b|\bvs\.?\b|\bversus\b/i;
+const RE_FIT = /\b(size|sizing|fit|fits|measurements?|height|weight|size chart|true to size|run small|run large)\b/i;
+const RE_STYLE = /\b(right for me|suit me|for (the )?(office|work|dinner|a wedding|black ?tie|brunch|travel)|modest|too (formal|casual)|dressy|occasion|what should i wear)\b/i;
+const RE_PRODUCT = /\b(fabric|material|made of|what'?s it made|colou?r|care|wash|quality|how much|price|expensive)\b/i;
+
+export function deriveStage(message: string, d: MiraDecision, isSupport: boolean): MiraStage {
+  if (isSupport || d.intent === "support") return "support_policy";
+  if (RE_SIMILAR.test(message)) return "alternative_search";
+  if (d.route === "add_to_cart" || RE_CART.test(message)) return "cart_decision";
+  if (d.route === "try_on" || RE_TRYON.test(message)) return "try_on_decision";
+  if (d.route === "look" || RE_OUTFIT.test(message)) return "outfit_building";
+  if (d.route === "reco_category" || d.route === "reco_filter" || d.route === "search" || RE_COMPARE.test(message)) return "comparison";
+  if (d.route === "size_form" || d.intent === "size" || RE_FIT.test(message)) return "fit_sizing";
+  if (d.intent === "occasion" || d.intent === "suitability" || RE_STYLE.test(message)) return "style_direction";
+  if (d.intent === "fabric" || d.route === "fabric" || RE_PRODUCT.test(message)) return "product_understanding";
+  return "arrival";
+}
+
+// Stage-specific next-move chips (≤3, distinct, mutually supportive).
+export function planStageChips(stage: MiraStage): string[] {
+  switch (stage) {
+    case "arrival":
+    case "product_understanding":
+    case "fit_sizing":
       return [C.size, C.tryon, C.look];
-    case "look":
-      return ["Add the look", "Try the look", C.size];
-    case "add_to_cart":
-      return [C.look, C.tryon, C.bag];
-    case "reco_category":
-    case "reco_filter":
-    case "search":
+    case "style_direction":
+      return [C.look, C.options, C.size];
+    case "outfit_building":
+      return [C.addLook, C.tryLook, C.size];
+    case "comparison":
+      return [C.pick, C.compare, C.cheaper];
+    case "alternative_search":
       return [C.compare, C.cheaper, C.look];
-    case "try_on":
+    case "try_on_decision":
       return [C.tryon, C.size, C.look];
-    case "talk_only":
-      // Occasion turns must stay ACTIONABLE — never only a follow-up question.
-      if (d.intent === "occasion") return [C.look, C.options, C.size];
-      return dedupeChips(fallback);
-    default:
-      return dedupeChips(fallback);
+    case "cart_decision":
+      return [C.bag, C.complete, C.keep];
+    case "support_policy":
+      return [C.connect, C.keep];
   }
 }
 
@@ -188,7 +217,8 @@ export function enforceConversationContract(decision: MiraDecision, ctx: Contrac
     d.voice = dropTrailingQuestion(d.voice);
   }
 
-  // 8) Default — route-canonical, de-duplicated chip row.
-  d.quickReplies = canonicalChips(d, d.quickReplies ?? []);
+  // 8) Default — STAGE-AWARE next-move chips (deterministic per shopper stage).
+  const stage = deriveStage(msg, d, false);
+  d.quickReplies = dedupeChips(planStageChips(stage));
   return d;
 }
