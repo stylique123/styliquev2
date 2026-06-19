@@ -1172,9 +1172,24 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
   // SUPPORT BUBBLE — a support/policy/order turn renders as a visually distinct
   // "Store support" insight card (accent border + label), never a normal styling
   // bubble, so support never reads like a sales line.
+  // VOICE CLAMP (founder #11: "clamp visible replies to short, action-led").
+  // Keep ≤2 sentences; if it's one long run-on, cut cleanly at a clause boundary
+  // (comma/semicolon) under ~200 chars — short, never a visibly-truncated "…".
+  const clampVoice = (t: string): string => {
+    const s = (t ?? "").replace(/\s+/g, " ").trim();
+    if (!s) return s;
+    const sentences = s.match(/[^.!?]+[.!?]+|\S[^.!?]*$/g) ?? [s];
+    let out = sentences.slice(0, 2).map((x) => x.trim()).join(" ");
+    if (out.length > 200) {
+      const cut = out.slice(0, 200);
+      const i = Math.max(cut.lastIndexOf(", "), cut.lastIndexOf("; "));
+      out = (i > 100 ? cut.slice(0, i) : cut.replace(/\s+\S*$/, "")).replace(/[,;:\s]+$/, "");
+    }
+    return out.replace(/\s+/g, " ").trim();
+  };
   const voice: ChatMsg = d.intent === "support"
-    ? { from: "mira", kind: "insight", label: "Store support", text: d.voice, quickReplies: d.quickReplies }
-    : { from: "mira", kind: "say", text: d.voice, quickReplies: d.quickReplies };
+    ? { from: "mira", kind: "insight", label: "Store support", text: clampVoice(d.voice), quickReplies: d.quickReplies }
+    : { from: "mira", kind: "say", text: clampVoice(d.voice), quickReplies: d.quickReplies };
   // Price-truth guard: on card/cart routes the card below is the authoritative
   // total, so strip any price the LLM spoke in `voice` to prevent the
   // "$1950 voice vs $3,540 card" contradiction. Budget/talk routes keep prices.

@@ -35,7 +35,6 @@ const C = {
   pick: "Pick this one",
   complete: "Complete the look",
   addLook: "Add the look",
-  tryLook: "Try the look",
 } as const;
 
 const RE_SIMILAR = /\b(similar|something (else|like (this|it|that))|other options?|alternatives?|different (one|style|option)|show me another|not (this|it|for me)|don'?t like (this|it)|something different)\b/i;
@@ -132,7 +131,9 @@ export function planStageChips(stage: MiraStage): string[] {
     case "style_direction":
       return [C.look, C.options, C.size];
     case "outfit_building":
-      return [C.addLook, C.tryLook, C.size];
+      // NOT C.tryLook ("Try the look") — the look card's try-on opens the ANCHOR
+      // piece, not a true full-look render, so the chip must be honest (founder #6).
+      return [C.addLook, C.tryon, C.size];
     case "comparison":
       return [C.pick, C.compare, C.cheaper];
     case "alternative_search":
