@@ -109,8 +109,6 @@ export const EventNameSchema = z.enum([
   "STYLE_VIEWED",
   "STYLE_PRODUCT_CLICKED",
   "COLOR_COMBO_VIEWED",
-  "CREATIVE_IMPRESSION",
-  "CREATIVE_SET_GENERATED",
   "PRODUCT_AUDIT_GENERATED",
   "ADD_TO_CART",
   "CHECKOUT_STARTED",
@@ -204,12 +202,6 @@ export const EventNameSchema = z.enum([
   "CART_FROM_MIRA",
   "CART_FROM_TRYON",
   "CART_FROM_WIDGET_STYLE",
-  // A creative-set surfaced on a PDP / in a campaign was clicked.
-  "CREATIVE_CLICKED",
-  "CREATIVE_APPROVED",
-  "CREATIVE_REJECTED",
-  // A creative click led to a confirmed cart / order within the window.
-  "CREATIVE_CONVERTED",
   // Nightly resolver classified an Outcome (IMPROVED / NO_CHANGE / WORSENED).
   "OUTCOME_RESOLVED",
   // ─── Mira proactive sales-stylist loop ───────────────────────────────────
@@ -261,8 +253,6 @@ export const EventPayloadSchemas = {
   STYLE_VIEWED: z.object({ anchorProductId: z.string() }),
   STYLE_PRODUCT_CLICKED: z.object({ productId: z.string(), role: z.string() }),
   COLOR_COMBO_VIEWED: z.object({ comboName: z.string() }),
-  CREATIVE_IMPRESSION: z.object({ creativeId: z.string() }),
-  CREATIVE_SET_GENERATED: z.object({ setId: z.string(), assetCount: z.number().int() }),
   PRODUCT_AUDIT_GENERATED: z.object({ productId: z.string(), priorityScore: z.number() }),
   ADD_TO_CART: z.object({ variantId: z.string(), quantity: z.number().int() }),
   CHECKOUT_STARTED: z.object({ cartTokenHash: z.string() }),
@@ -512,25 +502,6 @@ export const EventPayloadSchemas = {
     source: z.string().optional(),
     size: z.string().optional(),
     itemCount: z.number().int().optional(),
-  }),
-  CREATIVE_CLICKED: z.object({
-    creativeSetId: z.string().optional(),
-    productId: z.string().optional(),
-    surface: z.string().optional(),
-  }),
-  CREATIVE_APPROVED: z.object({
-    creativeSetId: z.string(),
-    triggeredBy: z.string().optional(),
-  }),
-  CREATIVE_REJECTED: z.object({
-    creativeSetId: z.string(),
-    triggeredBy: z.string().optional(),
-    rejectionReason: z.string().optional(),
-  }),
-  CREATIVE_CONVERTED: z.object({
-    creativeSetId: z.string().optional(),
-    productId: z.string().optional(),
-    valueCents: z.number().optional(),
   }),
   OUTCOME_RESOLVED: z.object({
     outcomeId: z.string().optional(),

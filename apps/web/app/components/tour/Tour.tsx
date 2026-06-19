@@ -338,7 +338,7 @@ export default function Tour() {
   }, [view]);
 
   // ---- Brain action handler
-  // When Mira's real Brain returns an open_tryon or open_studio action,
+  // When Mira's real Brain returns an open_tryon action,
   // the Tour jumps to the relevant surface chapter so the shopper sees the
   // widget open naturally — no scripted prompt needed. This is the connection
   // between apps/web (demo/marketing) and apps/shopify-app (real product):
@@ -640,7 +640,7 @@ function ChapterFrame(props: {
   onNext: () => void;
   onClose: () => void;
   onSkip: () => void;
-  // When Mira's real Brain fires an action (open_tryon, open_studio),
+  // When Mira's real Brain fires an action (open_tryon),
   // the Tour parent handles it here and can open the right surface.
   onAction?: (action: import("@stylique/ai").BrainClientAction) => void;
 }) {
@@ -1084,12 +1084,12 @@ function SurfaceStep({
   chapter: Chapter;
   onBack: () => void;
   onNext: () => void;
-  // Forwarded from Tour — lets Mira's real Brain actions open TryOnPanel /
-  // StudioModal even when not in the scripted step for that surface.
+  // Forwarded from Tour — lets Mira's real Brain actions open TryOnPanel
+  // even when not in the scripted step for that surface.
   onAction?: (action: import("@stylique/ai").BrainClientAction) => void;
 }) {
   // Hint bar position: tryon surface → top (avoids blocking footer buttons);
-  // mira and studio → bottom
+  // mira → bottom
   const hintStyle: React.CSSProperties = step.surface === "tryon"
     ? { top: 80, bottom: "auto", transform: "translateX(-50%)" }
     : { bottom: 24, top: "auto", transform: "translateX(-50%)" };

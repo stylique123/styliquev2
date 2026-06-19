@@ -13,8 +13,6 @@ export * from "./style/service.js";
 // D40 — combo color harmony engine + structured combo scoring.
 export * from "./style/harmony.js";
 export * from "./style/score.js";
-// D40 — multi-garment sequential VTO chain.
-export * from "./tryon/combo.js";
 export * from "./tryon/cache.js";
 export * from "./tryon/trust.js";
 export * from "./recommendations/service.js";
@@ -37,5 +35,3 @@ export type { SupportedLocale, TranslationKey } from "./i18n/index.js";
 // Brand DNA — palette / tone / style extracted from the catalog. Feeds Mira's
 // voice + the recommendations engine. (Creative Studio generation was removed.)
 export * from "./studio/index.js";
-// Shared Vertex AI auth helpers (JWT signing, OAuth token exchange, token cache).
-export * from "./vertex/auth.js";

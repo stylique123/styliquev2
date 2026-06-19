@@ -13,10 +13,10 @@ const HERO_PORTRAIT = "/editorial/hero-cta.png";
 const MODULES = [
   {
     tag: "Module 01",
-    name: "Mira AI Stylist",
+    name: "Mira AI Sales Associate",
     tagline: "Conversational commerce at scale",
     description:
-      "An AI stylist that learns your catalog, reads each shopper's taste, and proposes looks that convert. Chat sessions become revenue — trackable, attributable, real.",
+      "An AI sales associate that learns your catalog, reads each shopper's taste, and closes the sale with complete looks. Chat sessions become revenue — trackable, attributable, real.",
     accent: "electric",
   },
   {
@@ -24,7 +24,7 @@ const MODULES = [
     name: "Virtual Try-On",
     tagline: "See it before you buy it",
     description:
-      "Photorealistic try-on powered by IDM-VTON. Shoppers pick a model or upload their photo, see your pieces on a body like theirs. Fewer returns. More confidence.",
+      "Photorealistic try-on. Shoppers pick a model with a body like theirs and see your pieces worn on it — at every size. Fewer returns. More confidence.",
     accent: "pink",
   },
 ];
@@ -101,7 +101,7 @@ export default function LandingPage() {
                 margin: "0 0 24px",
               }}
             >
-              Brand Intelligence Platform
+              AI Sales Engine · Commerce Intelligence
             </p>
             <h1
               style={{
@@ -278,7 +278,7 @@ export default function LandingPage() {
                   lineHeight: 1.1,
                 }}
               >
-                Three modules.{" "}
+                Two modules.{" "}
                 <em style={{ fontStyle: "italic" }}>One ecosystem.</em>
               </h2>
             </div>
@@ -288,7 +288,7 @@ export default function LandingPage() {
             className="sq-module-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(2, 1fr)",
               gap: 1,
               background: "var(--line)",
             }}

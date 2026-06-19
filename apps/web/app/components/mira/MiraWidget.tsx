@@ -451,25 +451,31 @@ function switchLine(cur: Product, prev: Product): { text: string; chips: string[
   const curSlot = garmentSlot(cur);
   const prevSlot = garmentSlot(prev);
   if (curSlot === prevSlot) {
-    return { text: `Two takes on the same slot — want them side by side?`, chips: [`Compare with the ${prevShort}`, "Style this", "My size?"] };
+    return { text: `Two takes on the same slot — want them side by side?`, chips: ["Compare options", "Build a look", "Find my size"] };
   }
   // A DRESS is a whole outfit on its own — it only completes with a LAYER
   // (coat/jacket) or an ACCENT (bag/belt/jewellery), never with a top, a bottom,
-  // or another dress. So a dress paired with a trouser/top is NOT a pairing; it's
-  // two separate looks → compare, not complement (QA scenario 33).
+  // or another dress. KEY: the dress-completeness line is only honest when the
+  // CURRENT piece is the dress. When the PREVIOUS piece was the dress and this
+  // one isn't (e.g. switched dress → trouser), saying "a dress is a whole look"
+  // on a non-dress page is the stale/wrong copy the founder flagged (#4).
   if (curSlot === "full" || prevSlot === "full") {
     const layerOrAccent = (curSlot === "full" ? prevSlot : curSlot);
     if (layerOrAccent === "layer" || layerOrAccent === "accent") {
-      return { text: `The ${prevShort} layers over this beautifully. Want the full look?`, chips: ["Build the look", "Style this", "My size?"] };
+      return { text: `The ${prevShort} layers over this beautifully. Want the full look?`, chips: ["Build a look", "See it on me", "Find my size"] };
     }
-    return { text: `A dress is a whole look on its own — want them side by side, or this one styled?`, chips: [`Compare with the ${prevShort}`, "Style this", "My size?"] };
+    if (curSlot === "full") {
+      return { text: `This one's a whole look on its own — want it styled, or sized?`, chips: ["Build a look", "Find my size", "See it on me"] };
+    }
+    // prev was the dress, this isn't → two separate looks, neutral compare.
+    return { text: `Different piece from the ${prevShort} — want this one on its own?`, chips: ["Build a look", "Find my size", "See it on me"] };
   }
   // Different slots → they build one outfit. Read whether they genuinely pair.
   const e = buildLook(cur, [prev])[0];
   const pairs = !e || e.score >= 0.6;
   return pairs
-    ? { text: `This pairs with the ${prevShort}. Want the full look?`, chips: ["Build the look", "Style this", "My size?"] }
-    : { text: `Different lane from the ${prevShort} — want this on its own?`, chips: ["Style this", "See it on me", "My size?"] };
+    ? { text: `This pairs with the ${prevShort}. Want the full look?`, chips: ["Build a look", "Find my size", "See it on me"] }
+    : { text: `Different lane from the ${prevShort} — want this on its own?`, chips: ["Build a look", "See it on me", "Find my size"] };
 }
 
 // ── Editorial edit names for look boards ──────────────────────────────────────
@@ -677,7 +683,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
       out.push({
         from: "mira", kind: "say",
         text: "What makes or breaks it is the size. Give me your height and weight and I'll tell you the exact one for your frame, no guessing.",
-        quickReplies: ["Size me", "What's it made of?", "Show the full look"],
+        quickReplies: ["Find my size", "What's it made of?", "Show the full look"],
       });
       return out;
     }
@@ -710,7 +716,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
         {
           from: "mira", kind: "say",
           text: "Give me your height and weight, I'll give you a single size, not a range.",
-          quickReplies: ["Size me", "It usually runs true?", "I'm usually a medium"],
+          quickReplies: ["Find my size", "It usually runs true?", "I'm usually a medium"],
         },
       ];
     }
@@ -740,7 +746,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
   if (/return|exchange|refund|policy|send back|wrong size/.test(t)) {
     return [
       { from: "mira", kind: "insight", label: "Returns", text: "14-day window, unworn, original packaging, handled directly through the Stylique Maison team." },
-      { from: "mira", kind: "say", text: "If size was the worry, let me fix that before you order. What's your usual size in something like this?", quickReplies: ["Size me", "It's about fit", "Got it, thanks"] },
+      { from: "mira", kind: "say", text: "If size was the worry, let me fix that before you order. What's your usual size in something like this?", quickReplies: ["Find my size", "It's about fit", "Got it, thanks"] },
     ];
   }
 
@@ -762,7 +768,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     return withNav([
       { from: "mira", kind: "say", text: "A wedding. I have one answer." },
       recoMsg(pick, { lead: `${pick.name}, ${money(pick.priceUsd)}.${pick.lowStock ? " Only a few left in most sizes." : ""}`, relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Want me to build the full look around it, or size you first?", quickReplies: ["Build the full look", "Size me", "Show more options"] },
+      { from: "mira", kind: "say", text: "Want me to build the full look around it, or size you first?", quickReplies: ["Build the full look", "Find my size", "Show more options"] },
     ], pick);
   }
 
@@ -772,7 +778,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     const pick = hero(evening, ctx);
     return withNav([
       recoMsg(pick, { lead: "For the evening, this is where I'd start.", relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Build the look around it, or see another direction?", quickReplies: ["Build the full look", "See more options", "Size me"] },
+      { from: "mira", kind: "say", text: "Build the look around it, or see another direction?", quickReplies: ["Build the full look", "See more options", "Find my size"] },
     ], pick);
   }
 
@@ -815,7 +821,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
       const pick = hero(catalog.filter((p) => p.category === cat), ctx);
       return withNav([
         recoMsg(pick, { lead: line, relativeTo: currentProduct }),
-        { from: "mira", kind: "say", text: "Want the full look around it, or another option?", quickReplies: ["Build the look", "Another option", "Size me"] },
+        { from: "mira", kind: "say", text: "Want the full look around it, or another option?", quickReplies: ["Build the look", "Another option", "Find my size"] },
       ], pick);
     }
   }
@@ -942,10 +948,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
   const found = findProducts(userText);
   if (found.length) {
     const pick = hero(found, ctx);
-    return withNav([
-      recoMsg(pick, { relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Tell me more if I've missed the mark." },
-    ], pick);
+    return withNav([recoMsg(pick, { relativeTo: currentProduct })], pick);
   }
 
   // Last resort, one hero + occasion prompt
@@ -1210,7 +1213,7 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
           text: anchor.fitNotes,
           quickReplies: sizeAlreadyAnswered
             ? ["See it on me", "Add to bag", "Show the look"]
-            : ["Size me", "Add to bag", "Show the look"],
+            : ["Find my size", "Add to bag", "Show the look"],
         });
       }
       return out;
@@ -1229,7 +1232,7 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
     case "suitability": {
       const anchor = byHandle(d.productHandle) ?? currentProduct;
       if (anchor) {
-        out.push({ from: "mira", kind: "insight", label: "My honest read", text: candidTake(anchor), quickReplies: ["Size me", "What's it made of?", "Show the look"] });
+        out.push({ from: "mira", kind: "insight", label: "My honest read", text: candidTake(anchor), quickReplies: ["Find my size", "What's it made of?", "Show the look"] });
       }
       return out;
     }
@@ -1303,7 +1306,7 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
       const set = d.category ? categorySet(d.category) : catalog;
       const picks = fresh(set.length ? set : catalog, ctx).slice(0, 3);
       // Put quickReplies on the voice bubble so there's only 1 text bubble + N card bubbles
-      out[0] = { ...voice, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Build the look", "Another option", "Size me"] };
+      out[0] = { ...voice, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Build the look", "Another option", "Find my size"] };
       (picks.length ? picks : [hero(set.length ? set : catalog, ctx)]).forEach((p) =>
         out.push(recoMsg(p, { relativeTo: currentProduct }))
       );
@@ -1378,7 +1381,7 @@ function SizeForm({ product, onResult }: { product: Product | null; onResult: (l
   const handleSubmit = async () => {
     const h = parseFloat(height), w = parseFloat(weight);
     if (!h || !w || h < 100 || h > 230 || w < 30 || w > 200) {
-      onResult("Fit", "I need a valid height (cm) and weight (kg) to size you properly.", ["Size me"], "", product?.handle ?? "");
+      onResult("Fit", "I need a valid height (cm) and weight (kg) to size you properly.", ["Find my size"], "", product?.handle ?? "");
       return;
     }
     const anchor = product ?? catalog[0];
@@ -1778,7 +1781,8 @@ function LookCard({ look, onTryOn, onAddLook, onView }: { look: LookBoard; onTry
       <div style={{ display: "flex", gap: 6, padding: "0 12px" }}>
         {all.map((p) => (
           // Tap a piece → navigate to its PDP (founder: "navigate to recommended
-          // products"). Whole-look try-on lives on the "Try the look" button below.
+          // products"). The try-on button below opens the ANCHOR piece only, so it
+          // is labelled per-piece ("Try the trouser"), never "Try the look" (#6).
           <button key={p.handle} onClick={() => { if (onView) onView(p); else if (typeof window !== "undefined") window.location.href = productUrl(p.handle); }} title={`${p.name} · ${money(p.priceUsd)} — view`} aria-label={`View ${p.name}`} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
             {p.images[0] ? (
               <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
@@ -1798,7 +1802,9 @@ function LookCard({ look, onTryOn, onAddLook, onView }: { look: LookBoard; onTry
         <div style={{ fontFamily: "var(--sans)", fontSize: 12.5, lineHeight: 1.55, color: "rgba(244,242,238,0.78)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{look.why}</div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => onAddLook(look.anchor, look.pieces)} style={primaryBtn()}>Add entire look · {money(look.total)}</button>
-          <button onClick={() => onTryOn(look.anchor)} style={secondaryBtn()}>Try the look ↗</button>
+          <button onClick={() => onTryOn(look.anchor)} style={secondaryBtn()}>
+            {(() => { const w = (look.anchor.name.trim().split(/\s+/).slice(-1)[0] ?? ""); return /^[A-Za-z-]{3,14}$/.test(w) ? `Try the ${w.toLowerCase()} ↗` : "Try this piece ↗"; })()}
+          </button>
         </div>
       </div>
     </div>
@@ -2116,7 +2122,7 @@ export default function MiraWidget() {
         setMessages((prev) => [...prev, {
           from: "mira", kind: "say",
           text: `Checking sizes? Let me size the ${cp.name} for you.`,
-          quickReplies: ["Size this one", "What's my size?", "I'm just looking"],
+          quickReplies: ["Find my size", "What's my size?", "I'm just looking"],
         }]);
       } else if (!sessionStorage.getItem("mira_opened")) {
         setNudgeProduct(cp);
@@ -2195,23 +2201,27 @@ export default function MiraWidget() {
     };
     document.addEventListener("click", onVariantClick, true);
 
-    // ── Signal 3: exit / zoom-out intent ───────────────────────────────────
-    // Cursor leaving toward the top (address bar / close / new tab) = about to
-    // bounce. One honest save-the-sale beat, never a guilt trip.
+    // ── Signal 3: TRUE exit-intent ─────────────────────────────────────────
+    // Must NOT fire on arrival, normal scroll, or ordinary browsing (founder #1).
+    // So it requires ALL of: the cursor genuinely left the window past the top
+    // edge (no relatedTarget), real dwell (≥18s on page), and prior engagement
+    // (they scrolled at least once). One honest beat, no "before you go" guilt.
+    const mountedAt = Date.now();
+    let scrolled = false;
     const onExit = (e: MouseEvent) => {
-      if (e.clientY <= 0) {
-        const cur = onPdp ? currentProduct() : null;
-        fire(cur ? `Before you go, I can save you time: size this, build a look, or show a better option.`
-                 : `Before you go, tell me the occasion and I'll find the one piece worth it.`,
-             cur, ["Find my size", "Build a look", "Show better option"]);
-      }
+      if (e.relatedTarget || (e.relatedTarget == null && e.clientY > 0)) return; // still inside window
+      if (Date.now() - mountedAt < 18000) return;  // newly-arrived → never
+      if (!scrolled) return;                         // no engagement yet → stay quiet
+      const cur = onPdp ? currentProduct() : null;
+      fire(cur ? `Want me to size this or build the look before you decide?`
+               : `Tell me the occasion and I'll find the one piece worth it.`,
+           cur, ["Find my size", "Build a look", "See it on me"]);
     };
     document.addEventListener("mouseout", onExit);
 
     // ── Signal 4: stranded (long PDP dwell, no scroll, no add-to-cart) ──────
     // Only on a PDP, only if they HAVEN'T scrolled (genuinely stuck, not reading)
     // and haven't added to bag — a real "need a hand?" moment, not an entry greet.
-    let scrolled = false;
     const onScroll = () => { scrolled = true; };
     window.addEventListener("scroll", onScroll, { passive: true });
     const strandTimer = onPdp ? window.setTimeout(() => {
@@ -2258,7 +2268,7 @@ export default function MiraWidget() {
       } else {
         setMessages((prev2) => [...prev2,
           { from: "mira", kind: "context", product: p },
-          { from: "mira", kind: "say", text: "Want this styled, or sized?", quickReplies: ["Style this", "Size this one", "See it on me"] },
+          { from: "mira", kind: "say", text: "Want this styled, or sized?", quickReplies: ["Build a look", "Find my size", "See it on me"] },
         ]);
       }
     } else if (!sessionStorage.getItem("mira_opened")) {

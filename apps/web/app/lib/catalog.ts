@@ -1143,6 +1143,11 @@ export function analyzeColorHarmony(
   colorsA: string[],
   colorsB: string[],
 ): { score: number; type: HarmonyType } {
+  // No colour data on one side (the norm on a real storefront — single-colour
+  // products carry no "Color" option) → return a neutral baseline, NOT 0. A 0
+  // here collapsed the whole "% match" badge to nothing (the recurring card bug);
+  // a neutral floor keeps the blended look-score meaningful without faking a clash.
+  if (colorsA.length === 0 || colorsB.length === 0) return { score: 0.6, type: "neutral" };
   let best = { score: 0, type: "contrast" as HarmonyType };
   for (const a of colorsA) {
     for (const b of colorsB) {

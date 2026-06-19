@@ -1648,3 +1648,74 @@ conversation logic only.
 ### Merge recommendation
 MERGE — all 10 user-visible behaviours confirmed in the browser; the pending nudge-seeding item is
 now visually verified; gates green.
+
+## V1 Live Store Smoke + Dashboard Scorecard Audit — 2026-06-20
+
+### Deployment state
+- `origin/main = 0546c7f` (HEAD confirmed); Shopify app `stylique-fashion-41` released.
+- Railway: stylique-app / stylique-worker / stylique-web all ● Online; Redis ● Online.
+- Working tree has uncommitted prior-turn changes (dead-code sweep, landing-page positioning/photo fixes, types CREATIVE_* sweep, storefront catalog.ts harmony floor) — NONE touch dashboard code; NOT deployed; awaiting founder go-ahead.
+
+### Shopify app / re-consent (Tasks B) — BLOCKED (cannot execute)
+- Requires authenticated session in the merchant Shopify admin. The App Proxy is HMAC-signed and cannot be driven externally. Not faking a PASS. Code wiring (embedded auth, app.dashboard loader) verified present.
+
+### Storefront widget (Task C) — BLOCKED (cannot execute)
+- Requires the live storefront browser. `/public/widget.js` = 200 (served). Single-source widget confirmed in code (no ScriptTag+TAE double-mount path in source).
+
+### Mira PDP smoke (Task D) — BLOCKED (cannot execute live)
+- Requires the installed storefront. Contract/stage-chip/support-routing logic verified GREEN in prior harnesses (contract-regression 21/21, anti-chatbot 15/15). Live browser confirmation still owed by founder.
+
+### Widget-live beacon (Task E) — PASS (server evidence)
+- `WIDGET_PLACEMENT_AUDIT` = 6 rows, all within 30d window → `widgetLive=true` (GREEN). Logic at dashboard.server.ts:40-104 correct.
+
+### Dashboard scorecards (Task F) — PASS (code honest; live DB cross-checked)
+Live DB (shop stylique-fashion-dev), 30d window:
+- chatSessions (CHAT_OPENED)=5 · chatTurns (CHAT_MESSAGE_SENT)=46 · combosProposed (CHAT_COMBO_PROPOSED)=176 · WIDGET_FIT_SUBMITTED=1 · tryOnSession=5 · catalogGap(real)=1807 → ALL REAL, correctly sourced.
+- CART_CONFIRMED / CART_FROM_MIRA / CART_FROM_TRYON / CART_FROM_WIDGET_STYLE / MIRA_ASSISTED_ORDER / SIGNUP_CLAIMED = 0 (never fired) → revenue/ROI/AOV/repeat/conversion all 0.
+- Outcome hero gated on miraAssistedOrders>0 → renders "pilot pending", NOT a fake $0 Measured headline. HONEST.
+- Reorder intelligence = "Est." labeled. No fake revenue/ROI/uplift. No Creative Studio metrics.
+
+### Event pipeline (Task G) — Partial (server-side verified)
+- Stored & read correctly: CHAT_OPENED, CHAT_MESSAGE_SENT, CHAT_COMBO_PROPOSED, CHAT_SEARCH_RUN(1768), CHAT_PRODUCT_CLICKED(27), WIDGET_FIT_SUBMITTED, WIDGET_PLACEMENT_AUDIT, MIRA_SIZE_HELP_STARTED(5).
+- Never stored: CART_CONFIRMED + CART_FROM_* + MIRA_ASSISTED_ORDER + SIGNUP_CLAIMED. 4 CHAT_CART_REQUESTED exist but 0 cart-add/confirm events — needs live add-to-cart verification (founder browser).
+- TRYON_RENDER_FAILED=24 with 0 TRYON_RENDER_REQUESTED/COMPLETED — render path failing; OUT OF SCOPE ("do not change try-on") — flagged.
+
+### Scorecard root-cause classification (Task H)
+- Revenue / ROI / AOV / repeat / conversion / cart-from-* / signups = **Category 1 (no live event yet)** — honest empty already implemented ("pilot pending"). No code fix.
+- VTO requested/completed=0 vs failed=24 = render-emission inconsistency → try-on pipeline (Category 2/3) but EXPLICITLY out of scope.
+- No Category 6 (deprecated) or Category 7 (fake) metrics found — those were already cleaned (Creative Studio removed, Est. labels added).
+
+### Issues found / Fixes applied
+- No new P0/P1 DASHBOARD code bug found — the dashboard is honest and correctly sourced. NO dashboard code edited this pass.
+- P1 (storefront, separate surface, fix already staged uncommitted last turn): Mira reco-card "% match" badge collapsed to 0 on empty colors → analyzeColorHarmony neutral floor. Not part of this dashboard task; awaiting deploy decision.
+
+### Verification
+- No source changed this pass → no new harness run required. (Prior staged changes: typecheck 11/11, core 230/231 with pre-existing TRYON_BODY.)
+
+### Remaining P2 / Phase 5
+- Live browser smoke (Tasks B/C/D + add-to-cart truth + widget visual) — founder action on the installed store.
+- TRYON_RENDER_FAILED investigation (out of scope here).
+
+### Final verdict
+- Dashboard scorecards: CORRECT + HONEST (zeros are real no-purchase-yet empties, not bugs). Deployed code at 0546c7f. Live storefront UX smoke still requires founder browser confirmation.
+
+## Live Widget Runtime Reset — 2026-06-20
+
+Founder visually tested the live/demo widget; 8 visible runtime issues. Fixed only the widget runtime layer (`apps/web/.../MiraWidget.tsx`) — no DB/schema/migration, no billing, no try-on engine, no Phase 5.
+
+### Root causes + fixes (all in MiraWidget.tsx unless noted)
+1. **Proactive "Before you go" fired on arrival/scroll.** `onExit` triggered on the FIRST `mouseout` past the top edge — no dwell/engagement gate. → Gated to TRUE exit-intent only: `!relatedTarget` (cursor genuinely left the window) + ≥18s dwell + prior scroll engagement. Copy de-guilted.
+4. **Stale "A dress is a whole look on its own" on non-dress pages.** `switchLine` dress branch fired when the PREVIOUS piece was a dress and the current is a trouser/top. → Dress-completeness copy now only when the CURRENT piece is the dress; prev-was-dress → neutral compare line.
+5. **Repetitive/generic + inconsistent chips ("My size?" / "Size me" vs brain's "Find my size").** → Canonicalized the widget fallback/nudge chip vocabulary to the brain's single source: `"Size me"`/`"Size this one"`→`"Find my size"`, `"Style this"`→`"Build a look"`; verified no duplicate chip in any array.
+6. **"Try the look" misleading** — the LookCard button calls `onTryOn(look.anchor)` (anchor piece only, not the whole look). → Relabelled per-piece from the anchor's garment noun ("Try the trouser ↗"), fallback "Try this piece ↗". (TryOnPanel's real combined "Try the look on · N pieces" button is genuine multi-garment try-on — left as is.)
+8. **Verbose filler.** Removed the trailing "Tell me more if I've missed the mark." bubble from the regex fallback.
+
+### Not changed (verified already-correct or out of scope)
+- #2 intent/state, #3 card consistency, #7 navigation: card render path + nav are single-sourced + harness-green (runtime-ux 11/11); the storefront card "% match" empty-color collapse was already fixed (catalog.ts harmony neutral floor, prior turn). Support/order routing → Store Support verified by contract-regression 21/21.
+
+### Verification
+- typecheck 11/11 · anti-chatbot-eval 15/15 · contract-regression 21/21 · runtime-ux-regression 11/11 · size-ladder PASS.
+- Widget bundle rebuilt (206.9KB → shopify-app/public/widget.js). Demo serves 200.
+
+### Visual flows
+- Logic-verified + harness-green. Full interactive storefront flows (install/support/cart-truth) still require founder-browser confirmation on the installed store — cannot be driven externally (HMAC App Proxy).
