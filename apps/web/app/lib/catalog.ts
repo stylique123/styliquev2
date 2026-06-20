@@ -12,7 +12,7 @@ export type Product = {
   handle: string;
   name: string;
   collection: CollectionSlug;
-  category: "outerwear" | "dress" | "top" | "bottom" | "knitwear" | "accessory";
+  category: "outerwear" | "dress" | "top" | "bottom" | "knitwear" | "accessory" | "unknown";
   priceUsd: number;
   description: string;
   images: string[]; // first image is the primary
@@ -1171,6 +1171,7 @@ function bodyZone(cat: Product["category"]): BodyZone {
     case "dress":      return "full";
     case "outerwear":  return "layer";
     case "accessory":  return "accent";
+    case "unknown":    return "accent";
   }
 }
 

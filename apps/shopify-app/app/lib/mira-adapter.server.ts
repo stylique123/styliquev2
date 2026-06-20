@@ -281,6 +281,7 @@ export type MiraAdapterResult = {
   // shop's catalog (in the order the brain named them).
   products: AdaptedProduct[];
   look: { title: string; reasoning: string; pieces: AdaptedProduct[] } | null;
+  objective?: unknown;
 };
 
 function toProduct(p: BrainProduct): AdaptedProduct {
@@ -710,6 +711,7 @@ export async function runMiraAdapter(args: {
     cartItemCount?: number;
     activeLookSummary?: string | null;
     tryOnContextSummary?: string | null;
+    priorObjective?: unknown;
   };
   const messages = b.messages ?? [];
   const lastUserMsg = b.message ?? [...messages].reverse().find((m) => m?.role === "user")?.text ?? "";
@@ -808,6 +810,7 @@ export async function runMiraAdapter(args: {
     cartItemCount: b.cartItemCount,
     activeLookSummary: b.activeLookSummary,
     tryOnContextSummary: b.tryOnContextSummary,
+    priorObjective: b.priorObjective,
     injectedKnowledge: shopperBrief.brief
       ? `SAVED SHOPPER CONTEXT:\n${shopperBrief.brief}`
       : undefined,
@@ -858,11 +861,11 @@ export async function runMiraAdapter(args: {
     // reqBody.injectedCatalog, so the brain needs no defaultCatalog and there is
     // no demo KB fallback in production. USE_IN_PROCESS_BRAIN=0 reverts to the
     // legacy HTTP fetch (kept as a safety valve during rollout).
-    let payload: { source?: string; model?: string | null; decision?: Parameters<typeof decisionToAdapter>[0] };
+    let payload: { source?: string; model?: string | null; decision?: Parameters<typeof decisionToAdapter>[0]; objective?: unknown };
     if (process.env.USE_IN_PROCESS_BRAIN !== "0") {
       const { decideMira } = await import("@stylique/mira-brain");
       const r = await decideMira(reqBody as unknown as Parameters<typeof decideMira>[0], { defaultCatalog: [] });
-      payload = { source: r.source, model: r.model, decision: r.decision as Parameters<typeof decisionToAdapter>[0] };
+      payload = { source: r.source, model: r.model, decision: r.decision as Parameters<typeof decisionToAdapter>[0], objective: r.objective };
     } else {
       const res = await fetch(UNIFIED_BRAIN_URL, {
         method: "POST",
@@ -870,7 +873,7 @@ export async function runMiraAdapter(args: {
         body: JSON.stringify(reqBody),
         signal: AbortSignal.timeout(35_000),
       });
-      payload = (await res.json()) as { source?: string; decision?: Parameters<typeof decisionToAdapter>[0] };
+      payload = (await res.json()) as { source?: string; decision?: Parameters<typeof decisionToAdapter>[0]; objective?: unknown };
     }
     // Record the turn on the way back. Fire-and-forget; recordConsume is
     // idempotent + already swallows errors, so a Prisma blip never blocks the
@@ -1011,6 +1014,7 @@ export async function runMiraAdapter(args: {
         shopperQuery: lastUserMsg,
       },
     );
+    result.objective = payload.objective;
     void appendChatTurns(shopperSession.row.id, [
       { role: "user", text: lastUserMsg },
       { role: "model", text: result.decision.voice },

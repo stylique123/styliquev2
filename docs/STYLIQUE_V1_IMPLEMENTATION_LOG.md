@@ -1719,3 +1719,67 @@ Founder visually tested the live/demo widget; 8 visible runtime issues. Fixed on
 
 ### Visual flows
 - Logic-verified + harness-green. Full interactive storefront flows (install/support/cart-truth) still require founder-browser confirmation on the installed store — cannot be driven externally (HMAC App Proxy).
+
+## Mira Runtime Unification Remediation — 2026-06-20
+
+### Active deploy source
+- `ACTIVE_DEPLOY_SOURCE = /Users/apple/Desktop/stylique  re build/fashion`
+- Parent repo `/Users/apple/Desktop/stylique  re build` is a separate dirty git repo with deleted old app tree and untracked `fashion/`; active deploy docs/TOML point to `fashion/` + Railway `stylique-app-production.up.railway.app`.
+
+### Root cause
+Repeated fixes were landing against overlapping layers: server brain/contract, client regex fallback, widget cart messages, Shopify product hydration, and dashboard event vocabulary. The remediation tightened those boundaries without migrations, billing, or try-on rendering changes.
+
+### Fixes applied
+1. **Mandatory cart executor path.** Chat `kind:"cart"` now carries handles/pieces and routes through `executeAction("add_to_bag")` / `addLook`; no local cart/toast success branch remains.
+2. **Cart truth.** `addToBag` and `addLook` update the visible bag only after `addToCart` / `addOutfitToCart` returns `ok`; failures show honest retry copy.
+3. **Client fallback constrained.** Legacy regex fallback is fenced off; fallback now emits only a short brain-loading failure message, with no product recs, look builds, size advice, navigation, or fake cart.
+4. **Live product normalization.** Shopify product hydration now runs through `normalizeShopifyProduct`, maps dress/trouser/V-neck/cardigan/etc deterministically, extracts tags/description/fabric/fit/care hints where present, and marks unknown taxonomy as `category:"unknown"` instead of silently `top`.
+5. **Unknown-slot copy guard.** Product switch/opening copy avoids dress/top-specific language when category confidence is low.
+6. **Navigation source.** Product URLs read `window.__sqProductSeg` lazily and server navigation triggers use the executor on storefronts only when the handle resolves in the current catalog.
+7. **Proactive nudge thresholds.** Stranded PDP dwell is 45s, exit intent is top-edge after 20s, and copy uses the approved restrained lines.
+8. **Event bridge transition.** Dashboard counts old chat names plus available Mira aliases; `MIRA_NEAR_MISS` ingests without becoming CatalogGap unless explicitly marked missing, while `MIRA_UNMET_DEMAND` remains the deliberate gap event.
+9. **Objective persistence.** Brain `objective` is returned by web and Shopify adapter APIs, stored in sessionStorage per host/API base, and sent back as `priorObjective` on the next turn.
+10. **Widget bundle rebuilt.** `apps/shopify-app/extensions/stylique-widget/assets/tryon.js` and `apps/shopify-app/public/widget.js` regenerated from the shared widget source.
+
+### Verification
+- PASS: `pnpm typecheck`
+- PASS: `pnpm build` (warnings only: existing Next metadata/workspace-root and Vite dynamic/static import chunking warnings)
+- FAIL: `pnpm test` due pre-existing `packages/core/src/__tests__/plans.test.ts` null-quota expectation for `TRYON_BODY` (`expected true, received false`) unrelated to Mira runtime changes.
+- PASS: `pnpm --filter @stylique/mira-brain exec tsx scripts/anti-chatbot-eval.mts` — 15/15.
+- PASS: `pnpm --filter @stylique/web exec tsx scripts/size-ladder-harness.mts`.
+- PASS: `pnpm --filter @stylique/web exec tsx scripts/runtime-ux-regression.mts` — 11/11.
+- PASS: `pnpm --filter @stylique/mira-brain exec tsx scripts/contract-regression.mts` — 21/21.
+
+### Remaining
+- P0/P1 visible runtime fixes are code-complete locally, but not committed, pushed, deployed, or live-browser verified.
+- Full Phase 5 presenter centralization and new dedicated unit/visual tests remain incomplete; this pass constrained the worst overlapping sources rather than moving every visible reply through a new presenter module.
+- Live founder flows still require storefront/browser proof after deploy.
+
+## Mira Runtime Closeout Browser Proof — 2026-06-20
+
+### Preservation
+- Branch: `chore/mira-runtime-closeout`
+- Commit: `611681b73a2737c6c63116d7fb09ce77d0539e2c`
+- Staged/committed only source, intentional widget bundles, and this implementation log. `apps/web/data/mira-signals.json` remains unstaged runtime/debug data.
+
+### Browser proof
+- Tested URL: `http://localhost:3002`
+- Browser mode: local Chromium via Playwright, fresh context per flow.
+- Cache disabled: yes, via browser protocol `Network.setCacheDisabled`.
+- Fresh bundle: yes, local dev chunks served with cache-busting timestamp after rebuild; widget bundle rebuilt after source change.
+- App source path: `/Users/apple/Desktop/stylique  re build/fashion`
+
+### Founder flows
+1. **Camisole:** PASS. No entry nudge. Product-aware opener. Build look rendered outfit card. Show similar rendered 3 full product cards with images and `VIEW FULL PRODUCT` actions.
+2. **Linen shirt:** PASS. Recognized as shirt/top. Build look rendered valid complements. No dress copy. No generic duplicate size chips.
+3. **Wide-leg trouser:** PASS. Recognized as trouser/bottom. Build look rendered top/layer complements. No `Try the look`; button says `Try the trouser`; try-on opened for anchor product without fake render claim.
+4. **Product switch:** PASS. Trouser to Cashmere V-Neck preserved prior/current context. No dress copy. Complement/style path used instead of same-slot compare.
+5. **Support/order issue:** PASS. `I have an order issue` rendered Store Support, no styling pitch, chips `Connect me` and `Keep shopping`.
+6. **Cart truth:** BLOCKED locally. Local demo has simulated cart (`real:false`) and no real Shopify `/cart/add.js` context. Do not claim pass until tested on installed Shopify storefront/dev store.
+
+### Presenter centralization decision
+Presenter centralization: **DEFERRED TO P2 WITH SAFE V1 JUSTIFICATION**.
+- Current runtime is stable enough for V1 because browser flows 1-5, runtime harness, and contract harness prove the visible paths that were breaking: build-look cards, similar cards, chips, try-on wording, support card, product switch, navigation, and no fake chat-cart success.
+- Visible paths still bypass a new standalone presenter module: `applyDecision`, `recoMsg`, `lookMsg`, support insight rendering, size-form result copy, proactive nudge copy.
+- Why safe for V1: unsafe legacy fallback is fenced to one network-error message; cart actions route through the executor; category routes now fill multiple full cards; unknown taxonomy avoids slot-specific copy.
+- Phase 5 task: create `mira-presenter.ts` that owns message clamp, stage chips, card layout, route/action mapping, unsupported try-look prevention, dress-copy guard, and product-card navigation tests, then migrate `applyDecision`/card builders into it.

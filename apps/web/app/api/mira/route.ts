@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { source: responseSource, model: modelUsed, decision, support } = await decideMira(parsed.data, demoDeps);
+    const { source: responseSource, model: modelUsed, decision, support, objective } = await decideMira(parsed.data, demoDeps);
     // ── Full event mesh emission ──────────────────────────────────────────────
     // Every turn flows through the event bridge, writes to the JSON debug
     // mirror AND forwards to the production Prisma event mesh when configured.
@@ -124,7 +124,7 @@ export async function POST(req: Request) {
     if (isUnmet) void emitUnmetDemand(parsed.data.message, decision.unmetCategory!, decision.unmetReason ?? "").catch(() => {});
     if (isNearMiss) void emitNearMiss(parsed.data.message, productHandle!, decision.nearMissCategory!, decision.nearMissAttribute ?? "", decision.nearMissReason ?? "").catch(() => {});
 
-    return NextResponse.json({ source: responseSource, model: modelUsed, decision });
+    return NextResponse.json({ source: responseSource, model: modelUsed, decision, objective });
   } catch (err) {
     console.error("[mira] route error", err instanceof Error ? err.message : err);
     const fallback = BodySchema.safeParse(body);

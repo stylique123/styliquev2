@@ -36,6 +36,7 @@ function normalizeBridgePayload(event: string, data: Record<string, unknown>) {
       nearMissAttribute: typeof data.nearMissAttribute === "string" ? data.nearMissAttribute : undefined,
       category: typeof data.category === "string" ? data.category : typeof data.nearMissCategory === "string" ? data.nearMissCategory : undefined,
       resultCount: typeof data.resultCount === "number" ? data.resultCount : undefined,
+      missingItem: data.missingItem === true || data.createsCatalogGap === true,
     };
   }
   if (event === "MIRA_UNMET_DEMAND") {
@@ -51,6 +52,7 @@ function normalizeBridgePayload(event: string, data: Record<string, unknown>) {
       nearMissProductId: typeof data.nearMissProductId === "string" ? data.nearMissProductId : undefined,
       nearMissAttribute: typeof data.nearMissAttribute === "string" ? data.nearMissAttribute : undefined,
       canonicalCategory: typeof data.canonicalCategory === "string" ? data.canonicalCategory : typeof data.category === "string" ? data.category : undefined,
+      missingItem: data.missingItem === true || data.createsCatalogGap === true,
     };
   }
   return data;
@@ -116,7 +118,10 @@ export async function action({ request }: ActionFunctionArgs) {
     return json({ ok: false, error: "invalid_payload" }, { status: 422 });
   }
 
-  if (parsed.data.event === "MIRA_UNMET_DEMAND" || parsed.data.event === "CHAT_NEAR_MISS") {
+  const shouldLogGap = parsed.data.event === "MIRA_UNMET_DEMAND"
+    || ((parsed.data.event === "CHAT_NEAR_MISS" || parsed.data.event === "MIRA_NEAR_MISS")
+      && (payload as { missingItem?: boolean }).missingItem === true);
+  if (shouldLogGap) {
     const p = payload as { query?: string; resultCount?: number; category?: string; canonicalCategory?: string };
     if (p.query) {
       void logCatalogGap({

@@ -342,7 +342,16 @@ export async function buildOverview(args: {
     where: { shopId: args.shopId, createdAt: { gte: since } },
     _count: { _all: true },
   });
-  const evt = (name: string) => grouped.find((g) => g.name === name)?._count._all ?? 0;
+  const EVENT_ALIASES: Record<string, string[]> = {
+    CHAT_OPENED: ["MIRA_OPENED"],
+    CHAT_PRODUCT_CLICKED: ["MIRA_PRODUCT_RECOMMENDED"],
+    CHAT_CART_REQUESTED: ["MIRA_ADD_TO_CART_ASSIST"],
+    CHAT_NEAR_MISS: ["MIRA_NEAR_MISS"],
+  };
+  const evt = (name: string) => {
+    const names = [name, ...(EVENT_ALIASES[name] ?? [])];
+    return names.reduce((sum, n) => sum + (grouped.find((g) => g.name === n)?._count._all ?? 0), 0);
+  };
 
   // ─── Mira-assisted revenue rollup (perf-marketer panel finding) ─────
   // Sum MIRA_ASSISTED_ORDER.payload.assistedRevenueCents over the window so

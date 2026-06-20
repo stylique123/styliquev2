@@ -62,8 +62,13 @@ function money(amount: number): string {
     return `${code} ${amount.toLocaleString()}`;
   }
 }
-const PRODUCT_SEG = ASSET_BASE ? "products" : "product"; // Shopify plural vs demo singular
-function productUrl(handle: string): string { return `/${PRODUCT_SEG}/${handle}`; }
+function productUrl(handle: string): string {
+  const configured = typeof window !== "undefined"
+    ? (window as unknown as Record<string, unknown>).__sqProductSeg
+    : undefined;
+  const seg = typeof configured === "string" && configured ? configured : (ASSET_BASE ? "products" : "product");
+  return `/${seg}/${handle}`;
+}
 
 // ── Price-truth guard ────────────────────────────────────────────────────────
 // The LLM `voice` line is free text and sometimes names its OWN total
@@ -195,7 +200,7 @@ type ChatMsg =
   | { from: "mira"; kind: "reco"; reco: Reco; lead?: string }
   | { from: "mira"; kind: "look"; look: LookBoard }
   | { from: "mira"; kind: "insight"; label: string; text: string; quickReplies?: string[] }
-  | { from: "mira"; kind: "cart"; productName: string }
+  | { from: "mira"; kind: "cart"; productName: string; productHandle?: string; pieces?: Product[] }
   // Quiet chapter-break divider when the shopper moves to a new product — orients
   // the thread without a wall of text (founder + panel: "differentiate new product,
   // make it prominent but premium").
@@ -337,6 +342,68 @@ function captureBodyFromText(text: string): void {
 // when the tab closes) so Mira remembers the whole visit until they leave the
 // store. Founder: "it should remember until they're at the store."
 const CONVO_KEY = "mira_convo_v1";
+const OBJECTIVE_KEY = "mira_objective_v1";
+
+type ShopperStage = "arrival" | "product_understanding" | "fit_sizing" | "outfit_building" | "try_on_decision" | "cart_decision" | "support" | "unknown";
+type ShopperObjectiveState = {
+  sessionId: string;
+  shopId?: string;
+  currentProductHandle?: string;
+  previousProductHandle?: string;
+  stage: ShopperStage;
+  intentHistory: string[];
+  rejectedHandles: string[];
+  lastRecommendedHandles: string[];
+  lastAction?: string;
+  updatedAt: string;
+  brainObjective?: unknown;
+};
+
+function objectiveShopKey(): string {
+  if (typeof window === "undefined") return "server";
+  return `${window.location.host}|${sqApi()}`;
+}
+function loadObjectiveState(): ShopperObjectiveState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(OBJECTIVE_KEY) ?? "null") as ShopperObjectiveState | null;
+    return parsed?.shopId === objectiveShopKey() ? parsed : null;
+  } catch { return null; }
+}
+function saveObjectiveState(next: ShopperObjectiveState): void {
+  if (typeof window === "undefined") return;
+  try { sessionStorage.setItem(OBJECTIVE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+}
+function stageFromRoute(route?: MiraDecision["route"], intent?: string): ShopperStage {
+  if (intent === "support" || route === "returns") return "support";
+  if (route === "add_to_cart") return "cart_decision";
+  if (route === "try_on") return "try_on_decision";
+  if (route === "look") return "outfit_building";
+  if (route === "fit" || route === "size_form") return "fit_sizing";
+  if (route === "reco_handle" || route === "reco_category" || route === "reco_filter" || route === "navigate" || route === "search") return "product_understanding";
+  return "unknown";
+}
+function rememberObjective(args: { decision?: MiraDecision | null; objective?: unknown; currentProductHandle?: string | null; previousProductHandle?: string | null; action?: string }): void {
+  const prev = loadObjectiveState();
+  const intent = args.decision?.intent ?? undefined;
+  const handle = args.decision?.productHandle ?? args.currentProductHandle ?? undefined;
+  const sessionId = prev?.sessionId ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const intentHistory = intent ? [...(prev?.intentHistory ?? []), intent].slice(-12) : (prev?.intentHistory ?? []);
+  const lastRecommendedHandles = handle ? [handle, ...(prev?.lastRecommendedHandles ?? []).filter((h) => h !== handle)].slice(0, 8) : (prev?.lastRecommendedHandles ?? []);
+  saveObjectiveState({
+    sessionId,
+    shopId: objectiveShopKey(),
+    currentProductHandle: args.currentProductHandle ?? handle,
+    previousProductHandle: args.previousProductHandle ?? prev?.currentProductHandle,
+    stage: stageFromRoute(args.decision?.route, intent),
+    intentHistory,
+    rejectedHandles: prev?.rejectedHandles ?? [],
+    lastRecommendedHandles,
+    lastAction: args.action ?? args.decision?.route,
+    updatedAt: new Date().toISOString(),
+    brainObjective: args.objective ?? prev?.brainObjective,
+  });
+}
 
 type ConvoSnapshot = {
   messages: ChatMsg[];
@@ -393,7 +460,7 @@ function whyFor(p: Product): string {
 // "You're looking at the Linen Shirt, an ivory top built for easy daytime
 //  layering. It pairs beautifully with the Atelier Wide-Leg Trouser."
 const CATEGORY_NOUN: Record<Product["category"], string> = {
-  outerwear: "coat", dress: "dress", top: "top", bottom: "trouser", knitwear: "knit", accessory: "piece",
+  outerwear: "coat", dress: "dress", top: "top", bottom: "trouser", knitwear: "knit", accessory: "piece", unknown: "piece",
 };
 const OCCASION_PHRASE: Record<CollectionSlug, string> = {
   "evening": "made for evenings and occasions",
@@ -414,6 +481,11 @@ function contextualOpener(p: Product): string {
   const noun = CATEGORY_NOUN[p.category];
   const occ = OCCASION_PHRASE[p.collection];
   const Color = color ? color.charAt(0).toUpperCase() + color.slice(1) : "";
+  if (p.category === "unknown") {
+    return color
+      ? `The ${p.name}, in ${color}. Good eye.`
+      : `The ${p.name}. Good eye.`;
+  }
   // Lead-first + rotated (panel rank 13): Mira asserts a POV on the piece instead
   // of repeating one flat descriptive template, these are the first words she
   // speaks, so they must feel decisive and never identical visit-to-visit.
@@ -432,7 +504,7 @@ function contextualOpener(p: Product): string {
 // two coats, two dresses) are real alternatives. Branch on slot, never on "the
 // shopper switched products". Default to complement when unsure — it's the safer,
 // more on-brand read for a stylist.
-type GarmentSlot = "upper" | "lower" | "layer" | "full" | "accent";
+type GarmentSlot = "upper" | "lower" | "layer" | "full" | "accent" | "unknown";
 function garmentSlot(p: Product): GarmentSlot {
   switch (p.category) {
     case "top": case "knitwear": return "upper";
@@ -440,7 +512,8 @@ function garmentSlot(p: Product): GarmentSlot {
     case "outerwear": return "layer";
     case "dress": return "full";
     case "accessory": return "accent";
-    default: return "upper";
+    case "unknown": return "unknown";
+    default: return "unknown";
   }
 }
 // The single short line + slot-aware chips Mira says when the shopper lands on a
@@ -450,6 +523,9 @@ function switchLine(cur: Product, prev: Product): { text: string; chips: string[
   const prevShort = prev.name.split(" ").slice(-1)[0];
   const curSlot = garmentSlot(cur);
   const prevSlot = garmentSlot(prev);
+  if (curSlot === "unknown" || prevSlot === "unknown") {
+    return { text: `Now you're on the ${cur.name}. Want my read on this one?`, chips: ["Find my size", "Build a look", "See it on me"] };
+  }
   if (curSlot === prevSlot) {
     return { text: `Two takes on the same slot — want them side by side?`, chips: ["Compare options", "Build a look", "Find my size"] };
   }
@@ -632,6 +708,21 @@ function lookMsg(anchor: Product, ctx: MiraContext, why?: string): ChatMsg {
 
 // ── Main response engine ──────────────────────────────────────────────────────
 function getMiraResponse(userText: string, currentProduct: Product | null, ctx: MiraContext): ChatMsg[] {
+  void userText;
+  void currentProduct;
+  void ctx;
+  return [{
+    from: "mira",
+    kind: "say",
+    text: "I had trouble loading the stylist brain. Try once more and I'll pick this back up.",
+  }];
+
+  /*
+   * Legacy regex fallback disabled. It used to produce product recs, look builds,
+   * size advice, navigation and cart-success copy without the server contract.
+   * Keep the source here briefly for review context, but keep it outside the
+   * compiled control flow until it is deleted or rebuilt on shared contract tables.
+   *
   const t = userText.toLowerCase().trim();
   // ONE-BRAIN: on a real storefront the regex fallback MUST operate on the
   // merchant's real (hydrated) catalog, never the bundled demo products — else it
@@ -802,8 +893,8 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     const anchor = currentProduct;
     if (anchor) {
       return [
-        { from: "mira", kind: "cart", productName: anchor.name },
-        { from: "mira", kind: "say", text: `The ${anchor.name} is in your bag. Want me to complete the look before you check out?`, quickReplies: ["Complete the look", "See checkout", "Keep shopping"] },
+        { from: "mira", kind: "cart", productName: anchor.name, productHandle: anchor.handle },
+        { from: "mira", kind: "say", text: `I'll add the ${anchor.name} now. If Shopify can't add it, I'll tell you plainly.`, quickReplies: ["Complete the look", "See checkout", "Keep shopping"] },
       ];
     }
     return [{ from: "mira", kind: "say", text: "Which piece? Tap it first and I'll add it for you." }];
@@ -957,6 +1048,7 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     recoMsg(lastPick, { lead: "Let me show you what I've been pulling lately.", relativeTo: currentProduct }),
     { from: "mira", kind: "say", text: "Or tell me the occasion, I'll be more specific.", quickReplies: ["Build a look", "Evening", "Surprise me"] },
   ], lastPick);
+  */
 }
 
 // ── Hybrid layer ──────────────────────────────────────────────────────────────
@@ -991,11 +1083,106 @@ type MiraDecision = {
 // `catalog` remains ONLY as the marketing-demo fallback (when no real product was
 // returned), so the demo page keeps working. This is what ends the double system
 // on every real store.
-type RealProduct = { id?: string; handle: string; name: string; category?: string | null; priceUsd?: number | null; image?: string | null; sizes?: string[]; colors?: string[] };
+type SlotConfidence = "high" | "low";
+type RealProduct = {
+  id?: string;
+  handle: string;
+  name: string;
+  productType?: string | null;
+  category?: string | null;
+  normalizedSlot?: Product["category"];
+  slotConfidence?: SlotConfidence;
+  sourceConfidence?: SlotConfidence;
+  priceUsd?: number | null;
+  image?: string | null;
+  variants?: Array<{ id?: number | string; title?: string; available?: boolean; price?: string | number; options?: string[] }>;
+  sizes?: string[];
+  colors?: string[];
+  tags?: string[];
+  description?: string;
+  fabricMaterial?: string;
+  fitNotes?: string;
+  careNotes?: string;
+  tryonReady?: boolean;
+};
 const runtimeCatalog = new Map<string, Product>();
-const CAT_SET = new Set(["outerwear", "dress", "top", "bottom", "knitwear", "accessory"]);
+const KNOWN_CAT_SET = new Set<Product["category"]>(["outerwear", "dress", "top", "bottom", "knitwear", "accessory"]);
+function normalizeSlot(raw: { title?: string; productType?: string | null; category?: string | null; tags?: string[] }): { slot: Product["category"]; confidence: SlotConfidence } {
+  const text = [raw.category, raw.productType, raw.title, ...(raw.tags ?? [])].filter(Boolean).join(" ").toLowerCase();
+  if (!text.trim()) return { slot: "unknown", confidence: "low" };
+  if (/\b(dress|gown|slip)\b/.test(text)) return { slot: "dress", confidence: "high" };
+  if (/\b(trouser|trousers|pants|jeans|denim|skirt)\b/.test(text)) return { slot: "bottom", confidence: "high" };
+  if (/\b(cardigan)\b/.test(text)) return { slot: "outerwear", confidence: "high" };
+  if (/\b(knit|v-neck|sweater|turtleneck|jumper)\b/.test(text)) return { slot: "knitwear", confidence: "high" };
+  if (/\b(shirt|camisole|cami|blouse|t-shirt|tee|top)\b/.test(text)) return { slot: "top", confidence: "high" };
+  if (/\b(blazer|coat|jacket|overshirt|trench|outerwear)\b/.test(text)) return { slot: "outerwear", confidence: "high" };
+  if (/\b(belt|bag|scarf|jewelry|jewellery|earring|necklace|bracelet)\b/.test(text)) return { slot: "accessory", confidence: "high" };
+  const exact = (raw.category ?? raw.productType ?? "").toLowerCase() as Product["category"];
+  if (KNOWN_CAT_SET.has(exact)) return { slot: exact, confidence: "high" };
+  return { slot: "unknown", confidence: "low" };
+}
+function extractNotes(description?: string, tags: string[] = []): { fabricMaterial: string; fitNotes: string; careNotes: string } {
+  const clean = (description ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const tagText = tags.join(" ");
+  const fabric = [clean, tagText].join(" ").match(/\b(silk|linen|cotton|wool|cashmere|merino|leather|denim|viscose|rayon|polyester|modal|satin|crepe)\b[^.]{0,80}/i)?.[0] ?? "";
+  const fit = [clean, tagText].join(" ").match(/\b(oversized|relaxed|slim|fitted|tailored|high-rise|mid-rise|low-rise|true to size|runs small|runs large)\b[^.]{0,100}/i)?.[0] ?? "";
+  const care = clean.match(/\b(machine wash|hand wash|dry clean|spot clean|wash cold|line dry)\b[^.]{0,100}/i)?.[0] ?? "";
+  return { fabricMaterial: fabric, fitNotes: fit || clean.slice(0, 180), careNotes: care };
+}
+function normalizeShopifyProduct(raw: {
+  id?: string | number;
+  handle: string;
+  title: string;
+  product_type?: string;
+  tags?: string[] | string;
+  body_html?: string;
+  description?: string;
+  variants?: Array<{ id?: number | string; title?: string; available?: boolean; price?: string | number; options?: string[] }>;
+  images?: Array<{ src?: string }> | string[];
+  featured_image?: string;
+  image?: { src?: string };
+  options?: { name?: string; values?: string[] }[];
+}): RealProduct {
+  const tags = Array.isArray(raw.tags)
+    ? raw.tags
+    : typeof raw.tags === "string"
+      ? raw.tags.split(",").map((t) => t.trim()).filter(Boolean)
+      : [];
+  const description = raw.body_html ?? raw.description ?? "";
+  const slot = normalizeSlot({ title: raw.title, productType: raw.product_type, category: raw.product_type, tags });
+  const opt = (re: RegExp) => (raw.options ?? []).find((o) => re.test(o.name ?? ""))?.values ?? [];
+  const colors = opt(/colou?r/i);
+  const sizes = opt(/size/i);
+  const image = raw.image?.src
+    ?? raw.featured_image
+    ?? (typeof raw.images?.[0] === "string" ? raw.images[0] : raw.images?.[0]?.src)
+    ?? null;
+  const firstPrice = raw.variants?.find((v) => v.available !== false)?.price ?? raw.variants?.[0]?.price;
+  const notes = extractNotes(description, tags);
+  return {
+    id: raw.id != null ? String(raw.id) : undefined,
+    handle: raw.handle,
+    name: raw.title,
+    productType: raw.product_type,
+    category: raw.product_type,
+    normalizedSlot: slot.slot,
+    slotConfidence: slot.confidence,
+    sourceConfidence: slot.confidence,
+    priceUsd: typeof firstPrice === "number" ? Math.round(firstPrice > 1000 ? firstPrice / 100 : firstPrice) : firstPrice ? Math.round(parseFloat(firstPrice)) : 0,
+    image,
+    variants: raw.variants ?? [],
+    sizes,
+    colors,
+    tags,
+    description: description.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+    fabricMaterial: notes.fabricMaterial,
+    fitNotes: notes.fitNotes,
+    careNotes: notes.careNotes,
+    tryonReady: Boolean(image),
+  };
+}
 function realToProduct(a: RealProduct): Product {
-  const category = (CAT_SET.has(a.category ?? "") ? a.category : "top") as Product["category"];
+  const category = a.normalizedSlot ?? normalizeSlot({ title: a.name, productType: a.productType, category: a.category, tags: a.tags }).slot;
   return {
     productId: a.id,
     handle: a.handle,
@@ -1003,14 +1190,14 @@ function realToProduct(a: RealProduct): Product {
     collection: "the-atelier" as CollectionSlug,
     category,
     priceUsd: a.priceUsd ?? 0,
-    description: "",
+    description: a.description ?? "",
     images: a.image ? [a.image] : [],
     colors: a.colors ?? [],
     sizes: a.sizes ?? [],
-    fitNotes: "",
-    hesitationHint: "",
-    fabricComposition: "",
-    careInstructions: "",
+    fitNotes: a.fitNotes ?? "",
+    hesitationHint: a.slotConfidence === "low" ? "" : (a.fitNotes ?? ""),
+    fabricComposition: a.fabricMaterial ?? "",
+    careInstructions: a.careNotes ?? "",
   };
 }
 function registerRealProducts(products?: RealProduct[]): void {
@@ -1029,26 +1216,11 @@ function registerRealProducts(products?: RealProduct[]): void {
 // Demo (ASSET_BASE === "") keeps its bundled catalog and skips this.
 async function hydrateMerchantCatalog(): Promise<number> {
   if (typeof window === "undefined" || !ASSET_BASE) return 0;
-  const opt = (p: { options?: { name?: string; values?: string[] }[] }, re: RegExp) =>
-    (p.options ?? []).find((o) => re.test(o.name ?? ""))?.values ?? [];
-  const toReal = (p: {
-    handle: string; title: string; product_type?: string;
-    variants?: { price?: string }[]; images?: { src?: string }[];
-    options?: { name?: string; values?: string[] }[];
-  }): RealProduct => ({
-    handle: p.handle,
-    name: p.title,
-    category: p.product_type || undefined,
-    priceUsd: p.variants?.[0]?.price ? Math.round(parseFloat(p.variants[0].price)) : 0,
-    image: p.images?.[0]?.src ?? null,
-    sizes: opt(p, /size/i),
-    colors: opt(p, /colou?r/i),
-  });
   try {
     const res = await fetch("/products.json?limit=250", { headers: { Accept: "application/json" } });
     if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { products?: Parameters<typeof toReal>[0][] };
-    const reals = (data.products ?? []).filter((p) => p?.handle).map(toReal);
+    const data = (await res.json()) as { products?: Parameters<typeof normalizeShopifyProduct>[0][] };
+    const reals = (data.products ?? []).filter((p) => p?.handle).map(normalizeShopifyProduct);
     registerRealProducts(reals);
     return reals.length;
   } catch {
@@ -1058,13 +1230,10 @@ async function hydrateMerchantCatalog(): Promise<number> {
     try {
       const r = await fetch(`/products/${h}.js`, { headers: { Accept: "application/json" } });
       if (!r.ok) return 0;
-      const p = (await r.json()) as { handle: string; title: string; product_type?: string; price?: number; featured_image?: string; images?: string[]; options?: { name?: string; values?: string[] }[] };
-      registerRealProducts([{
-        handle: p.handle, name: p.title, category: p.product_type || undefined,
-        priceUsd: typeof p.price === "number" ? Math.round(p.price / 100) : 0,
-        image: p.featured_image ?? p.images?.[0] ?? null,
-        sizes: opt(p, /size/i), colors: opt(p, /colou?r/i),
-      }]);
+      const p = (await r.json()) as Parameters<typeof normalizeShopifyProduct>[0] & { price?: number };
+      const normalized = normalizeShopifyProduct(p);
+      if (!normalized.priceUsd && typeof p.price === "number") normalized.priceUsd = Math.round(p.price / 100);
+      registerRealProducts([normalized]);
       return 1;
     } catch { return 0; }
   }
@@ -1272,14 +1441,14 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
           const total = all.reduce((s, p) => s + p.priceUsd, 0);
           // Collapse to 2 bubbles: voice (with quickReplies) + one bundle cart chip
           out[0] = { ...voice, text: `Adding the full look now — ${all.map((p) => p.name).join(", ")}. Total ${money(total)}.`, quickReplies: ["Go to checkout", "Keep shopping"] };
-          out.push({ from: "mira", kind: "cart", productName: `${all.length} pieces, ${anchor.name} look` });
+          out.push({ from: "mira", kind: "cart", productName: `${all.length} pieces, ${anchor.name} look`, productHandle: anchor.handle, pieces: all });
           return out;
         }
       }
 
       // SINGLE item add (standard path) — 2 bubbles: voice (with quickReplies) + cart
       out[0] = { ...voice, text: `Adding the ${anchor.name} to your bag now. Want me to complete the look before you check out?`, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Complete the look", "Keep shopping"] };
-      out.push({ from: "mira", kind: "cart", productName: anchor.name });
+      out.push({ from: "mira", kind: "cart", productName: anchor.name, productHandle: anchor.handle });
       return out;
     }
 
@@ -1319,7 +1488,9 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
 
     case "reco_category": {
       const set = d.category ? categorySet(d.category) : catalog;
-      const picks = fresh(set.length ? set : catalog, ctx).slice(0, 3);
+      const primary = fresh(set.length ? set : catalog, ctx);
+      const fill = fresh(catalog, ctx).filter((p) => !primary.some((x) => x.handle === p.handle));
+      const picks = [...primary, ...fill].slice(0, 3);
       // Put quickReplies on the voice bubble so there's only 1 text bubble + N card bubbles
       out[0] = { ...voice, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Build the look", "Another option", "Find my size"] };
       (picks.length ? picks : [hero(set.length ? set : catalog, ctx)]).forEach((p) =>
@@ -2188,7 +2359,7 @@ export default function MiraWidget() {
           try { sessionStorage.setItem("mira_viewed", JSON.stringify(viewed.slice(-12))); } catch { /* ignore */ }
         }
         if (viewed.length >= 3) {
-          fire(`You've looked at a few pieces. I can narrow it to the best one for your occasion.`, cur, ["Pick the best one", "Compare options", "Build a look"]);
+          fire("You've viewed a few pieces. Want me to pull the strongest options?", cur, ["Pick the best one", "Compare options", "Build a look"]);
         }
       }
     }
@@ -2211,25 +2382,23 @@ export default function MiraWidget() {
       if (!onPdp) return;
       if (looksLikeVariant(e.target as HTMLElement)) {
         variantClicks += 1;
-        if (variantClicks >= 2) fire(`Looks like you're deciding between size or colour. I can pin the right one.`, currentProduct(), ["Find my size", "Compare colours", "See it on me"]);
+        if (variantClicks >= 2) fire("Comparing sizes or colours? I can narrow this down.", currentProduct(), ["Find my size", "Compare colours", "See it on me"]);
       }
     };
     document.addEventListener("click", onVariantClick, true);
 
     // ── Signal 3: TRUE exit-intent ─────────────────────────────────────────
     // Must NOT fire on arrival, normal scroll, or ordinary browsing (founder #1).
-    // So it requires ALL of: the cursor genuinely left the window past the top
-    // edge (no relatedTarget), real dwell (≥18s on page), and prior engagement
-    // (they scrolled at least once). One honest beat, no "before you go" guilt.
+    // So it requires: the cursor genuinely left the window past the top
+    // edge (no relatedTarget) and real dwell (≥20s on page). One honest beat.
     const mountedAt = Date.now();
     let scrolled = false;
     const onExit = (e: MouseEvent) => {
       if (e.relatedTarget || (e.relatedTarget == null && e.clientY > 0)) return; // still inside window
-      if (Date.now() - mountedAt < 18000) return;  // newly-arrived → never
-      if (!scrolled) return;                         // no engagement yet → stay quiet
+      if (Date.now() - mountedAt < 20000) return;  // newly-arrived → never
       const cur = onPdp ? currentProduct() : null;
-      fire(cur ? `Want me to size this or build the look before you decide?`
-               : `Tell me the occasion and I'll find the one piece worth it.`,
+      fire(cur ? "Before you go, want the closest alternatives or the best look?"
+               : "Before you go, want the closest alternatives or the best look?",
            cur, ["Find my size", "Build a look", "See it on me"]);
     };
     document.addEventListener("mouseout", onExit);
@@ -2240,8 +2409,8 @@ export default function MiraWidget() {
     const onScroll = () => { scrolled = true; };
     window.addEventListener("scroll", onScroll, { passive: true });
     const strandTimer = onPdp ? window.setTimeout(() => {
-      if (!scrolled) fire(`Still deciding? I can tell you if this is worth it for you.`, currentProduct(), ["Give me the verdict", "Find my size", "Build a look"]);
-    }, 22000) : undefined;
+      if (!scrolled) fire("Still deciding? I can help with fit, styling, or alternatives.", currentProduct(), ["Find my size", "Build a look", "Show alternatives"]);
+    }, 45000) : undefined;
 
     return () => {
       document.removeEventListener("click", onVariantClick, true);
@@ -2406,17 +2575,15 @@ export default function MiraWidget() {
   }, [messages.length, currentProduct, remember]);
 
   const addToBag = useCallback((p: Product) => {
-    setCartCount((n) => n + 1);
-    setCartValue((v) => v + p.priceUsd);
-    setCartToast(p.name);
-    // REAL Shopify cart (P0), on a live storefront this actually adds the variant
-    // at the recalled size; on the demo it's a simulated success. Roll back the
-    // optimistic count/value + tell the shopper if a REAL add fails (panel P2, 
-    // don't show a phantom item in the bag). Demo (real:false) never rolls back.
-    const rollback = () => {
-      setCartCount((n) => Math.max(0, n - 1));
-      setCartValue((v) => Math.max(0, v - p.priceUsd));
+    const fail = () => {
       setCartToast(`Couldn't add ${p.name}, tap to try again.`);
+      const failure: ChatMsg = {
+        from: "mira",
+        kind: "say",
+        text: `I couldn't add the ${p.name} to the bag. Try again, or choose another size.`,
+        quickReplies: ["Try again", "Find my size", "Keep shopping"],
+      };
+      setMessages((prev) => [...prev, failure]);
     };
     // Record the REAL conversion (the learning loop's honest bag-rate, D60),
     // a genuine SUCCESSFUL add, NOT Mira's offer and NOT a failed add. Founder
@@ -2426,55 +2593,59 @@ export default function MiraWidget() {
     // simulated-success-by-design — there's no failure mode to lie about.
     void addToCart(p.handle, recalledSize(p.handle))
       .then((r) => {
-        if (r && r.real && !r.ok) { rollback(); return; }
+        if (r.real && !r.ok) { fail(); return; }
+        if (!r?.ok) { fail(); return; }
+        setCartCount((n) => n + 1);
+        setCartValue((v) => v + p.priceUsd);
+        setCartToast(p.name);
         void fetch(`${sqApi()}/api/mira/conversion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ productHandle: p.handle }),
         }).catch(() => {});
+        const newValue = cartValue + p.priceUsd;
+        const gap = FREE_SHIPPING_THRESHOLD - newValue;
+        const size = recalledSize(p.handle);
+        const currency = typeof window !== "undefined"
+          ? (window as unknown as Record<string, unknown>).__sqCurrency
+          : FREE_SHIPPING_CURRENCY;
+        const shipNudged = (() => { try { return !!sessionStorage.getItem("mira_ship_nudged"); } catch { return false; } })();
+        if (currency === FREE_SHIPPING_CURRENCY && gap > 0 && gap <= 250 && cartCount < 3 && !shipNudged) {
+          try { sessionStorage.setItem("mira_ship_nudged", "1"); } catch { /* ignore */ }
+          const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: lastTopic.current, turnCount, sizeAsked: sizeAsked.current, cartValue: newValue, lastLookPieces: lastLookPieces.current };
+          const nudgeMsgs = freeShippingNudge(newValue, ctx);
+          if (nudgeMsgs) setTimeout(() => nudgeMsgs.forEach((m, i) => setTimeout(() => { remember(m); setMessages((prev) => [...prev, m]); }, i * 800)), 600);
+        } else {
+          const landed = size ? `Grabbed the ${size}.` : `Added the ${p.name}.`;
+          const momentum: ChatMsg = { from: "mira", kind: "say", text: `${landed} Want me to build the full look around it, or see it on you before you check out?`, quickReplies: ["Build the look", "See it on me", "Go to checkout"] };
+          setTimeout(() => { remember(momentum); setMessages((prev) => [...prev, momentum]); }, 400);
+        }
       })
-      .catch(rollback);
-    const newValue = cartValue + p.priceUsd;
-    const gap = FREE_SHIPPING_THRESHOLD - newValue;
-    const size = recalledSize(p.handle);
-    // Free-shipping nudge, TAMED (panel rank 10): only when it genuinely applies,
-    // the bag isn't already full (3+), and at most once per session, so it reads as
-    // a helpful styling beat, not a mercenary push. Fires fast (600ms).
-    const shipNudged = (() => { try { return !!sessionStorage.getItem("mira_ship_nudged"); } catch { return false; } })();
-    if (gap > 0 && gap <= 250 && cartCount < 3 && !shipNudged) {
-      try { sessionStorage.setItem("mira_ship_nudged", "1"); } catch { /* ignore */ }
-      const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: lastTopic.current, turnCount, sizeAsked: sizeAsked.current, cartValue: newValue, lastLookPieces: lastLookPieces.current };
-      const nudgeMsgs = freeShippingNudge(newValue, ctx);
-      if (nudgeMsgs) setTimeout(() => nudgeMsgs.forEach((m, i) => setTimeout(() => { remember(m); setMessages((prev) => [...prev, m]); }, i * 800)), 600);
-    } else {
-      // Post-add MOMENTUM (panel rank 11): own the moment instead of going quiet, 
-      // name what landed + propose the next basket move (complete-the-look / try-on
-      // / checkout) so the conversation keeps driving toward a bigger, better order.
-      const landed = size ? `Grabbed the ${size}.` : `Added the ${p.name}.`;
-      const momentum: ChatMsg = { from: "mira", kind: "say", text: `${landed} Want me to build the full look around it, or see it on you before you check out?`, quickReplies: ["Build the look", "See it on me", "Go to checkout"] };
-      setTimeout(() => { remember(momentum); setMessages((prev) => [...prev, momentum]); }, 1400);
-    }
+      .catch(fail);
   }, [cartValue, cartCount, turnCount, remember]);
 
   const addLook = useCallback((anchor: Product, pieces: Product[]) => {
     const all = [anchor, ...pieces];
     const lookTotal = all.reduce((s, p) => s + p.priceUsd, 0);
-    setCartCount((n) => n + all.length);
-    setCartValue((v) => v + lookTotal);
-    setCartToast(`${all.length} pieces, ${anchor.name} look`);
-    // REAL Shopify cart (P0), add the whole look in one /cart/add.js call. Roll
-    // back the optimistic count/value on a REAL failure (panel P2). Demo no-ops.
-    const rollbackLook = () => {
-      setCartCount((n) => Math.max(0, n - all.length));
-      setCartValue((v) => Math.max(0, v - lookTotal));
+    const failLook = () => {
       setCartToast(`Couldn't add the look, tap to try again.`);
+      setMessages((prev) => [...prev, {
+        from: "mira",
+        kind: "say",
+        text: "I couldn't add the full look. I can open the pieces instead, or we can try one item at a time.",
+        quickReplies: ["View pieces", "Try anchor piece", "Keep shopping"],
+      }]);
     };
     void addOutfitToCart(all.map((p) => ({ handle: p.handle, size: recalledSize(p.handle) })))
       .then((r) => {
-        if (r && r.real && !r.ok) {
-          rollbackLook();
+        if (r.real && !r.ok) { failLook(); return; }
+        if (!r?.ok) {
+          failLook();
           return;
         }
+        setCartCount((n) => n + all.length);
+        setCartValue((v) => v + lookTotal);
+        setCartToast(`${all.length} pieces, ${anchor.name} look`);
         // Record only after the complete bundle succeeds. Previously each item
         // was counted before Shopify confirmed the mutation, inflating assisted
         // conversion and hiding partial/failed adds.
@@ -2486,7 +2657,7 @@ export default function MiraWidget() {
           }).catch(() => {}),
         );
       })
-      .catch(rollbackLook);
+      .catch(failLook);
   }, []);
 
   // ── Whitelisted client action executor (Task B) ──────────────────────────
@@ -2507,6 +2678,7 @@ export default function MiraWidget() {
         if (!p) return { executed: false, reason: "no_such_product", action };
         if (typeof window === "undefined") return { executed: false, reason: "no_window", action };
         activeProductHandle.current = p.handle;
+        rememberObjective({ currentProductHandle: p.handle, action: "navigate_to_product" });
         window.location.href = productUrl(p.handle);
         return { executed: true, reason: "navigated", action };
       }
@@ -2515,12 +2687,14 @@ export default function MiraWidget() {
         if (!p) return { executed: false, reason: "no_product_for_tryon", action };
         activeProductHandle.current = p.handle;
         setTryOn(p); // TryOnPanel mounts on tryOnProduct truthy
+        rememberObjective({ currentProductHandle: p.handle, action: "open_tryon" });
         return { executed: true, reason: "tryon_opened", action };
       }
       case "open_fit_helper": {
         // SizeForm renders when showSizeForm is true (the fit helper exists).
         setShowSizeForm(true);
         sizeAsked.current = true;
+        rememberObjective({ currentProductHandle: currentProduct()?.handle ?? null, action: "open_fit_helper" });
         return { executed: true, reason: "fit_helper_opened", action };
       }
       case "show_outfit_builder": {
@@ -2546,6 +2720,7 @@ export default function MiraWidget() {
         // Cart success is owned by addToBag's real Shopify result — the executor
         // only INITIATES the add and never claims it succeeded.
         addToBagRef.current?.(p);
+        rememberObjective({ currentProductHandle: p.handle, action: "add_to_bag" });
         return { executed: true, reason: "add_initiated", action };
       }
       default:
@@ -2577,12 +2752,10 @@ export default function MiraWidget() {
           }
           if (r.text.startsWith(NAV_TRIGGER)) {
             const handle = r.text.slice(NAV_TRIGGER.length);
-            // On the DEMO (same-origin) we auto-walk the shopper to the product
-            // page via the executor (which fails closed on an unknown handle). On
-            // the STOREFRONT (ASSET_BASE set) we do NOT auto-redirect — a demo
-            // handle may 404 on the merchant store; the card's "View product"
-            // button lets the shopper navigate deliberately.
-            if (!ASSET_BASE && handle) {
+            // Route through the single executor on both demo and storefront. It
+            // fails closed when the handle is not in the current catalog, so a
+            // demo handle cannot walk a live merchant store to a phantom PDP.
+            if (handle && byHandle(handle)) {
               sessionStorage.setItem("mira_opened", "1"); // keep panel state across nav
               setTimeout(() => { executeAction("navigate_to_product", { handle }); }, 650);
             }
@@ -2590,13 +2763,17 @@ export default function MiraWidget() {
           }
         }
         if (r.from === "mira" && r.kind === "cart") {
-          // Find the product by name to get its price for the cart value, check
-          // the REAL merchant products first so the cart total is right on a live
-          // store, not only for demo products (panel P1).
-          const cartProduct = [...runtimeCatalog.values(), ...catalog].find((p) => p.name === r.productName);
-          setCartCount((n) => n + 1);
-          if (cartProduct) setCartValue((v) => v + cartProduct.priceUsd);
-          setCartToast(r.productName);
+          if (r.pieces?.length) {
+            const [anchor, ...pieces] = r.pieces;
+            if (anchor) addLook(anchor, pieces);
+            else setMessages((prev) => [...prev, { from: "mira", kind: "say", text: "I couldn't resolve that look, so I won't pretend it was added.", quickReplies: ["View pieces", "Keep shopping"] }]);
+            return;
+          }
+          const cartProduct = r.productHandle
+            ? byHandle(r.productHandle)
+            : [...runtimeCatalog.values(), ...catalog].find((p) => p.name === r.productName);
+          if (cartProduct) executeAction("add_to_bag", { product: cartProduct });
+          else setMessages((prev) => [...prev, { from: "mira", kind: "say", text: "I couldn't resolve that product, so I won't pretend it was added.", quickReplies: ["View item", "Keep shopping"] }]);
           return;
         }
         remember(r);
@@ -2607,7 +2784,7 @@ export default function MiraWidget() {
         }
       }, i * 850);
     });
-  }, [remember, maybeSurfaceMemory, currentProduct, executeAction]);
+  }, [remember, maybeSurfaceMemory, currentProduct, executeAction, addLook]);
 
   // CHECKOUT HANDOFF (conversion panel #1, the single biggest funnel leak). A
   // checkout intent must NAVIGATE to the register, not loop back as a chat turn.
@@ -2710,6 +2887,7 @@ export default function MiraWidget() {
       : null;
     (async () => {
       try {
+        const priorObjective = loadObjectiveState();
         const miraBody = JSON.stringify({
           message: text,
           currentProductHandle: cp?.handle ?? null,
@@ -2732,6 +2910,7 @@ export default function MiraWidget() {
           activeLookSummary: buildLookContextBlock(activeLook.current) || null,
           // ── Try-on context, Mira knows what happened in the fitting room ──
           tryOnContextSummary: getTryOnSummaryForMira(Math.floor(new Date().getTime() / 1000)) || null,
+          priorObjective: priorObjective?.brainObjective ?? priorObjective ?? undefined,
         });
         const postMira = (base: string) => fetch(`${base}/api/mira`, {
           method: "POST", headers: { "Content-Type": "application/json" }, body: miraBody,
@@ -2743,13 +2922,19 @@ export default function MiraWidget() {
         // store (the dangerous fallback the journey trace flagged).
         const res = await postMira(sqApi());
         if (!res.ok) return runFallback();
-        const data = (await res.json()) as { source: string; decision: MiraDecision | null; products?: RealProduct[]; look?: { pieces?: RealProduct[] } };
+        const data = (await res.json()) as { source: string; decision: MiraDecision | null; objective?: unknown; products?: RealProduct[]; look?: { pieces?: RealProduct[] } };
         stopThinking();
         // ONE-BACKEND: register the real per-tenant products this turn returned so
         // cards resolve to real merchant data via byHandle (no-op on the demo,
         // which returns none → hardcoded fallback).
         registerRealProducts(data.products);
         registerRealProducts(data.look?.pieces);
+        rememberObjective({
+          decision: data.decision,
+          objective: data.objective,
+          currentProductHandle: cp?.handle ?? null,
+          previousProductHandle: priorObjective?.currentProductHandle ?? null,
+        });
         if (data.decision) emitResponses(applyDecision(data.decision, cp, ctx));
         else emitResponses(getMiraResponse(text, cp, ctx));
       } catch {
