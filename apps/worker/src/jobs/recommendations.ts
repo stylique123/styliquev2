@@ -21,5 +21,17 @@ export async function processRecommendations(data: RecommendationsJobData) {
     return { skipped: true, reason: "shop_inactive" };
   }
   const result = await service.runAll(data.shopId);
-  return { written: result.written };
+  if (result.failed > 0) {
+    throw new Error(
+      `recommendations_partial_failure:${JSON.stringify({
+        written: result.written,
+        attempted: result.attempted,
+        failed: result.failed,
+        generatorFailures: result.generatorFailures,
+        writeFailures: result.writeFailures,
+        maintenanceFailures: result.maintenanceFailures,
+      })}`,
+    );
+  }
+  return result;
 }

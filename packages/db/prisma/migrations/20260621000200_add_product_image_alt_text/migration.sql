@@ -1,0 +1,1 @@
+ALTER TABLE "ProductImage" ADD COLUMN IF NOT EXISTS "altText" TEXT;

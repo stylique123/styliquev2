@@ -37,8 +37,24 @@ import { runInjectWidget } from "./jobs/inject-widget.js";
 import { handleFailedJob } from "./dead-letter.js";
 import { startScheduler } from "./scheduler.js";
 
-const REQUIRED_ENV = ["DATABASE_URL", "REDIS_URL", "SHOPIFY_API_KEY", "SHOPIFY_API_SECRET"] as const;
-const missingEnv = REQUIRED_ENV.filter((key) => !process.env[key]);
+const REQUIRED_ENV = ["DATABASE_URL", "REDIS_URL", "SHOPIFY_API_KEY", "SHOPIFY_API_SECRET", "SHOPIFY_APP_URL"] as const;
+const missingEnv: string[] = REQUIRED_ENV.filter((key) => !process.env[key]);
+if (process.env.NODE_ENV === "production") {
+  if (!process.env.APP_ENCRYPTION_KEY) {
+    missingEnv.push("APP_ENCRYPTION_KEY");
+  }
+  if (!process.env.STORAGE_PATH && !process.env.S3_TRYON_BUCKET) {
+    missingEnv.push("STORAGE_PATH or S3_TRYON_BUCKET");
+  }
+  const vtoEnabled = process.env.VTO_ENABLED !== "0";
+  const hasVtoProvider =
+    Boolean(process.env.VERTEX_SERVICE_ACCOUNT_JSON && process.env.VERTEX_PROJECT_ID) ||
+    Boolean(process.env.REPLICATE_API_TOKEN) ||
+    Boolean(process.env.GEMINI_API_KEY);
+  if (vtoEnabled && !hasVtoProvider) {
+    missingEnv.push("VTO provider env");
+  }
+}
 if (missingEnv.length) {
   console.error(`[worker] missing required env: ${missingEnv.join(", ")}`);
   console.error("[worker] start from the repo root with: pnpm dev:worker");
@@ -281,6 +297,7 @@ const fitTunerQueue = new Queue("fit-tuner", { connection });
 
 // Shared catalog-sync and catalog-maintenance queues.
 const catalogSyncQueue = new Queue("catalog-sync", { connection });
+const injectWidgetQueue = new Queue("inject-widget", { connection });
 
 async function scheduleNightlyRecommendations() {
   const shops = await prisma.shop.findMany({
@@ -341,7 +358,6 @@ async function scheduleNightlyRecommendations() {
   }
   // ── Widget injection health-check — daily 07:00 UTC ─────────────────────
   // Not per-shop (one job checks all shops) — add outside the per-shop loop.
-  const injectWidgetQueue = new Queue("inject-widget", { connection });
   await injectWidgetQueue.add(
     "inject",
     {},
@@ -400,6 +416,8 @@ for (const [worker, name] of [
   [billingReconcileWorker,     "billing-reconcile"],
   [retentionCleanupWorker,     "retention-cleanup"],
   [injectWidgetWorker,         "inject-widget"],
+  [fitTunerWorker,             "fit-tuner"],
+  [monthlyReportWorker,        "monthly-report"],
 ] as const) {
   (worker as { on: (event: string, cb: (...args: unknown[]) => void) => void }).on(
     "failed",
@@ -430,6 +448,9 @@ console.log(
     "outcome-resolver",
     "billing-reconcile",
     "retention-cleanup",
+    "inject-widget",
+    "fit-tuner",
+    "monthly-report",
   ].join(", "),
 );
 
@@ -460,6 +481,8 @@ const healthQueues = {
   "billing-reconcile": new Queue("billing-reconcile", { connection }),
   "retention-cleanup": new Queue("retention-cleanup", { connection }),
   "inject-widget": new Queue("inject-widget", { connection }),
+  "fit-tuner": new Queue("fit-tuner", { connection }),
+  "monthly-report": new Queue("monthly-report", { connection }),
 };
 
 // Health must FAIL LOUD (consolidation P1.2): the old endpoint always returned
@@ -467,7 +490,15 @@ const healthQueues = {
 // worker. These critical queues gate readiness; /health returns 503 when any of
 // them has RECENT failures (last hour, via failure timestamps so stale failures
 // don't flap red) or a runaway backlog.
-const CRITICAL_QUEUES = new Set(["catalog-sync", "recommendations", "tryon-render", "billing-reconcile", "outcome-resolver", "size-chart-extract"]);
+const CRITICAL_QUEUES = new Set([
+  "catalog-sync",
+  "recommendations",
+  "tryon-render",
+  "billing-reconcile",
+  "outcome-resolver",
+  "size-chart-extract",
+  "fit-tuner",
+]);
 const HEALTH_RECENT_FAIL_MAX = Number(process.env.HEALTH_RECENT_FAIL_MAX ?? 5);
 const HEALTH_BACKLOG_MAX = Number(process.env.HEALTH_BACKLOG_MAX ?? 1000);
 const HEALTH_RECENT_WINDOW_MS = 60 * 60 * 1000;
@@ -534,10 +565,14 @@ async function shutdown() {
   await outcomeResolverWorker.close();
   await billingReconcileWorker.close();
   await retentionCleanupWorker.close();
+  await injectWidgetWorker.close();
   await monthlyReportWorker.close();
   await recommendationsQueue.close();
   await sentimentQueue.close();
   await sizeChartQueue.close();
+  await fitTunerQueue.close();
+  await catalogSyncQueue.close();
+  await injectWidgetQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);

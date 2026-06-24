@@ -64,7 +64,7 @@ railway variables \
   --set "NODE_ENV=production" \
   --set "SHOPIFY_API_KEY=<client_id>" \
   --set "SHOPIFY_API_SECRET=<secret>" \
-  --set "SHOPIFY_SCOPES=read_products,read_product_listings,read_inventory,read_orders,write_products,write_script_tags" \
+  --set "SHOPIFY_SCOPES=read_products,read_inventory,read_orders,write_script_tags" \
   --set "SHOPIFY_APP_URL=https://stylique-app-production.up.railway.app" \
   --set 'REDIS_URL=redis://default:${{Redis.REDISPASSWORD}}@${{Redis.REDISHOST}}:${{Redis.REDISPORT}}' \
   --set "DATABASE_URL=<neon url>" \

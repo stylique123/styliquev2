@@ -9,7 +9,7 @@
 //      emit a USAGE_RECORDED analytics event.
 
 import { prisma } from "../db.server";
-import { recordConsume, getEffectivePlan } from "./entitlement.server";
+import { recordConsume, getEffectivePlan, isBillingActive } from "./entitlement.server";
 import { currentPeriodStart } from "@stylique/core";
 import type { UsageMetric, PlanTier } from "@stylique/types";
 
@@ -163,9 +163,16 @@ export async function getBillingStatus(shopId: string): Promise<BillingStatus> {
     usage[metric] = { used, cap, remaining };
   }
 
-  // Check if subscription is active (always true in dev).
+  const planRow = await prisma.plan.findUnique({
+    where: { shopId },
+    select: { planFeaturesJson: true },
+  });
+
+  // Check if subscription is active (always true in dev). In production this
+  // must read the same billing/comp contract that entitlement enforcement uses;
+  // a bare Plan row only proves the shop was provisioned, not that it is paying.
   const billingActive = process.env.NODE_ENV !== "production"
-    || !!(await prisma.plan.findUnique({ where: { shopId }, select: { id: true } }));
+    || isBillingActive(planRow?.planFeaturesJson);
 
   return {
     shopId,

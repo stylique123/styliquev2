@@ -27,13 +27,16 @@ export function createPlansService(prisma: PrismaClient, usage: UsageService = c
 
   function quotasFromPlan(plan: Awaited<ReturnType<typeof loadPlan>>): PlanQuotas {
     const defaults = PLAN_DEFAULTS[plan.tier];
+    const override = <T>(value: T | null | undefined, fallback: T | null): T | null =>
+      value === undefined ? fallback : value;
+
     return {
-      monthlyTryOnPersonal: plan.monthlyTryOnPersonal ?? defaults.monthlyTryOnPersonal,
-      monthlyTryOnBody:     plan.monthlyTryOnBody     ?? defaults.monthlyTryOnBody,
-      monthlyStyleRecs:     plan.monthlyStyleRecs     ?? defaults.monthlyStyleRecs,
-      monthlyFitRecs:       plan.monthlyFitRecs       ?? defaults.monthlyFitRecs,
+      monthlyTryOnPersonal: override(plan.monthlyTryOnPersonal, defaults.monthlyTryOnPersonal),
+      monthlyTryOnBody:     override(plan.monthlyTryOnBody, defaults.monthlyTryOnBody),
+      monthlyStyleRecs:     override(plan.monthlyStyleRecs, defaults.monthlyStyleRecs),
+      monthlyFitRecs:       override(plan.monthlyFitRecs, defaults.monthlyFitRecs),
       monthlyVisionTurns:   defaults.monthlyVisionTurns,
-      monthlyTurns:         plan.monthlyStylistTurns  ?? defaults.monthlyTurns,
+      monthlyTurns:         override(plan.monthlyStylistTurns, defaults.monthlyTurns),
     };
   }
 

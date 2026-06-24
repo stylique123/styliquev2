@@ -10,7 +10,13 @@ import { createRecommendationsService } from "../recommendations/service.js";
 //   prisma.brandRecommendation.upsert
 //   prisma.brandRecommendation.deleteMany
 
-type CatalogGapRow = { shopId: string; normalizedQuery: string; createdAt: Date };
+type CatalogGapRow = {
+  shopId: string;
+  normalizedQuery: string;
+  rawQuery?: string;
+  source?: string;
+  createdAt: Date;
+};
 type AuditRow = {
   id: string; shopId: string; productId: string;
   weakImageQuality: boolean; missingTryOnReady: boolean;
@@ -18,7 +24,7 @@ type AuditRow = {
   product?: { title: string; handle: string } | null;
 };
 type AnalyticsRow = { shopId: string; name: string; payload: unknown; createdAt: Date; productId?: string | null };
-type ProductRow = { id: string; title: string };
+type ProductRow = { id: string; title: string; handle?: string };
 type BrandRec = {
   shopId: string; kind: string; dedupeKey: string;
   severity: string; title: string; body: string; evidence: unknown;
@@ -51,7 +57,11 @@ function createFakeRecommendationPrisma(initial?: {
       async groupBy({ by, where, _count, orderBy, take }: any) {
         const since: Date = where?.createdAt?.gte ?? new Date(0);
         const filtered = catalogGaps.filter(
-          (g) => g.shopId === where?.shopId && g.createdAt >= since,
+          (g) =>
+            g.shopId === where?.shopId &&
+            g.createdAt >= since &&
+            (where?.source?.not == null || (g.source ?? "shopper") !== where.source.not) &&
+            (where?.NOT?.rawQuery?.startsWith == null || !(g.rawQuery ?? "").startsWith(where.NOT.rawQuery.startsWith)),
         );
         // Group by normalizedQuery
         const counts = new Map<string, number>();
@@ -126,6 +136,23 @@ function createFakeRecommendationPrisma(initial?: {
         }
         return p;
       },
+      async findMany({ where, select }: any) {
+        let out = [...products.values()];
+        if (where?.id?.in) {
+          const ids = new Set<string>(where.id.in);
+          out = out.filter((p) => ids.has(p.id));
+        }
+        if (select) {
+          return out.map((p) => {
+            const result: Record<string, unknown> = {};
+            if (select.id) result.id = p.id;
+            if (select.title) result.title = p.title;
+            if (select.handle) result.handle = p.handle;
+            return result;
+          });
+        }
+        return out;
+      },
     },
 
     brandRecommendation: {
@@ -161,7 +188,14 @@ describe("createRecommendationsService — runAll returns written count", () => 
     const prisma = createFakeRecommendationPrisma();
     const svc = createRecommendationsService(prisma as any);
     const r = await svc.runAll("shop-1");
-    expect(r).toEqual({ written: 0 });
+    expect(r).toMatchObject({
+      written: 0,
+      attempted: 0,
+      failed: 0,
+      generatorFailures: [],
+      writeFailures: [],
+      maintenanceFailures: [],
+    });
   });
 
   it("written count equals the number of candidates generated", async () => {
@@ -182,6 +216,8 @@ describe("createRecommendationsService — runAll returns written count", () => 
     const svc = createRecommendationsService(prisma as any);
     const r = await svc.runAll("shop-1");
     expect(r.written).toBe(1);
+    expect(r.attempted).toBe(1);
+    expect(r.failed).toBe(0);
   });
 });
 
@@ -231,6 +267,28 @@ describe("createRecommendationsService — CATALOG_GAP generator", () => {
     await svc.runAll(shopId);
     const recs = [...prisma._state.brandRecs.values()];
     expect(recs[0]!.severity).toBe("URGENT");
+  });
+
+  it("ignores internal size-chart extraction rows", async () => {
+    const since = new Date(Date.now() - 1 * 86_400_000);
+    const shopId = "shop-1";
+    const prisma = createFakeRecommendationPrisma({
+      catalogGaps: [
+        { shopId, normalizedQuery: "no size chart p1", rawQuery: "no_size_chart:p1", source: "size_chart_extract", createdAt: since },
+        { shopId, normalizedQuery: "no size chart p1", rawQuery: "no_size_chart:p1", source: "size_chart_extract", createdAt: since },
+        { shopId, normalizedQuery: "no size chart p1", rawQuery: "no_size_chart:p1", source: "size_chart_extract", createdAt: since },
+        { shopId, normalizedQuery: "linen blazer", rawQuery: "linen blazer", source: "shopper", createdAt: since },
+        { shopId, normalizedQuery: "linen blazer", rawQuery: "linen blazer", source: "shopper", createdAt: since },
+        { shopId, normalizedQuery: "linen blazer", rawQuery: "linen blazer", source: "shopper", createdAt: since },
+      ],
+    });
+    const svc = createRecommendationsService(prisma as any);
+    await svc.runAll(shopId);
+    const recs = [...prisma._state.brandRecs.values()];
+
+    expect(recs).toHaveLength(1);
+    expect(recs[0]!.title).toContain("linen blazer");
+    expect(recs[0]!.title).not.toContain("no size chart");
   });
 });
 
@@ -379,6 +437,61 @@ describe("createRecommendationsService — FIT_ACCURACY_DRIFT generator", () => 
   });
 });
 
+describe("createRecommendationsService — TOP_COMBO_TO_PROMOTE generator", () => {
+  it("counts product clicks only for the combo that contains the clicked product", async () => {
+    const shopId = "shop-1";
+    const since = new Date(Date.now() - 1 * 86_400_000);
+    const analyticsEvents: AnalyticsRow[] = [
+      ...Array.from({ length: 5 }, () => ({
+        shopId,
+        name: "CHAT_COMBO_PROPOSED",
+        payload: { comboName: "Silk set", productIds: ["prod-a", "prod-b"] },
+        createdAt: since,
+      })),
+      ...Array.from({ length: 5 }, () => ({
+        shopId,
+        name: "CHAT_COMBO_PROPOSED",
+        payload: { comboName: "Denim set", productIds: ["prod-c", "prod-d"] },
+        createdAt: since,
+      })),
+      {
+        shopId,
+        name: "CHAT_PRODUCT_CLICKED",
+        productId: "prod-a",
+        payload: { productHandle: "silk-top" },
+        createdAt: since,
+      },
+      {
+        shopId,
+        name: "CHAT_PRODUCT_CLICKED",
+        productId: "prod-x",
+        payload: { productHandle: "unrelated" },
+        createdAt: since,
+      },
+    ];
+    const prisma = createFakeRecommendationPrisma({
+      analyticsEvents,
+      products: [
+        { id: "prod-a", title: "Silk Top", handle: "silk-top" },
+        { id: "prod-b", title: "Silk Skirt", handle: "silk-skirt" },
+        { id: "prod-c", title: "Denim Jacket", handle: "denim-jacket" },
+        { id: "prod-d", title: "Denim Jean", handle: "denim-jean" },
+      ],
+    });
+
+    await createRecommendationsService(prisma as any).runAll(shopId);
+
+    const recs = [...prisma._state.brandRecs.values()]
+      .filter((r) => r.kind === "TOP_COMBO_TO_PROMOTE")
+      .sort((a, b) => a.title.localeCompare(b.title));
+    const silk = recs.find((r) => r.title.includes("Silk set"));
+    const denim = recs.find((r) => r.title.includes("Denim set"));
+
+    expect((silk!.evidence as { clicked: number }).clicked).toBe(1);
+    expect((denim!.evidence as { clicked: number }).clicked).toBe(0);
+  });
+});
+
 describe("createRecommendationsService — deduplication via upsert", () => {
   it("upserting same rec twice results in only one stored rec", async () => {
     const shopId = "shop-1";
@@ -403,8 +516,8 @@ describe("createRecommendationsService — deduplication via upsert", () => {
   });
 });
 
-describe("createRecommendationsService — runAll swallows generator errors", () => {
-  it("still returns { written: 0 } when all generators fail", async () => {
+describe("createRecommendationsService — runAll reports generator and write errors", () => {
+  it("still returns written: 0 when all generators fail, but reports failures", async () => {
     // Fake prisma that throws on every call
     const brokenPrisma = {
       catalogGap: { async groupBy() { throw new Error("db error"); } },
@@ -421,5 +534,42 @@ describe("createRecommendationsService — runAll swallows generator errors", ()
     // Should not throw
     const r = await svc.runAll("shop-1");
     expect(r.written).toBe(0);
+    expect(r.attempted).toBe(0);
+    expect(r.failed).toBeGreaterThan(0);
+    expect(r.generatorFailures.map((f) => f.generator)).toEqual([
+      "catalog_gaps",
+      "weak_pdp",
+      "fit_drift",
+      "top_combos",
+      "mood_signal",
+    ]);
+  });
+
+  it("reports write failures separately from generated candidates", async () => {
+    const shopId = "shop-1";
+    const prisma = createFakeRecommendationPrisma({
+      productAudits: [
+        {
+          id: "a1", shopId, productId: "prod-1",
+          weakImageQuality: true, missingTryOnReady: false,
+          missingStyling: false, priorityScore: 0.8,
+          product: { title: "Test Shirt", handle: "test-shirt" },
+        },
+      ],
+    });
+    prisma.brandRecommendation.upsert = async () => {
+      throw new Error("write failed");
+    };
+
+    const r = await createRecommendationsService(prisma as any).runAll(shopId);
+
+    expect(r.written).toBe(0);
+    expect(r.attempted).toBe(1);
+    expect(r.failed).toBe(1);
+    expect(r.writeFailures[0]).toMatchObject({
+      kind: "WEAK_PDP_CREATIVE",
+      dedupeKey: "pdp:prod-1",
+      error: "write failed",
+    });
   });
 });

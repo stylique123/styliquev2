@@ -22,8 +22,16 @@ export async function action({ request }: ActionFunctionArgs) {
   const { session } = await authenticate.admin(request);
   const shop = await prisma.shop.findUnique({ where: { shopifyDomain: session.shop }, select: { id: true } });
   if (!shop) return json({ ok: false, error: "Shop not provisioned" }, { status: 400 });
-  const job = await enqueueCatalogSync({ kind: "full", shopId: shop.id });
-  return json({ ok: true, jobId: job.id, status: "queued" });
+  try {
+    const job = await enqueueCatalogSync({ kind: "full", shopId: shop.id });
+    if (!job.id) {
+      return json({ ok: false, error: "catalog_sync_job_id_missing" }, { status: 503 });
+    }
+    return json({ ok: true, jobId: job.id, status: "queued" });
+  } catch (err) {
+    console.error("[app.catalog] failed to enqueue catalog sync", err);
+    return json({ ok: false, error: "catalog_sync_enqueue_failed" }, { status: 503 });
+  }
 }
 
 export default function Catalog() {

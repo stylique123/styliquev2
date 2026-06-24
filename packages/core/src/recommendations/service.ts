@@ -38,6 +38,15 @@ type Candidate = {
   priority?: number;
 };
 
+export function recommendationCatalogGapWhere(shopId: string, since: Date) {
+  return {
+    shopId,
+    createdAt: { gte: since },
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
 // Base priority by severity before outcome weighting is applied.
 const SEVERITY_PRIORITY: Record<RecSeverity, number> = {
   URGENT: 3,
@@ -46,11 +55,18 @@ const SEVERITY_PRIORITY: Record<RecSeverity, number> = {
 };
 
 export interface RecommendationsService {
-  runAll(shopId: string): Promise<{ written: number }>;
+  runAll(shopId: string): Promise<{
+    written: number;
+    attempted: number;
+    failed: number;
+    generatorFailures: Array<{ generator: string; error: string }>;
+    writeFailures: Array<{ kind: string; dedupeKey: string; error: string }>;
+    maintenanceFailures: Array<{ step: string; error: string }>;
+  }>;
 }
 
 export function createRecommendationsService(prisma: PrismaClient): RecommendationsService {
-  async function upsert(shopId: string, c: Candidate): Promise<void> {
+  async function upsert(shopId: string, c: Candidate): Promise<boolean> {
     // BrandRecommendation has no dedicated priority column, so the
     // outcome-weighted priority rides along inside `evidence.priorityScore`.
     // The dashboard read layer can sort/boost on it without a schema change.
@@ -72,7 +88,8 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
         evidence: evidence as object, generatedAt: new Date(),
         actionUrl: c.actionUrl, ctaLabel: c.ctaLabel,
       },
-    }).catch(() => undefined);
+    });
+    return true;
   }
 
   // ─── Generator 1: catalog gaps ─────────────────────────────────────────
@@ -80,7 +97,7 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
     const since = new Date(Date.now() - 30 * 86_400_000);
     const gaps = await prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
-      where: { shopId, createdAt: { gte: since } },
+      where: recommendationCatalogGapWhere(shopId, since),
       _count: { _all: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
       take: 20,
@@ -193,14 +210,31 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
     }
     const clicks = await prisma.analyticsEvent.findMany({
       where: { shopId, name: "CHAT_PRODUCT_CLICKED", createdAt: { gte: since } },
-      select: { payload: true },
+      select: { payload: true, productId: true },
       take: 1000,
     });
+
+    const handleToProductId = new Map<string, string>();
+    const comboProductIds = new Set<string>();
+    for (const c of counts.values()) {
+      for (const id of c.productIds) comboProductIds.add(id);
+    }
+    if (comboProductIds.size > 0) {
+      const products = await prisma.product.findMany({
+        where: { shopId, id: { in: [...comboProductIds] } },
+        select: { id: true, handle: true },
+      });
+      for (const p of products) {
+        if (typeof p.handle === "string") handleToProductId.set(p.handle, p.id);
+      }
+    }
+
     for (const e of clicks) {
-      const handle = (e.payload as { productHandle?: string } | null)?.productHandle ?? "";
-      if (!handle) continue;
+      const payloadHandle = (e.payload as { productHandle?: string } | null)?.productHandle ?? "";
+      const clickedProductId = e.productId ?? (payloadHandle ? handleToProductId.get(payloadHandle) : undefined);
+      if (!clickedProductId) continue;
       for (const c of counts.values()) {
-        if (c.productIds.length) c.clicked++;
+        if (c.productIds.includes(clickedProductId)) c.clicked++;
       }
     }
     const ranked = [...counts.entries()]
@@ -255,7 +289,7 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
   }
 
   return {
-    async runAll(shopId: string): Promise<{ written: number }> {
+    async runAll(shopId: string) {
       // Pull the outcome-weight map up front — which recommendation KINDS have
       // actually moved the needle for this shop. Graceful fallback to {} when
       // the OutcomeService / table isn't available (pre-migration, or no
@@ -268,8 +302,23 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
       }
 
       const candidates: Candidate[] = [];
-      for (const gen of [genCatalogGaps, genWeakPdp, genFitDrift, genTopCombos, genMoodSignal]) {
-        try { candidates.push(...(await gen(shopId))); } catch { /* swallow */ }
+      const generatorFailures: Array<{ generator: string; error: string }> = [];
+      const generators = [
+        ["catalog_gaps", genCatalogGaps],
+        ["weak_pdp", genWeakPdp],
+        ["fit_drift", genFitDrift],
+        ["top_combos", genTopCombos],
+        ["mood_signal", genMoodSignal],
+      ] as const;
+      for (const [name, gen] of generators) {
+        try {
+          candidates.push(...(await gen(shopId)));
+        } catch (error) {
+          generatorFailures.push({
+            generator: name,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
 
       // Apply outcome-weighted priority: base priority (by severity) × the
@@ -284,21 +333,46 @@ export function createRecommendationsService(prisma: PrismaClient): Recommendati
       // Write highest-priority first so the dashboard's ordered read surfaces
       // the highest-leverage move even when it caps the result set.
       const ordered = [...candidates].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+      let written = 0;
+      const writeFailures: Array<{ kind: string; dedupeKey: string; error: string }> = [];
+      const maintenanceFailures: Array<{ step: string; error: string }> = [];
       for (const c of ordered) {
-        await upsert(shopId, c);
+        try {
+          if (await upsert(shopId, c)) written++;
+        } catch (error) {
+          writeFailures.push({
+            kind: c.kind,
+            dedupeKey: c.dedupeKey,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
 
       // GC dismissed/old recs.
-      await prisma.brandRecommendation.deleteMany({
-        where: {
-          shopId,
-          OR: [
-            { dismissedAt: { lt: new Date(Date.now() - 60 * 86_400_000) } },
-            { generatedAt: { lt: new Date(Date.now() - 90 * 86_400_000) }, takenAt: null },
-          ],
-        },
-      }).catch(() => undefined);
-      return { written: candidates.length };
+      try {
+        await prisma.brandRecommendation.deleteMany({
+          where: {
+            shopId,
+            OR: [
+              { dismissedAt: { lt: new Date(Date.now() - 60 * 86_400_000) } },
+              { generatedAt: { lt: new Date(Date.now() - 90 * 86_400_000) }, takenAt: null },
+            ],
+          },
+        });
+      } catch (error) {
+        maintenanceFailures.push({
+          step: "delete_old_recommendations",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return {
+        written,
+        attempted: candidates.length,
+        failed: generatorFailures.length + writeFailures.length + maintenanceFailures.length,
+        generatorFailures,
+        writeFailures,
+        maintenanceFailures,
+      };
     },
   };
 }

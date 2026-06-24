@@ -7,7 +7,7 @@
 // of 10, merges the signals, and writes the result into BrandProfile.
 
 import { prisma } from "@stylique/db";
-import { extractDNAFromCatalogProducts } from "@stylique/core";
+import { extractDNAFromCatalogProducts, orderBrandDnaImages } from "@stylique/core";
 
 export type BrandDnaCatalogJobData = {
   shopId: string;
@@ -32,11 +32,15 @@ export async function processBrandDnaCatalog(data: BrandDnaCatalogJobData): Prom
     select: {
       title: true,
       category: true,
+      productType: true,
+      tags: true,
+      descriptionHtml: true,
       primaryColor: true,
+      primaryTryonImageId: true,
       images: {
         orderBy: { position: "asc" },
         take: 3,
-        select: { url: true },
+        select: { id: true, url: true, preppedUrl: true, altText: true, position: true, qualityScore: true, garmentRole: true },
       },
     },
   });
@@ -50,11 +54,15 @@ export async function processBrandDnaCatalog(data: BrandDnaCatalogJobData): Prom
       select: {
         title: true,
         category: true,
+        productType: true,
+        tags: true,
+        descriptionHtml: true,
         primaryColor: true,
+        primaryTryonImageId: true,
         images: {
           orderBy: { position: "asc" },
           take: 2,
-          select: { url: true },
+          select: { id: true, url: true, preppedUrl: true, altText: true, position: true, qualityScore: true, garmentRole: true },
         },
       },
     });
@@ -66,11 +74,34 @@ export async function processBrandDnaCatalog(data: BrandDnaCatalogJobData): Prom
     products.push(...fallback);
   }
 
-  const input = products.map((p: { title: string; category: string | null; primaryColor: string | null; images: { url: string }[] }) => ({
+  const input = products.map((p: {
+    title: string;
+    category: string | null;
+    productType: string | null;
+    tags: string[];
+    descriptionHtml: string | null;
+    primaryColor: string | null;
+    primaryTryonImageId: string | null;
+    images: {
+      id: string;
+      url: string;
+      preppedUrl: string | null;
+      altText: string | null;
+      position: number;
+      qualityScore: number | null;
+      garmentRole: "FRONT" | "BACK" | "DETAIL" | "LIFESTYLE" | "SWATCH" | null;
+    }[];
+  }) => ({
     title: p.title,
     category: p.category,
+    productType: p.productType,
+    tags: p.tags,
+    descriptionText: p.descriptionHtml,
     primaryColor: p.primaryColor,
-    imageUrls: p.images.map((i: { url: string }) => i.url).filter(Boolean),
+    imageUrls: orderBrandDnaImages(p.images, p.primaryTryonImageId).map((i) => ({
+      url: i.preppedUrl ?? i.url,
+      altText: i.altText,
+    })),
   }));
 
   console.log(`[brand-dna-catalog] Extracting DNA from ${input.length} products — shop=${shopId}`);

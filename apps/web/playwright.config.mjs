@@ -1,7 +1,8 @@
 // Playwright config for storefront E2E.
 //
-// Gated on SHOPIFY_TEST_STORE_URL — if not set, the test runner exits 0 with
-// a "skipped" marker so CI doesn't fail on missing infra. To run locally:
+// Gated on SHOPIFY_TEST_STORE_URL — if not set, the test runner fails because
+// live Shopify storefront proof is a release gate, not a silent skip.
+// To run locally:
 //   SHOPIFY_TEST_STORE_URL=https://stylique-fashion-dev.myshopify.com \
 //     pnpm --filter @stylique/web e2e
 //

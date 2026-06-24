@@ -15,7 +15,11 @@ export type Product = {
   category: "outerwear" | "dress" | "top" | "bottom" | "knitwear" | "accessory" | "unknown";
   priceUsd: number;
   description: string;
-  images: string[]; // first image is the primary
+  images: string[]; // ordered gallery; card renderers should prefer cardImageUrl when present
+  /** Resolved primary card image. Present for Shopify products after role/score/alt-aware serialization. */
+  cardImageUrl?: string | null;
+  /** Resolved try-on garment image. Present only when try-on is ready. */
+  tryonImageUrl?: string | null;
   colors: string[];
   sizes: string[];
 

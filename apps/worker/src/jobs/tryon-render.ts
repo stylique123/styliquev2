@@ -135,7 +135,7 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
   if (cacheKey) {
     const cached = await prisma.tryOnSession.findFirst({
       where: { shopId, cacheKey, status: "SUCCEEDED" },
-      select: { outputImageUrl: true },
+      select: { outputImageUrl: true, providerKey: true, modelKey: true },
     });
 
     if (cached?.outputImageUrl) {
@@ -149,6 +149,21 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
           completedAt: new Date(),
         },
       });
+      await prisma.analyticsEvent.create({
+        data: {
+          shopId,
+          name: "TRYON_RENDER_COMPLETED",
+          productId,
+          payload: {
+            productId,
+            mode,
+            providerKey: cached.providerKey ?? "cache",
+            modelKey: cached.modelKey ?? "cache",
+            latencyMs: Date.now() - t0,
+            cached: true,
+          },
+        },
+      }).catch(() => undefined);
       console.log(`[tryon-render] cache hit renderId=${renderId}`);
       return;
     }

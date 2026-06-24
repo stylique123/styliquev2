@@ -8,7 +8,7 @@
 //   ok: true,
 //   shopId: string,
 //   ts: string,
-//   queues: { [name]: { waiting, active, failed } },
+//   queues: { [name]: { waiting, active, failed, recentFailed } },
 //   analyticsLast24h: { [EventName]: number },
 //   vto: { total: number, completed: number, cacheHitRate: number },
 //   providerUsage: { [providerKey]: number },
@@ -33,7 +33,7 @@ const QUEUE_NAMES = [
 ] as const;
 
 type QueueName = (typeof QUEUE_NAMES)[number];
-type QueueStats = { waiting: number; active: number; failed: number };
+type QueueStats = { waiting: number; active: number; failed: number; recentFailed: number };
 
 async function getQueueStats(
   name: QueueName,
@@ -46,10 +46,14 @@ async function getQueueStats(
       q.getActiveCount(),
       q.getFailedCount(),
     ]);
+    const since = Date.now() - 6 * 60 * 60 * 1000;
+    const recentFailed = await connection
+      .zcount(`bull:${name}:failed`, since, "+inf")
+      .catch(() => 0);
     await q.close();
-    return { waiting, active, failed };
+    return { waiting, active, failed, recentFailed };
   } catch {
-    return { waiting: -1, active: -1, failed: -1 };
+    return { waiting: -1, active: -1, failed: -1, recentFailed: -1 };
   }
 }
 
@@ -87,7 +91,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     conn.disconnect();
   } catch {
     QUEUE_NAMES.forEach((name) => {
-      queues[name] = { waiting: -1, active: -1, failed: -1 };
+      queues[name] = { waiting: -1, active: -1, failed: -1, recentFailed: -1 };
     });
   }
 

@@ -28,6 +28,18 @@ import MiraWidget from "../../web/app/components/mira/MiraWidget";
 const w = window as unknown as Record<string, unknown>;
 const PROXY = (typeof w.__sqProxyBase === "string" && w.__sqProxyBase) || "/apps/stylique";
 const ASSET_CDN = "https://stylique-web-production.up.railway.app"; // static images only
+const THEME = (w.__sqTheme && typeof w.__sqTheme === "object" ? w.__sqTheme : {}) as Record<string, unknown>;
+const ACCENT = typeof THEME.accentColor === "string" && /^#[0-9a-f]{6}$/i.test(THEME.accentColor)
+  ? THEME.accentColor
+  : "#8B5CF6";
+const CTA_LABEL = typeof THEME.ctaLabel === "string" && THEME.ctaLabel.trim()
+  ? THEME.ctaLabel.trim().slice(0, 32)
+  : "Try It On";
+const STYLIST_ENABLED = THEME.enableStylist !== false;
+const WIDGET_ENABLED = THEME.enableWidget !== false;
+const SHOW_SIZE = THEME.showSize !== false;
+const SHOW_STYLE = THEME.showStyle !== false;
+const PDP_INLINE_ENABLED = THEME.enablePdpInline !== false && WIDGET_ENABLED;
 w.__sqApi = PROXY;                  // Mira + try-on API → the one Shopify backend
 w.__styliqueTryonApiBase = PROXY;   // try-on render → the one Shopify backend
 w.__sqAssetBase = ASSET_CDN;        // static muse/portrait images only
@@ -38,10 +50,10 @@ const TOKENS_CSS = `
 #sq-mira-root {
   --bg:#08070A; --surface:#14111A; --surface-2:rgba(255,255,255,.025);
   --line:rgba(255,255,255,.08); --line-2:rgba(255,255,255,.14); --line-acc:rgba(201,181,255,.35);
-  --text:#F4F2EE; --mute:#8E8A99; --mute-2:#5A5663; --electric:#8B5CF6; --pink:#E879C8;
-  --grad:linear-gradient(135deg,#8B5CF6 0%,#C26BE6 55%,#E879C8 100%);
-  --grad-soft:linear-gradient(135deg,rgba(139,92,246,.16) 0%,rgba(232,121,200,.10) 100%);
-  --glow:radial-gradient(60% 60% at 50% 50%,rgba(139,92,246,.45) 0%,rgba(232,121,200,.10) 45%,rgba(0,0,0,0) 70%);
+  --text:#F4F2EE; --mute:#8E8A99; --mute-2:#5A5663; --electric:${ACCENT}; --pink:#E879C8;
+  --grad:linear-gradient(135deg,${ACCENT} 0%,#C26BE6 55%,#E879C8 100%);
+  --grad-soft:linear-gradient(135deg,color-mix(in srgb, ${ACCENT} 16%, transparent) 0%,rgba(232,121,200,.10) 100%);
+  --glow:radial-gradient(60% 60% at 50% 50%,color-mix(in srgb, ${ACCENT} 45%, transparent) 0%,rgba(232,121,200,.10) 45%,rgba(0,0,0,0) 70%);
   --shadow:0 24px 60px rgba(0,0,0,.55);
   --serif:"Instrument Serif","Cormorant Garamond",Georgia,serif;
   --sans:"Manrope",ui-sans-serif,system-ui,-apple-system,sans-serif;
@@ -92,6 +104,7 @@ function findProductImage(): HTMLImageElement | null {
 // fitting room independently of Mira via the stylique:open-tryon event.
 function injectTryOnButton() {
   if (!/\/products?\//.test(location.pathname)) return; // PDP only
+  if (!PDP_INLINE_ENABLED) return false;
   if (document.getElementById("sq-tryon-pdp-btn")) return;
   const img = findProductImage();
   const host = img?.parentElement;
@@ -101,7 +114,13 @@ function injectTryOnButton() {
   const btn = document.createElement("button");
   btn.id = "sq-tryon-pdp-btn";
   btn.type = "button";
-  btn.innerHTML = 'TRY-ON HERE&nbsp;&nbsp;<span style="font-size:12px;line-height:1">&#9654;</span>';
+  btn.textContent = CTA_LABEL.toUpperCase();
+  const arrow = document.createElement("span");
+  arrow.setAttribute("aria-hidden", "true");
+  arrow.style.fontSize = "12px";
+  arrow.style.lineHeight = "1";
+  arrow.textContent = "▶";
+  btn.appendChild(arrow);
   // Anchor to the host's BOTTOM-LEFT as a small pill. CRITICAL: the host is the
   // theme's `.product__media`, whose CSS forces absolutely-positioned children to
   // `top:0; width/height:100%` (for the cover/zoom image) WITH !important — which
@@ -163,12 +182,12 @@ function auditPlacement(): { score: number; checks: AuditCheck[]; themeHint: str
     null;
 
   const checks: AuditCheck[] = [
-    { id: "launcher_present", label: "Mira launcher mounted", weight: 24, passed: !!launcher },
+    { id: "launcher_present", label: "Mira launcher mounted", weight: 24, passed: !STYLIST_ENABLED || !!launcher },
     {
       id: "pdp_tryon_visible",
       label: "Try-on overlay sits on product image (PDP only)",
       weight: 22,
-      passed: !isPdp || (!!tryonBtn && !!tryonBtn.offsetParent),
+      passed: !isPdp || !WIDGET_ENABLED || (!!tryonBtn && !!tryonBtn.offsetParent),
     },
     {
       id: "product_image_anchored",
@@ -234,6 +253,12 @@ function postAuditFireAndForget(): void {
             themeHint: audit.themeHint,
             url: location.pathname,
             isPdp: /\/products?\//.test(location.pathname),
+            surfaceConfig: {
+              enableStylist: STYLIST_ENABLED,
+              enableWidget: WIDGET_ENABLED,
+              showSize: SHOW_SIZE,
+              showStyle: SHOW_STYLE,
+            },
             checks: audit.checks.map((c) => ({ id: c.id, passed: c.passed })),
           },
         }),
@@ -251,6 +276,7 @@ function postAuditFireAndForget(): void {
 
 function mount() {
   if (document.getElementById("sq-mira-root")) return;
+  if (!STYLIST_ENABLED && !WIDGET_ENABLED) return;
   // Keep the PDP try-on button alive: themes lazy-load the hero image and image
   // sliders re-render the DOM, so we poll for ~20s and RE-inject if the button
   // ever disappears (the #id guard inside makes a no-op when it's still present).

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.config.mjs",
+    "verify:bundle": "node scripts/verify-bundle.mjs",
     "watch": "node esbuild.config.mjs --watch",
     "typecheck": "tsc --noEmit"
   },

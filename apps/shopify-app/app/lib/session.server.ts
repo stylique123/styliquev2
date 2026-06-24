@@ -247,6 +247,32 @@ export async function appendChatTurns(shopperRowId: string, turns: ChatMessage[]
   }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+// ─── Canonical Mira objective memory ─────────────────────────────────────
+// The browser still sends its sessionStorage copy as a hint, but production
+// continuity must be server-owned. Otherwise a tab refresh/storage miss makes
+// the brain forget rejected products, budget state, and the current mission.
+export async function readMiraObjective(shopperRowId: string): Promise<Record<string, unknown> | null> {
+  const rows = await prisma.$queryRaw<Array<{ miraObjectiveJson: unknown }>>`
+    SELECT "miraObjectiveJson" FROM "ShopperSession" WHERE id = ${shopperRowId}
+  `;
+  const raw = rows[0]?.miraObjectiveJson;
+  return isJsonObject(raw) ? raw : null;
+}
+
+export async function persistMiraObjective(shopperRowId: string, objective: unknown): Promise<void> {
+  if (!isJsonObject(objective)) return;
+  await prisma.$executeRaw`
+    UPDATE "ShopperSession"
+    SET "miraObjectiveJson" = CAST(${JSON.stringify(objective)} AS jsonb),
+        "miraObjectiveUpdatedAt" = NOW()
+    WHERE id = ${shopperRowId}
+  `;
+}
+
 // ─── Widget signal write-back (called by /api/shopper/signal) ───────────
 // Lets the 3-step widget tell the stylist "this shopper just picked body=Curvy
 // with model Maya" — so when they open the dock 30 seconds later, the stylist

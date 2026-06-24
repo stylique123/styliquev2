@@ -7,16 +7,16 @@
  * Event flow:
  *   Shopper behavior
  *   → emitEvent() called here
- *   → JSON debug mirror always written (mira-signals.server.ts)
+ *   → optional JSON debug mirror when recordLocal is explicitly requested
  *   → IF SHOPIFY_APP_URL is set: POST to /api/mira/event on the shopify-app
  *     → Prisma AnalyticsEvent persisted
  *     → recommendation engine consumes it
  *     → merchant insights updated
  *     → outcome loop triggered on add-to-cart
  *
- * This means the demo can run standalone (no shopify-app) and still collect
- * intelligence in the JSON file, but when both apps are running together the
- * full production intelligence pipeline activates automatically.
+ * This means the demo route can write exactly one local signal row for the
+ * shopper turn, while helper events forward to the production pipeline without
+ * duplicating local JSON rows.
  */
 
 import { recordSignal, type RecordSignalInput } from "./mira-signals.server";
@@ -76,8 +76,8 @@ async function postToProductionMesh(
 // ── Unified emit ─────────────────────────────────────────────────────────────
 
 /**
- * Emit a Mira event. Always writes to the JSON debug mirror.
- * Also forwards to the production Prisma event mesh when configured.
+ * Emit a Mira event. Optionally writes to the JSON debug mirror and forwards to
+ * the production Prisma event mesh when configured.
  *
  * This is the single emit point — all route.ts event calls go through here.
  */

@@ -33,9 +33,10 @@ function mirrorToWidgetJs() {
 }
 
 const ENTRIES = [
-  // The demo's REAL MiraWidget + TryOnPanel React components, run on Preact —
-  // the ONE interface. Identical to the demo, pointed at the deployed demo backend.
-  { name: "tryon",   src: "src/mira-demo.tsx", banner: "/* Stylique (demo parity) */" },
+  // The shared MiraWidget + TryOnPanel React components, run on Preact. The
+  // storefront entry points them at the shop's App Proxy; static imagery is the
+  // only asset still served from the web origin.
+  { name: "tryon",   src: "src/mira-demo.tsx", banner: "/* Stylique storefront runtime */" },
 ];
 
 function buildOptions(entry) {

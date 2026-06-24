@@ -113,12 +113,18 @@ export async function extractSizeChartMultiSource(input: {
     const sizeAlt = /(size|chart|guide|measure|fit|dimension)/i;
     const sizeUrl = /(size|chart|guide|measure|fit|spec|dimension)/i;
     let ocrTried = 0;
-    for (const img of input.images) {
+    const ocrImages = [...input.images]
+      .map((img, index) => {
+        const byRole = img.garmentRole === "DETAIL";
+        const byAlt = !!img.alt && sizeAlt.test(img.alt);
+        const byUrl = sizeUrl.test(img.url);
+        const score = (byAlt ? 100 : 0) + (byUrl ? 80 : 0) + (byRole ? 10 : 0);
+        return { img, index, byRole, byAlt, byUrl, score };
+      })
+      .filter(({ byRole, byAlt, byUrl }) => byRole || byAlt || byUrl)
+      .sort((a, b) => b.score - a.score || a.index - b.index);
+    for (const { img, byRole, byAlt, byUrl } of ocrImages) {
       if (ocrTried >= 3) break;
-      const byRole = img.garmentRole === "DETAIL";
-      const byAlt = !!img.alt && sizeAlt.test(img.alt);
-      const byUrl = sizeUrl.test(img.url);
-      if (!byRole && !byAlt && !byUrl) continue;
       ocrTried++;
       // Caller already judged it chart-worthy (role/alt) → force past the URL gate.
       const force = byRole || byAlt;

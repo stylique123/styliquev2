@@ -99,7 +99,9 @@ export async function ensureScriptTags(session: RawSession, appUrl: string): Pro
 
     const errs = result?.data?.scriptTagCreate?.userErrors ?? [];
     if (errs.length > 0) {
-      console.error(`[ScriptTag] Failed to create ${script.src} for ${session.shop}:`, errs);
+      throw new Error(
+        `script_tag_create_failed:${errs.map((e) => e.message ?? "unknown").join(",")}`,
+      );
     } else {
       console.log(`[ScriptTag] Created for ${session.shop}: ${script.src}`);
     }

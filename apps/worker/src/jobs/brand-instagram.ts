@@ -113,6 +113,7 @@ export async function processBrandInstagram(data: BrandInstagramJobData): Promis
 
   if (!profile) {
     console.error(`[brand-instagram] BrandProfile not found for shop=${shopId}`);
+    await updateBrandSourceStatus(shopId, "FAILED", "brand_profile_missing");
     await rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
     return;
   }

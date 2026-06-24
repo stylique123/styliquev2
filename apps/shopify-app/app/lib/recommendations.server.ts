@@ -21,7 +21,7 @@ import { createRecommendationsService, createOutcomeService } from "@stylique/co
 // read-side helpers (list / dismiss / markTaken) — the runAll() function
 // re-exports the core service bound to our prisma instance.
 const _service = createRecommendationsService(prisma);
-export const runAllRecommendations: (shopId: string) => Promise<{ written: number }> =
+export const runAllRecommendations: (shopId: string) => ReturnType<typeof _service.runAll> =
   (shopId) => _service.runAll(shopId);
 
 // Outcome service — measure→learn loop. Bound to the same prisma instance.

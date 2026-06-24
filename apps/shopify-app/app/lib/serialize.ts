@@ -1,6 +1,8 @@
 // Pure shopper-safe serializer. No Prisma, no env. Tested in isolation so we can
 // guarantee that no token or internal id is ever returned by the public API.
 
+import { resolveTryonImage } from "@stylique/core";
+
 export type ShopperProduct = {
   id: string;
   handle: string;
@@ -23,7 +25,15 @@ export type ShopperProduct = {
 export function toShopperProduct(p: {
   id: string; handle: string; title: string; category: string | null;
   primaryColor: string | null; colorFamily: string | null;
-  images: Array<{ id?: string; url: string }>;
+  images: Array<{
+    id?: string;
+    url: string;
+    preppedUrl?: string | null;
+    position?: number | null;
+    qualityScore?: number | null;
+    garmentRole?: string | null;
+    altText?: string | null;
+  }>;
   variants: Array<{ size: string | null }>;
   primaryTryonImageId?: string | null;
   tryonReady?: boolean;
@@ -32,9 +42,12 @@ export function toShopperProduct(p: {
   const sizes = Array.from(
     new Set(p.variants.map((v) => v.size).filter((s): s is string => Boolean(s))),
   );
-  const tryonImageUrl =
-    (p.primaryTryonImageId && p.images.find((img) => img.id === p.primaryTryonImageId)?.url) ||
-    null;
+  const primaryImage = resolveTryonImage(
+    p.images.map((img) => ({ ...img, id: img.id ?? img.url })),
+    p.primaryTryonImageId,
+  );
+  const primaryImageUrl = primaryImage?.url ?? null;
+  const tryonImageUrl = p.tryonReady ? (primaryImage?.preppedUrl ?? primaryImage?.url ?? null) : null;
   const tier: 1 | 2 | 3 =
     p.widgetTier === 2 ? 2 :
     p.widgetTier === 3 ? 3 :
@@ -46,7 +59,7 @@ export function toShopperProduct(p: {
     category: p.category,
     primaryColor: p.primaryColor,
     colorFamily: p.colorFamily,
-    imageUrl: p.images[0]?.url ?? null,
+    imageUrl: primaryImageUrl,
     sizes,
     tryonReady: Boolean(p.tryonReady),
     widgetTier: tier,

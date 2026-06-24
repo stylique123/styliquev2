@@ -56,7 +56,7 @@ describe("normalizeProduct", () => {
         { id: 1, sku: "BOX-S", price: "49.00", selectedOptions: [{ name: "Size", value: "S" }, { name: "Color", value: "Blue" }] },
         { id: 2, sku: "BOX-M", price: "49.00", selectedOptions: [{ name: "Size", value: "M" }, { name: "Color", value: "Blue" }] },
       ],
-      images: [{ id: 10, url: "https://cdn.example/box1.jpg", position: 0 }],
+      images: [{ id: 10, url: "https://cdn.example/box1.jpg", altText: "Oxford shirt size guide", position: 0 }],
     };
     const n = normalizeProduct(input);
     expect(n.shopifyId).toBe("gid://shopify/Product/123");
@@ -66,6 +66,7 @@ describe("normalizeProduct", () => {
     expect(n.variants).toHaveLength(2);
     expect(n.variants[0]).toMatchObject({ size: "S", color: "Blue", priceCents: 4900 });
     expect(n.images[0].shopifyId).toBe("gid://shopify/ProductImage/10");
+    expect(n.images[0].altText).toBe("Oxford shirt size guide");
     expect(n.isActive).toBe(true);
   });
 
@@ -177,6 +178,107 @@ describe("CatalogSyncService", () => {
     expect(prisma._state.products.size).toBe(1);
     await svc.deleteByShopifyId("shop-1", 1);
     expect(prisma._state.products.size).toBe(0);
+  });
+
+  it("single-product sync deletes a product when Shopify marks it inactive", async () => {
+    const prisma = createFakePrisma();
+    const svc = createCatalogSyncService(prisma as any);
+    await svc.syncOne("shop-1", { id: 1, handle: "a", title: "A", status: "active", images: [{ url: "x" }] });
+    expect(prisma._state.products.size).toBe(1);
+
+    const result = await svc.syncOne("shop-1", { id: 1, handle: "a", title: "A", status: "draft" });
+
+    expect(result).toEqual({ deleted: true });
+    expect(prisma._state.products.size).toBe(0);
+    expect(prisma._state.images.size).toBe(0);
+  });
+
+  it("removes variants that disappeared from Shopify on single-product sync", async () => {
+    const prisma = createFakePrisma();
+    const svc = createCatalogSyncService(prisma as any);
+    await svc.syncOne("shop-1", {
+      id: 1,
+      handle: "a",
+      title: "A",
+      variants: [
+        { id: 11, sku: "A-S", selectedOptions: [{ name: "Size", value: "S" }] },
+        { id: 12, sku: "A-M", selectedOptions: [{ name: "Size", value: "M" }] },
+      ],
+    });
+    expect(prisma._state.variants.size).toBe(2);
+
+    await svc.syncOne("shop-1", {
+      id: 1,
+      handle: "a",
+      title: "A",
+      variants: [
+        { id: 12, sku: "A-M", selectedOptions: [{ name: "Size", value: "M" }] },
+      ],
+    });
+
+    expect([...prisma._state.variants.values()].map((v) => v.shopifyId)).toEqual([
+      "gid://shopify/ProductVariant/12",
+    ]);
+  });
+
+  it("resets stale try-on image state when product images are replaced", async () => {
+    const prisma = createFakePrisma();
+    const svc = createCatalogSyncService(prisma as any);
+    await svc.syncOne("shop-1", {
+      id: 1,
+      handle: "a",
+      title: "A",
+      images: [{ id: 91, url: "https://cdn/old.jpg" }],
+    });
+
+    const product = [...prisma._state.products.values()][0];
+    const oldImage = [...prisma._state.images.values()][0];
+    Object.assign(product, {
+      primaryTryonImageId: oldImage.id,
+      tryonReady: true,
+      widgetTier: 1,
+      qualityComputedAt: new Date("2026-01-01"),
+    });
+
+    await svc.syncOne("shop-1", {
+      id: 1,
+      handle: "a",
+      title: "A",
+      images: [{ id: 92, url: "https://cdn/new.jpg" }],
+    });
+
+    expect(product.primaryTryonImageId).toBeNull();
+    expect(product.tryonReady).toBe(false);
+    expect(product.widgetTier).toBe(3);
+    expect(product.qualityComputedAt).toBeNull();
+  });
+
+  it("preserves try-on image state when the Shopify image set is unchanged", async () => {
+    const prisma = createFakePrisma();
+    const svc = createCatalogSyncService(prisma as any);
+    const input = {
+      id: 1,
+      handle: "a",
+      title: "A",
+      images: [{ id: 91, url: "https://cdn/same.jpg", altText: "front product photo", position: 0 }],
+    };
+    await svc.syncOne("shop-1", input);
+
+    const product = [...prisma._state.products.values()][0];
+    const image = [...prisma._state.images.values()][0];
+    Object.assign(product, {
+      primaryTryonImageId: image.id,
+      tryonReady: true,
+      widgetTier: 1,
+      qualityComputedAt: new Date("2026-01-01"),
+    });
+
+    await svc.syncOne("shop-1", input);
+
+    expect(product.primaryTryonImageId).toBe(image.id);
+    expect(product.tryonReady).toBe(true);
+    expect(product.widgetTier).toBe(1);
+    expect(product.qualityComputedAt).toEqual(new Date("2026-01-01"));
   });
 });
 

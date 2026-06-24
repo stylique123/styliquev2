@@ -50,7 +50,7 @@ Copy from `.env.example` and set:
 | `SHOPIFY_API_KEY` | **same value as `client_id` in `apps/shopify-app/shopify.app.toml`** — copy it verbatim |
 | `SHOPIFY_API_SECRET` | Partners dashboard → your app → **Client credentials → Client secret** (click reveal) |
 | `SHOPIFY_APP_URL` | Your active Cloudflare tunnel URL, e.g. `https://abc-123.trycloudflare.com` |
-| `SHOPIFY_SCOPES` | `read_products,read_product_listings,read_inventory,read_orders,write_products` |
+| `SHOPIFY_SCOPES` | `read_products,read_inventory,read_orders,write_script_tags` |
 | `SHOPIFY_APP_PROXY_SUBPATH` | `stylique` |
 
 If anything is missing, the Remix server fails fast with a clear banner naming

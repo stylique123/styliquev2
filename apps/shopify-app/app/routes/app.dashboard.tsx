@@ -40,6 +40,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 const usd = (cents: number) =>
   "$" + Math.round((cents ?? 0) / 100).toLocaleString();
 const usdWhole = (n: number) => "$" + Math.round(n ?? 0).toLocaleString();
+const pct = (n: number) => `${Math.round((n ?? 0) * 100)}%`;
+const sourceLabel = (source: string) => {
+  switch (source) {
+    case "measured": return "Measured";
+    case "mixed": return "Measured + modelled";
+    case "modelled": return "Modelled";
+    default: return "Collecting";
+  }
+};
+const sourceTone = (source: string): "success" | "attention" => source === "measured" ? "success" : "attention";
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -70,6 +80,9 @@ export default function Dashboard() {
   const h = d.headline;
   const cat = d.catalog;
   const f = d.stylist.funnel;
+  const fi = d.fashionIntelligence;
+  const fiModeled = fi.dataMode === "modelled";
+  const consumerEvidenceLabel = fiModeled ? "Catalog-modelled" : "Shopper + catalog";
 
   const widgetLive = d.widget.placement.widgetLive;
 
@@ -148,6 +161,98 @@ export default function Dashboard() {
                 <Stat label="carts confirmed" value={f.cartConfirmed.toLocaleString()} />
                 <Stat label="try-ons" value={h.tryOnSessions.toLocaleString()} />
               </InlineStack>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
+        {/* ── Fashion intelligence (computed by buildOverview, source-labelled) ─ */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="300">
+              <InlineStack align="space-between" blockAlign="center">
+                <Text as="h2" variant="headingMd">Fashion intelligence</Text>
+                <Badge tone={fiModeled ? "attention" : "success"}>
+                  {fiModeled ? "Modelled" : "Live + modelled"}
+                </Badge>
+              </InlineStack>
+              <Text as="p" tone="subdued" variant="bodySm">
+                {fiModeled
+                  ? `Directional insights from catalog and early Mira behavior while real shopper signals build (${fi.realSignalCount}/40 captured).`
+                  : `${fi.realSignalCount.toLocaleString()} real shopper signals blended with modelled merchandising context.`}
+              </Text>
+
+              <InlineStack gap="400" wrap>
+                {fi.exec.slice(0, 4).map((card) => (
+                  <Box key={card.label} background="bg-surface-secondary" padding="300" borderRadius="200">
+                    <BlockStack gap="100">
+                      <InlineStack align="space-between" blockAlign="center">
+                        <Text as="span" tone="subdued" variant="bodyXs">{card.label}</Text>
+                        <Badge tone={sourceTone(card.source)}>{sourceLabel(card.source)}</Badge>
+                      </InlineStack>
+                      <Text as="span" variant="headingMd">{card.value}</Text>
+                      <Text as="span" tone="subdued" variant="bodySm">{card.sub}</Text>
+                      <Text as="span" tone="subdued" variant="bodyXs">{card.sourceDetail}</Text>
+                    </BlockStack>
+                  </Box>
+                ))}
+              </InlineStack>
+
+              <Divider />
+
+              <BlockStack gap="200">
+                <InlineStack align="space-between" blockAlign="center">
+                  <Text as="h3" variant="headingSm">
+                    {fiModeled ? "What your catalog is preparing Mira to learn" : "What shoppers and your catalog are teaching Mira"}
+                  </Text>
+                  <Badge tone={fiModeled ? "attention" : "success"}>{consumerEvidenceLabel}</Badge>
+                </InlineStack>
+                {fi.consumer.styleMap.slice(0, 4).map((style) => (
+                  <InlineStack key={style.style} align="space-between" blockAlign="center">
+                    <Text as="span" variant="bodyMd">{style.style}</Text>
+                    <Text as="span" tone="subdued" variant="bodySm">
+                      {pct(style.share)} {fiModeled ? "catalog weight" : "shopper + catalog mix"}
+                    </Text>
+                  </InlineStack>
+                ))}
+                {fi.consumer.combos.slice(0, 3).map((combo) => (
+                  <InlineStack key={combo.label} align="space-between" blockAlign="center" wrap={false}>
+                    <Text as="span" variant="bodyMd">{combo.pieces.join(" + ")}</Text>
+                    <Text as="span" tone="subdued" variant="bodySm">
+                      {combo.count > 0 ? `${combo.count} asks` : "catalog pairing"}
+                    </Text>
+                  </InlineStack>
+                ))}
+              </BlockStack>
+
+              {fi.gates.conversion ? (
+                <Box background="bg-surface-secondary" padding="300" borderRadius="200">
+                  <InlineStack gap="800" wrap>
+                    <Stat
+                      label="try-on cart rate"
+                      value={fi.conversion.tryOnPurchaseRate != null ? pct(fi.conversion.tryOnPurchaseRate) : "Collecting"}
+                      hint="try-on-origin cart events ÷ completed try-ons"
+                    />
+                    <Stat
+                      label="baseline order proxy"
+                      value={fi.conversion.baselinePurchaseRate != null ? pct(fi.conversion.baselinePurchaseRate) : "Collecting"}
+                      hint="confirmed orders against chat activity"
+                    />
+                    <Stat
+                      label="try-on assist ratio"
+                      value={fi.conversion.tryOnLiftX != null ? `${fi.conversion.tryOnLiftX}×` : "Collecting"}
+                      hint="not a causal holdout lift"
+                    />
+                  </InlineStack>
+                </Box>
+              ) : (
+                <Text as="p" tone="subdued" variant="bodySm">
+                  Conversion intelligence unlocks on Growth and Scale plans.
+                </Text>
+              )}
+
+              <Text as="p" tone="subdued" variant="bodyXs">
+                Source note: executive cards carry their own source label. Consumer rows can blend shopper signals with catalog context; catalog pairings are directional until shoppers ask for that look. Conversion rows are cart/order attribution proxies, not controlled causal lift.
+              </Text>
             </BlockStack>
           </Card>
         </Layout.Section>

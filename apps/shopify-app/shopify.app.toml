@@ -2,10 +2,8 @@
 # Active default when no --config flag is supplied.
 # Beauty must use a separate app/config.
 #
-# handle and [app_proxy] are intentionally omitted here — see
-# shopify.app.local.toml comments for the full rationale.
-# [app_proxy] belongs only in shopify.app.staging.toml and
-# shopify.app.production.toml where the host is a stable public domain.
+# This default config targets the production app. Local/dev configs should be
+# generated or linked with the active tunnel URL before running Shopify CLI.
 
 client_id = "5d64194b12c927c4cbe2507fd4824250"
 name = "stylique-fashion"

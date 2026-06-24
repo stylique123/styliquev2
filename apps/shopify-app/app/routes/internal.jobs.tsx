@@ -6,6 +6,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { requireInternalAuth } from "../lib/internal-auth.server";
+import { generateCSRFToken, verifyCSRFToken } from "../lib/entitlement.server";
 import { prisma } from "../db.server";
 
 // ─── Loader ──────────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   // Weekly event total for throughput gauge
   const weeklyEvents = await prisma.analyticsEvent.count({ where: { createdAt: { gte: since7d } } });
+  const csrf = generateCSRFToken(process.env.STYLIQUE_INTERNAL_SECRET ?? "");
 
   return json({
     queues: {
@@ -84,6 +86,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     })),
     eventVolume: eventVolume.map((e) => ({ name: e.name, count: e._count._all })),
     weeklyEvents,
+    csrf,
   });
 }
 
@@ -92,6 +95,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   requireInternalAuth(request);
   const formData = await request.formData();
+  const secret = process.env.STYLIQUE_INTERNAL_SECRET ?? "";
+  if (!verifyCSRFToken(formData.get("csrf") as string | null, secret)) {
+    return json({ ok: false, error: "Invalid or missing CSRF token." }, { status: 403 });
+  }
   const intent = formData.get("intent") as string;
 
   if (intent === "pause_all") {
@@ -260,6 +267,7 @@ export default function InternalJobsPage() {
             )}
             <fetcher.Form method="post">
               <input type="hidden" name="intent" value="pause_all" />
+              <input type="hidden" name="csrf" value={d.csrf} />
               <button
                 type="submit"
                 style={{
@@ -278,6 +286,7 @@ export default function InternalJobsPage() {
             </fetcher.Form>
             <fetcher.Form method="post">
               <input type="hidden" name="intent" value="resume_all" />
+              <input type="hidden" name="csrf" value={d.csrf} />
               <button
                 type="submit"
                 style={{

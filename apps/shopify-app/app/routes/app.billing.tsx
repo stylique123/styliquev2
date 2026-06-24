@@ -3,12 +3,12 @@ import { json, redirect } from "@remix-run/node";
 import { Form, useLoaderData, useNavigation } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
-import { PLAN_FEATURES } from "@stylique/core/src/plans/features";
+import { PLAN_FEATURES, PLAN_PRICE_USD } from "@stylique/core";
 
 const PLAN_PRICES = {
-  STARTER: Number(process.env.SHOPIFY_BILLING_STARTER_USD ?? 49),
-  GROWTH: Number(process.env.SHOPIFY_BILLING_GROWTH_USD ?? 199),
-  ULTIMATE: Number(process.env.SHOPIFY_BILLING_ULTIMATE_USD ?? 499),
+  STARTER: Number(process.env.SHOPIFY_BILLING_STARTER_USD ?? PLAN_PRICE_USD.STARTER),
+  GROWTH: Number(process.env.SHOPIFY_BILLING_GROWTH_USD ?? PLAN_PRICE_USD.GROWTH),
+  ULTIMATE: Number(process.env.SHOPIFY_BILLING_ULTIMATE_USD ?? PLAN_PRICE_USD.ULTIMATE),
 } as const;
 
 type Tier = keyof typeof PLAN_PRICES;
@@ -68,6 +68,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     select: { id: true, plan: true },
   });
   if (!shop) return json({ ok: false, error: "shop_not_provisioned" }, { status: 404 });
+  let plan = shop.plan;
 
   const url = new URL(request.url);
   const confirmed = url.searchParams.get("billing_confirmed") === "1";
@@ -85,21 +86,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
   if (confirmed && activeSubscription) {
     const tier = parseTierFromName(activeSubscription.name);
-    await prisma.plan.upsert({
+    const current = (shop.plan?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+    const billingActive = activeSubscription.status === "ACTIVE";
+    const planFeaturesJson = {
+      ...current,
+      billingActive,
+      billing: {
+        ...(typeof current.billing === "object" && current.billing ? current.billing as Record<string, unknown> : {}),
+        status: activeSubscription.status,
+        subscriptionId: activeSubscription.id,
+        tier,
+        active: billingActive,
+        test: activeSubscription.test ?? false,
+      },
+    };
+    plan = await prisma.plan.upsert({
       where: { shopId: shop.id },
       create: {
         shopId: shop.id,
         ...planDefaults(tier),
-        planFeaturesJson: { billing: { status: activeSubscription.status, subscriptionId: activeSubscription.id, tier } },
+        planFeaturesJson,
       },
       update: {
         ...planDefaults(tier),
-        planFeaturesJson: { billing: { status: activeSubscription.status, subscriptionId: activeSubscription.id, tier } },
+        planFeaturesJson,
       },
     });
   }
 
-  return json({ ok: true, plan: shop.plan, activeSubscription, prices: PLAN_PRICES });
+  return json({ ok: true, plan, activeSubscription, prices: PLAN_PRICES });
 }
 
 export async function action({ request }: ActionFunctionArgs) {

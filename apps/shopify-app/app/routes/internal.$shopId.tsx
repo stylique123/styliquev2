@@ -9,6 +9,52 @@ import { requireInternalAuth } from "../lib/internal-auth.server";
 import { getBrandDetail } from "../lib/internal-dashboard.server";
 import { generateCSRFToken, verifyCSRFToken } from "../lib/entitlement.server";
 import { prisma } from "../db.server";
+import { PLAN_DEFAULTS, PLAN_FEATURES } from "@stylique/core";
+import type { AnalyticsLevel, PlanTier } from "@stylique/types";
+
+const PLAN_TIERS = ["STARTER", "GROWTH", "ULTIMATE"] as const;
+
+function normalizeTier(raw: FormDataEntryValue | string | null): PlanTier | null {
+  const tier = String(raw ?? "").toUpperCase();
+  return PLAN_TIERS.includes(tier as PlanTier) ? tier as PlanTier : null;
+}
+
+function buildTierPatch(tier: PlanTier, current: Record<string, unknown>) {
+  const defaults = PLAN_DEFAULTS[tier];
+  const features = PLAN_FEATURES[tier];
+  const now = new Date().toISOString();
+  const comp = current.comp === true;
+  return {
+    tier,
+    monthlyTryOnPersonal: defaults.monthlyTryOnPersonal,
+    monthlyTryOnBody: defaults.monthlyTryOnBody,
+    monthlyStylistTurns: features.stylist.monthlyTurns,
+    monthlyStyleRecs: defaults.monthlyStyleRecs,
+    monthlyFitRecs: defaults.monthlyFitRecs,
+    analyticsLevel: features.analytics.level as AnalyticsLevel,
+    planFeaturesJson: {
+      ...current,
+      comp,
+      billingActive: comp,
+      billing: {
+        ...((typeof current.billing === "object" && current.billing
+          ? current.billing
+          : {}) as Record<string, unknown>),
+        status: comp ? "ops_comp" : "pending",
+        tier,
+        source: "internal_ops_brand_detail",
+        updatedAt: now,
+      },
+      provisioning: {
+        ...((typeof current.provisioning === "object" && current.provisioning
+          ? current.provisioning
+          : {}) as Record<string, unknown>),
+        updatedBy: "internal_ops",
+        updatedAt: now,
+      },
+    },
+  };
+}
 
 // ─── Loader ──────────────────────────────────────────────────────────────
 
@@ -59,11 +105,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   if (intent === "change_tier") {
-    const tier = formData.get("tier") as string;
+    const tier = normalizeTier(formData.get("tier"));
+    if (!tier) return json({ ok: false, error: "Invalid tier" }, { status: 400 });
+    const existing = await prisma.plan.findUnique({ where: { shopId }, select: { planFeaturesJson: true } });
+    const current = (existing?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+    const patch = buildTierPatch(tier, current);
     await prisma.plan.upsert({
       where: { shopId },
-      update: { tier: tier as "STARTER" | "GROWTH" | "ULTIMATE" },
-      create: { shopId, tier: tier as "STARTER" | "GROWTH" | "ULTIMATE" },
+      update: patch,
+      create: { shopId, ...patch },
     });
     return json({ ok: true, message: `Tier updated to ${tier}` });
   }
@@ -468,6 +518,66 @@ export default function BrandDetailPage() {
             {/* Activity chart */}
             <Section title="Stylist sessions — last 7 days">
               <ActivityChart data={d.activityByDay} />
+            </Section>
+
+            <Section title="Install + Shopify scopes">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12 }}>
+                <div style={{ background: "#f9fafb", border: "1px solid #eee", borderRadius: 6, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#777", textTransform: "uppercase", letterSpacing: "0.05em" }}>Widget heartbeat</div>
+                  <div style={{ marginTop: 6, fontWeight: 700, color: d.widgetLive ? "#166534" : "#b45309" }}>
+                    {d.widgetLive ? "Seen in last 7 days" : "No recent beacon"}
+                  </div>
+                </div>
+                <div style={{ background: "#f9fafb", border: "1px solid #eee", borderRadius: 6, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#777", textTransform: "uppercase", letterSpacing: "0.05em" }}>Required scopes</div>
+                  <div style={{ marginTop: 6, fontWeight: 700, color: d.missingShopifyScopes.length ? "#dc2626" : "#166534" }}>
+                    {d.missingShopifyScopes.length ? `Missing ${d.missingShopifyScopes.length}` : "Complete"}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, color: "#666", lineHeight: 1.5 }}>
+                    {d.requiredShopifyScopes.join(", ")}
+                  </div>
+                </div>
+                <div style={{ background: "#f9fafb", border: "1px solid #eee", borderRadius: 6, padding: 12 }}>
+                  <div style={{ fontSize: 11, color: "#777", textTransform: "uppercase", letterSpacing: "0.05em" }}>Action</div>
+                  <div style={{ marginTop: 6, fontSize: 13, color: "#444" }}>
+                    {d.missingShopifyScopes.length || d.extraShopifyScopes.length ? "Ask merchant to re-consent/reinstall." : "No scope action needed."}
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                {d.missingShopifyScopes.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#991b1b" }}>
+                    Missing: {d.missingShopifyScopes.join(", ")}
+                  </div>
+                )}
+                {d.extraShopifyScopes.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#92400e" }}>
+                    Extra stale scopes: {d.extraShopifyScopes.join(", ")}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: d.liveShopifyScopeCheck.status === "checked" ? "#166534" : "#92400e" }}>
+                  Live Shopify scope check: {d.liveShopifyScopeCheck.status}
+                  {d.liveShopifyScopeCheck.status !== "checked" ? ` (${d.liveShopifyScopeCheck.reason})` : ""}
+                </div>
+                {d.liveShopifyScopeCheck.status === "checked" && (
+                  <div style={{ fontSize: 12, color: "#666", wordBreak: "break-word" }}>
+                    Live token scopes: {d.liveShopifyScopeCheck.scopes.join(", ") || "none"}
+                  </div>
+                )}
+                {d.liveShopifyScopeCheck.missing.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#991b1b" }}>
+                    Live token missing: {d.liveShopifyScopeCheck.missing.join(", ")}
+                  </div>
+                )}
+                {d.liveShopifyScopeCheck.extra.length > 0 && (
+                  <div style={{ fontSize: 12, color: "#92400e" }}>
+                    Live token extra: {d.liveShopifyScopeCheck.extra.join(", ")}
+                  </div>
+                )}
+                <div style={{ fontSize: 12, color: "#666", wordBreak: "break-word" }}>
+                  Stored token scopes: {d.shopifyScopes || "none recorded"}
+                </div>
+              </div>
             </Section>
 
             {/* VTO sessions */}

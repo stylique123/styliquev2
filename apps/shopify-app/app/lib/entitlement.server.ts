@@ -54,13 +54,20 @@ function billingEnforced(): boolean {
   return v === "1" || v === "true";
 }
 
-// A shop counts as billing-active when an admin/internal-dashboard sets either
-// flag on Plan.planFeaturesJson — `billingActive` (real subscription confirmed)
-// or `comp` (grandfathered / pilot brand). Absent both → not active.
-function isBillingActive(planFeaturesJson: unknown): boolean {
+// A shop counts as billing-active when the plan JSON carries a real active
+// Shopify subscription or an explicit ops comp. Support both the legacy
+// top-level `billingActive` flag and the nested billing object written by the
+// billing route so enforcement reads the same contract checkout writes.
+export function isBillingActive(planFeaturesJson: unknown): boolean {
   if (!planFeaturesJson || typeof planFeaturesJson !== "object") return false;
   const j = planFeaturesJson as Record<string, unknown>;
-  return j.billingActive === true || j.comp === true;
+  const billing = typeof j.billing === "object" && j.billing
+    ? j.billing as Record<string, unknown>
+    : null;
+  return j.billingActive === true
+    || j.comp === true
+    || billing?.status === "ACTIVE"
+    || billing?.active === true;
 }
 
 export async function getEffectivePlan(shopId: string): Promise<EffectivePlan | null> {
@@ -185,14 +192,11 @@ export function tierMeets(actual: PlanTier, required: PlanTier): boolean {
 
 // Quick-and-cheap entry — true if the tier alone is enough (no metering).
 export function tierForFeature(_key: FeatureKey): PlanTier {
-  // We rely on PLAN_FEATURES at runtime; this is a hint for UI badges so the
-  // dashboard can render "Upgrade to Growth" labels next to locked rows.
-  return _key.startsWith("analytics.crossBrandBenchmarks")
-       || _key === "stylist.proactiveTriggers"
-    ? "ULTIMATE"
-    : _key === "stylist.tasteVector" || _key === "widget.personalPhotoTryOn"
-    ? "GROWTH"
-    : "STARTER";
+  // UI hint only, but it must still derive from the same source table as
+  // enforcement. Manual switches drifted (proactiveTriggers is Growth, not
+  // Ultimate), causing wrong upgrade copy even while runtime gates were right.
+  const tiers: PlanTier[] = ["STARTER", "GROWTH", "ULTIMATE"];
+  return tiers.find((tier) => readFeatureFlag(PLAN_FEATURES[tier], _key)) ?? "ULTIMATE";
 }
 
 // ─── CSRF helpers for internal dashboard forms ──────────────────────────────

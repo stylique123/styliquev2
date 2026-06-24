@@ -25,9 +25,10 @@ import type {
 // score and the inferred garmentRole.
 const RX = {
   back:      /(_back|-back|back\.|_rear)/i,
-  detail:    /(_detail|-detail|_close|_zoom|_macro|_swatch|_fabric)/i,
+  detail:    /(_detail|-detail|_close|_zoom|_macro|_swatch|_fabric|size[ -]?(chart|guide)|measurement|measurements|sizing)/i,
   lifestyle: /(_lifestyle|-lifestyle|_model|_editorial|_campaign|_lookbook)/i,
   swatch:    /(_swatch|-swatch|_color|_chip)/i,
+  front:     /(front[ -]?(view|shot)?|packshot|product[ -]?(only|image|photo)|flat[ -]?lay)/i,
 };
 
 const MIN_LONG_EDGE_PX = 600;
@@ -79,25 +80,31 @@ function scoreOne(input: ImageInput, dims: DimsAndBytes): ImageScore {
                    // subtract; severe failures floor at 0.
 
   const filename = (input.shopifyFilename ?? input.url).toLowerCase();
+  const altText = (input.altText ?? "").toLowerCase();
+  const hints = `${filename} ${altText}`;
   let role: ImageScore["garmentRole"] | undefined;
 
   // Filename hints — small score nudge + role inference.
-  if (RX.back.test(filename)) {
+  if (RX.back.test(hints)) {
     reasons.push("filename_back_hint");
     role = "BACK";
     score += 0.5; // back shots are valuable for VTO
-  } else if (RX.swatch.test(filename)) {
+  } else if (RX.swatch.test(hints)) {
     reasons.push("filename_swatch_hint");
     role = "SWATCH";
     score -= 4.0;
-  } else if (RX.detail.test(filename)) {
+  } else if (RX.detail.test(hints)) {
     reasons.push("suspected_detail_crop");
     role = "DETAIL";
     score -= 3.0;
-  } else if (RX.lifestyle.test(filename)) {
+  } else if (RX.lifestyle.test(hints)) {
     reasons.push("filename_lifestyle_hint");
     role = "LIFESTYLE";
     score -= 2.5;
+  } else if (RX.front.test(hints)) {
+    reasons.push("filename_front_hint");
+    role = "FRONT";
+    score += 0.5;
   } else {
     // No suffix = likely the front/primary shot.
     reasons.push("filename_front_hint");

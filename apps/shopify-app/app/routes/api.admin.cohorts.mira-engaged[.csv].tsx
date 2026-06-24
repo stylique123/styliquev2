@@ -9,7 +9,7 @@
 // natively) of shoppers who had ANY Mira touchpoint in the last 30 days,
 // with the columns brands actually pivot on for retargeting / lookalike /
 // suppression: email, lastEngagedAt, sessionsCount, sentimentLabel,
-// topThemeHint, intentHint.
+// topThemes, hadTryon, hadCart, hadCartIntent.
 //
 // Privacy invariants (D10, §3, §3.5):
 // - Shop-scoped only; admin auth required.
@@ -27,6 +27,8 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
+import { MIRA_CART_ASSIST_EVENT_NAMES } from "@stylique/core";
+import { cohortCartFlags } from "../lib/cohort-export.server";
 
 const DAYS = 30;
 
@@ -62,7 +64,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
           "CHAT_MESSAGE_SENT",
           "CHAT_COMBO_PROPOSED",
           "CHAT_PRODUCT_CLICKED",
-          "CHAT_CART_REQUESTED",
+          ...MIRA_CART_ASSIST_EVENT_NAMES,
           "TRYON_RENDER_REQUESTED",
         ],
       },
@@ -104,7 +106,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const shopperIds = Array.from(perShopper.keys());
   if (shopperIds.length === 0) {
     const header =
-      "email,lastEngagedAt,sessionsCount,sentimentLabel,topThemes,hadTryon,hadCart\n";
+      "email,lastEngagedAt,sessionsCount,sentimentLabel,topThemes,hadTryon,hadCart,hadCartIntent\n";
     return new Response(header, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
@@ -132,11 +134,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   });
 
   const rows: string[] = [
-    "email,lastEngagedAt,sessionsCount,sentimentLabel,topThemes,hadTryon,hadCart",
+    "email,lastEngagedAt,sessionsCount,sentimentLabel,topThemes,hadTryon,hadCart,hadCartIntent",
   ];
   for (const s of shoppers) {
     const bucket = perShopper.get(s.id);
     if (!bucket) continue;
+    const cartFlags = cohortCartFlags(bucket.events);
     const themes = Array.isArray(s.sentimentThemes)
       ? (s.sentimentThemes as string[]).slice(0, 3).join("|")
       : "";
@@ -148,7 +151,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
         escapeCsv(s.sentimentLabel ?? ""),
         escapeCsv(themes),
         escapeCsv(bucket.events.has("TRYON_RENDER_REQUESTED") ? "1" : "0"),
-        escapeCsv(bucket.events.has("CHAT_CART_REQUESTED") ? "1" : "0"),
+        escapeCsv(cartFlags.hadCart ? "1" : "0"),
+        escapeCsv(cartFlags.hadCartIntent ? "1" : "0"),
       ].join(","),
     );
   }

@@ -13,8 +13,10 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
+import { assistedProductIdsForOrder } from "../lib/mira-attribution.server";
 import { recomputeTasteVector } from "../lib/taste.server";
 import { seenRecently } from "../lib/ratelimit.server";
+import { MIRA_CART_ASSIST_EVENT_NAMES } from "@stylique/core";
 
 interface LineItem {
   product_id: number | string | null;
@@ -156,10 +158,12 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     // ── Mira-assisted revenue attribution ──────────────────────────────────
-    // For any product in this order, check if the shopper had a
-    // CHAT_CART_REQUESTED or COMBO_ADD_ALL event within the last 48 hours.
-    // If yes, that line item was Mira-assisted.
-    const orderProductIds = resolvedLineItems.map(r => r.productId);
+    // For any product in this order, check if the shopper had a Mira cart-assist
+    // event within the last 48 hours. The newer confirmed-cart path writes
+    // CART_FROM_MIRA after the real /cart/add.js succeeds; older/chat paths wrote
+    // CHAT_CART_REQUESTED or MIRA_ADD_TO_CART_ASSIST before confirmation. Count
+    // all of them as assist evidence, but only this fulfilled order creates revenue.
+    const orderProductIds = resolvedLineItems.map((r) => r.productId);
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
     // ── Resolve CartIntents → confirmed ─────────────────────────────────────
@@ -186,18 +190,17 @@ export async function action({ request }: ActionFunctionArgs) {
         where: {
           shopId: shopRecord.id,
           shopperId: shopper.id,
-          name: { in: ["CHAT_CART_REQUESTED", "COMBO_ADD_ALL"] },
+          name: {
+            in: [...MIRA_CART_ASSIST_EVENT_NAMES],
+          },
           createdAt: { gte: cutoff },
-          productId: { in: orderProductIds },
         },
-        select: { productId: true },
+        select: { productId: true, payload: true },
       });
 
-      if (assistEvents.length > 0) {
-        const assistedProductIds = [
-          ...new Set(assistEvents.map(e => e.productId).filter(Boolean) as string[]),
-        ];
+      const assistedProductIds = assistedProductIdsForOrder(orderProductIds, assistEvents);
 
+      if (assistedProductIds.length > 0) {
         // Founder panel finding: assistedRevenue was computed as
         // (avg variant price × 1 unit) per assisted product — ignored the
         // shopper's actual purchased variant, the quantity, and the real line

@@ -9,7 +9,8 @@
 //      colorFamily), sizing + fit preference (WIDGET_FIT_SUBMITTED payloads),
 //      occasion (CatalogGap + chat search reasons), and the combos proposed.
 //   2. CONVERSION INTELLIGENCE — try-on lift (CART_FROM_TRYON vs baseline),
-//      recommendation influence (COMBO_ADD_ALL / CART_FROM_MIRA), a behavioural
+//      recommendation influence (COMBO_ADD_ALL intent / confirmed Mira cart
+//      origins), a behavioural
 //      confidence score, drop-off, and complete-look economics.
 //   3. FIT & CONFIDENCE        — size confidence + return-risk (CART_CANCELLED
 //      vs CART_CONFIRMED) per category — the return-reduction weapon.
@@ -35,6 +36,7 @@
 // informs does not ship.
 
 import { prisma } from "../db.server";
+import { distinctOrderCountFromEvents, inferStyleProductSlot, type StyleProductSlot } from "@stylique/core";
 
 const WINDOW_DAYS = 30;
 const DAY = 86_400_000;
@@ -43,8 +45,18 @@ const LIVE_THRESHOLD = 40;
 
 export type InsightTier = "STARTER" | "GROWTH" | "ULTIMATE";
 
+export function fashionIntelligenceCatalogGapWhere(shopId: string, since: Date) {
+  return {
+    shopId,
+    createdAt: { gte: since },
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
 // ─── Output types (mirror of the demo engine) ───────────────────────────────
 export type Trend = "up" | "down" | "flat";
+export type InsightSource = "measured" | "mixed" | "modelled" | "insufficient_data";
 
 export type ColorRow = {
   color: string;
@@ -78,7 +90,11 @@ export type ConversionIntel = {
   tryOnPurchaseRate: number | null;
   baselinePurchaseRate: number | null;
   tryOnLiftX: number | null;
+  bundleIntentRate: number | null;
+  aiSuggestedCartRate: number | null;
+  /** @deprecated Use bundleIntentRate; kept for older dashboard clients. */
   bundlePurchaseRate: number | null;
+  /** @deprecated Use aiSuggestedCartRate; kept for older dashboard clients. */
   aiSuggestedAddRate: number | null;
   confidenceScore: number;
   confidenceDrivers: { label: string; weight: number }[];
@@ -109,6 +125,8 @@ export type ExecCard = {
   label: string;
   value: string;
   sub: string;
+  source: InsightSource;
+  sourceDetail: string;
   trend?: Trend;
   deltaPct?: number;
   tone: "loved" | "growing" | "converting" | "watch";
@@ -205,6 +223,92 @@ const OCCASION_RE: Record<string, RegExp> = {
   Date: /(date|romantic|dinner date)/i,
 };
 
+type IntelProduct = {
+  id: string;
+  handle: string;
+  title: string;
+  primaryColor: string | null;
+  colorFamily: string | null;
+  category: string | null;
+  productType: string | null;
+  tags: string[];
+};
+
+function productSlot(p: Pick<IntelProduct, "category" | "productType" | "title" | "tags">): StyleProductSlot {
+  return inferStyleProductSlot(p);
+}
+
+function slotAffinity(a: StyleProductSlot, b: StyleProductSlot): number {
+  if (a === "unknown" || b === "unknown") return 0.28;
+  const pair = new Set([a, b]);
+  const has = (x: Exclude<StyleProductSlot, "unknown">, y: Exclude<StyleProductSlot, "unknown">) => pair.has(x) && pair.has(y);
+  if (has("top", "bottom")) return 0.95;
+  if (has("dress", "outerwear")) return 0.9;
+  if (has("dress", "footwear") || has("dress", "accessory")) return 0.82;
+  if (has("top", "outerwear") || has("bottom", "outerwear")) return 0.78;
+  if (has("top", "accessory") || has("bottom", "accessory")) return 0.68;
+  if (has("top", "footwear") || has("bottom", "footwear")) return 0.64;
+  if (a === b && a !== "accessory") return 0.16;
+  return 0.45;
+}
+
+function colorFamilyAffinity(a: string | null, b: string | null): number {
+  if (!a || !b) return 0.58;
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  if (x === y) return 0.72;
+  const neutral = /black|white|ivory|cream|beige|tan|camel|grey|gray|navy|brown|stone|neutral/;
+  if (neutral.test(x) || neutral.test(y)) return 0.86;
+  return 0.66;
+}
+
+function catalogCompatibilityPairs(products: IntelProduct[], limit: number): CompatRow[] {
+  const rows: CompatRow[] = [];
+  for (let i = 0; i < products.length; i++) {
+    for (let j = i + 1; j < products.length; j++) {
+      const a = products[i]!;
+      const b = products[j]!;
+      const slot = slotAffinity(productSlot(a), productSlot(b));
+      if (slot < 0.55) continue;
+      const color = colorFamilyAffinity(a.colorFamily ?? a.primaryColor, b.colorFamily ?? b.primaryColor);
+      const score = Math.round((0.62 * slot + 0.38 * color) * 100) / 100;
+      rows.push({ pair: [a.title, b.title], score, lift: Math.round((score - 0.5) * 100) / 100 });
+    }
+  }
+  return rows.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
+function catalogComboFallback(products: IntelProduct[]): ComboRow[] {
+  return catalogCompatibilityPairs(products, 3).map((p) => ({
+    label: `${p.pair[0]} + ${p.pair[1]}`,
+    pieces: p.pair,
+    count: 0,
+    aov: null,
+  }));
+}
+
+export function fitEvidenceNote(
+  product: { category?: string | null; productType?: string | null },
+  measured: boolean,
+): string {
+  const label = titleCase(product.category ?? product.productType ?? "Piece");
+  return measured
+    ? `${label} — high click-to-cart hesitation on this product.`
+    : `${label} — catalog fit watchlist while size-toggle evidence builds.`;
+}
+
+export function fitReturnDriverCopy(measured: boolean): string {
+  return measured
+    ? "Fit uncertainty from observed cart confirmations versus cancellations."
+    : "Collecting return and cancellation evidence; current risk is directional.";
+}
+
+export function fitAudienceCopy(measured: boolean): string {
+  return measured
+    ? "Shoppers who shared measurements and accepted the size recommendation are the highest-trust segment."
+    : "Audience confidence unlocks after enough shoppers submit fit data and reach cart outcomes.";
+}
+
 // ─── Main entry ──────────────────────────────────────────────────────────────
 export async function getFashionIntelligence(
   shopId: string,
@@ -214,7 +318,7 @@ export async function getFashionIntelligence(
   const rnd = mulberry32(hashStr("sq-intel:" + shopId));
 
   // ── Real, shopId-scoped pulls ──────────────────────────────────────────────
-  const [products, grouped, clickEvents, cartEvents, fitEvents, gaps, comboEvents] =
+  const [products, grouped, clickEvents, cartEvents, fitEvents, sizeChoiceEvents, gaps, comboEvents] =
     await Promise.all([
       prisma.product.findMany({
         where: { shopId },
@@ -236,7 +340,7 @@ export async function getFashionIntelligence(
       }),
       prisma.analyticsEvent.findMany({
         where: { shopId, name: { in: ["CART_CONFIRMED", "CART_CANCELLED"] }, createdAt: { gte: since } },
-        select: { productId: true, name: true },
+        select: { id: true, productId: true, name: true, payload: true },
         take: 4000,
       }),
       prisma.analyticsEvent.findMany({
@@ -244,8 +348,13 @@ export async function getFashionIntelligence(
         select: { payload: true },
         take: 4000,
       }),
+      prisma.analyticsEvent.findMany({
+        where: { shopId, name: "SIZE_SELECTED", createdAt: { gte: since } },
+        select: { payload: true },
+        take: 4000,
+      }),
       prisma.catalogGap.findMany({
-        where: { shopId, createdAt: { gte: since } },
+        where: fashionIntelligenceCatalogGapWhere(shopId, since),
         select: { rawQuery: true },
         take: 2000,
       }),
@@ -261,7 +370,7 @@ export async function getFashionIntelligence(
 
   // realSignalCount = demand-bearing turns we can learn from.
   const realSignalCount =
-    evt("CHAT_MESSAGE_SENT") + evt("CHAT_PRODUCT_CLICKED") + evt("WIDGET_FIT_SUBMITTED") + gaps.length;
+    evt("CHAT_MESSAGE_SENT") + evt("CHAT_PRODUCT_CLICKED") + evt("WIDGET_FIT_SUBMITTED") + evt("SIZE_SELECTED") + gaps.length;
   const live = realSignalCount >= LIVE_THRESHOLD;
   const dataMode: FashionIntelligence["dataMode"] = live ? "live+modelled" : "modelled";
 
@@ -277,6 +386,7 @@ export async function getFashionIntelligence(
   // Real clicks / carts grouped by colour family (via product → colour).
   const colorTried = new Map<string, number>();
   const colorBought = new Map<string, number>();
+  const modelledColors = new Set<string>();
   const colorOf = (pid: string | null): string | null => {
     if (!pid) return null;
     const p = productById.get(pid);
@@ -308,6 +418,7 @@ export async function getFashionIntelligence(
         if (loud) convBase -= 0.12;
         convBase = Math.max(0.04, Math.min(0.46, convBase));
         purchased = Math.round(tried * convBase);
+        modelledColors.add(titleCase(color));
       }
       const safeTried = Math.max(1, tried);
       const saved = Math.round(safeTried * (0.12 + cseed() * 0.14));
@@ -341,32 +452,56 @@ export async function getFashionIntelligence(
     return { style, share: (styleCount.get(style) ?? 0) / styleTotal, trend: trendOf(delta), deltaPct: delta };
   }).sort((a, b) => b.share - a.share);
 
-  // ── Sizing + fit preference (real WIDGET_FIT_SUBMITTED payloads) ────────────
-  const sizeCount = new Map<string, number>();
+  // ── Sizing + fit preference ────────────────────────────────────────────────
+  // WIDGET_FIT_SUBMITTED tells us what Mira recommended. SIZE_SELECTED tells us
+  // what the shopper actually chose. Keep those separate so the dashboard never
+  // claims observed shopper behavior from a recommendation-only event.
+  const recommendedSizeCount = new Map<string, number>();
+  const selectedSizeCount = new Map<string, number>();
   const fitCount = new Map<string, number>(); // SLIM/FITTED/REGULAR/RELAXED/OVERSIZED
   let upsizeCount = 0;
   let fitTotal = 0;
   for (const e of fitEvents) {
     const p = e.payload as { size?: string; recommendedSize?: string; fitPreference?: string; pref?: string } | null;
     if (!p) continue;
-    if (p.size) sizeCount.set(p.size, (sizeCount.get(p.size) ?? 0) + 1);
+    const recommendedSize = (p.recommendedSize ?? p.size ?? "").trim();
+    if (recommendedSize) {
+      recommendedSizeCount.set(recommendedSize, (recommendedSizeCount.get(recommendedSize) ?? 0) + 1);
+    }
     const pref = (p.fitPreference ?? p.pref ?? "").toUpperCase();
     if (pref) {
       fitCount.set(pref, (fitCount.get(pref) ?? 0) + 1);
       fitTotal++;
     }
-    if (p.size && p.recommendedSize && p.size !== p.recommendedSize) upsizeCount++;
+  }
+  let comparableSizeChoices = 0;
+  for (const e of sizeChoiceEvents) {
+    const p = e.payload as { chosenSize?: string; size?: string; recommendedSize?: string; sizeDelta?: number } | null;
+    const chosenSize = (p?.chosenSize ?? p?.size ?? "").trim();
+    const recommendedSize = (p?.recommendedSize ?? "").trim();
+    if (chosenSize) selectedSizeCount.set(chosenSize, (selectedSizeCount.get(chosenSize) ?? 0) + 1);
+    const hasComparableSizes = Boolean(chosenSize && recommendedSize);
+    const hasDelta = typeof p?.sizeDelta === "number";
+    if (!hasComparableSizes && !hasDelta) continue;
+    comparableSizeChoices++;
+    if ((p?.sizeDelta ?? 0) !== 0 || (hasComparableSizes && chosenSize.toUpperCase() !== recommendedSize.toUpperCase())) {
+      upsizeCount++;
+    }
   }
   let topSizes: SizeShare[];
-  if (live && sizeCount.size > 0) {
-    const st = [...sizeCount.values()].reduce((a, b) => a + b, 0) || 1;
-    topSizes = [...sizeCount.entries()].map(([size, c]) => ({ size, share: c / st })).sort((a, b) => b.share - a.share).slice(0, 6);
+  if (live && selectedSizeCount.size > 0) {
+    const st = [...selectedSizeCount.values()].reduce((a, b) => a + b, 0) || 1;
+    topSizes = [...selectedSizeCount.entries()].map(([size, c]) => ({ size, share: c / st })).sort((a, b) => b.share - a.share).slice(0, 6);
+  } else if (live && recommendedSizeCount.size > 0) {
+    const st = [...recommendedSizeCount.values()].reduce((a, b) => a + b, 0) || 1;
+    topSizes = [...recommendedSizeCount.entries()].map(([size, c]) => ({ size, share: c / st })).sort((a, b) => b.share - a.share).slice(0, 6);
   } else {
     const w: Record<string, number> = { XS: 9, S: 24, M: 31, L: 21, XL: 11, "28": 12, "30": 9, "26": 8 };
     const t = Object.values(w).reduce((a, b) => a + b, 0);
     topSizes = Object.entries(w).map(([size, c]) => ({ size, share: c / t })).sort((a, b) => b.share - a.share).slice(0, 6);
   }
   let fitPrefs: FitShare[];
+  const fitPrefsSource: InsightSource = live && fitTotal > 0 ? "measured" : "modelled";
   if (live && fitTotal > 0) {
     const norm = (k: string) =>
       /OVER|RELAX/.test(k) ? "Relaxed / oversized" : /FIT|SLIM|SNUG/.test(k) ? "Fitted / snug" : "True to size";
@@ -380,10 +515,12 @@ export async function getFashionIntelligence(
       { pref: "Fitted / snug", share: 0.15 },
     ];
   }
-  const upsizeShare = fitEvents.length > 0 ? upsizeCount / fitEvents.length : 0.65;
-  const bodyInsight = live && fitEvents.length > 6
+  const upsizeShare = comparableSizeChoices > 0 ? upsizeCount / comparableSizeChoices : null;
+  const bodyInsight = live && comparableSizeChoices > 6 && upsizeShare != null
     ? `${Math.round(upsizeShare * 100)}% of shoppers chose a size different from the first recommendation — the size logic now offers the true size first with a one-size option beside it.`
-    : "65% of shoppers selecting an oversized fit still size up — the cut reads larger than the label. Recommendation logic offers the true size first with a one-size-up option, not the reverse.";
+    : live && fitEvents.length > 6
+    ? "Collecting selected-size data. Current size mix reflects Mira recommendations; drift and upsize claims will unlock once shoppers choose final sizes."
+    : "Collecting fit-confidence data. Size behavior will unlock after shoppers submit measurements and choose final sizes.";
 
   // ── Occasions (the WHY) — from real catalog-gap + chat-search text ──────────
   const occHits = new Map<string, number>();
@@ -412,6 +549,7 @@ export async function getFashionIntelligence(
 
   // ── Combos proposed (real combo names + product ids) ────────────────────────
   const comboTally = new Map<string, { count: number; pieces: string[] }>();
+  const comboPairTally = new Map<string, { count: number; a: string; b: string }>();
   for (const e of comboEvents) {
     const p = e.payload as { comboName?: string; productIds?: string[] } | null;
     const n = p?.comboName;
@@ -420,6 +558,19 @@ export async function getFashionIntelligence(
     cur.count++;
     if (cur.pieces.length === 0 && Array.isArray(p?.productIds)) {
       cur.pieces = (p!.productIds as string[]).map((id) => productById.get(id)?.title ?? "Piece").slice(0, 3);
+    }
+    if (Array.isArray(p?.productIds)) {
+      const ids = [...new Set(p.productIds.filter((id) => productById.has(id)))].slice(0, 5);
+      for (let i = 0; i < ids.length; i++) {
+        for (let j = i + 1; j < ids.length; j++) {
+          const a = ids[i]!;
+          const b = ids[j]!;
+          const key = [a, b].sort().join("|");
+          const pair = comboPairTally.get(key) ?? { count: 0, a, b };
+          pair.count++;
+          comboPairTally.set(key, pair);
+        }
+      }
     }
     comboTally.set(n, cur);
   }
@@ -432,21 +583,19 @@ export async function getFashionIntelligence(
       .map(([label, v]) => ({ label, pieces: v.pieces, count: v.count, aov: null }))
       .sort((a, b) => b.count - a.count).slice(0, 4);
   } else {
-    combos = [
-      { label: "The tailored neutral", pieces: ["Tailored Blazer", "Wide-Leg Trouser", "Silk Camisole"], count: 0, aov: null },
-      { label: "Evening, undone", pieces: ["Silk Slip", "Leather Trench"], count: 0, aov: null },
-      { label: "Quiet weekend", pieces: ["Linen Shirt", "Wide-Leg Denim"], count: 0, aov: null },
-    ];
+    combos = catalogComboFallback(products);
   }
 
   const consumer: ConsumerIntel = { styleMap, colors, topSizes, fitPrefs, bodyInsight, occasions, combos };
 
   // ── CONVERSION INTELLIGENCE (real cart events) ──────────────────────────────
-  const cartConfirmed = evt("CART_CONFIRMED");
+  const cartConfirmed = distinctOrderCountFromEvents(cartEvents.filter((e) => e.name === "CART_CONFIRMED"));
   const cartFromTryon = evt("CART_FROM_TRYON");
   const cartFromMira = evt("CART_FROM_MIRA");
+  const cartFromWidgetStyle = evt("CART_FROM_WIDGET_STYLE");
   const comboAddAll = evt("COMBO_ADD_ALL");
-  const chatSessions = Math.max(1, evt("CHAT_OPENED"));
+  const rawChatSessions = evt("CHAT_OPENED");
+  const chatSessions = Math.max(1, rawChatSessions);
   const tryonCompleted = Math.max(1, evt("TRYON_RENDER_COMPLETED"));
   // Try-on purchase rate = carts attributed to try-on / try-on renders.
   // HONEST metrics only — no fabricated lift floor (panel P0: the prior hardcoded
@@ -454,17 +603,39 @@ export async function getFashionIntelligence(
   // Shopify policy and misleading merchants/investors). Return null when no data.
   const tryOnPurchaseRate = live && tryonCompleted > 4 ? Math.min(0.5, cartFromTryon / tryonCompleted) : null;
   const baselinePurchaseRate = live && chatSessions > 4 ? Math.min(0.2, Math.max(0.02, cartConfirmed / (chatSessions * 4))) : null;
-  const bundlePurchaseRate = live && cartConfirmed > 4 ? Math.min(0.6, comboAddAll / Math.max(1, cartConfirmed)) || null : null;
-  const aiSuggestedAddRate = live && cartConfirmed > 4 ? Math.min(0.6, cartFromMira / Math.max(1, cartConfirmed)) || null : null;
+  const bundleIntentRate = live && chatSessions > 4 ? Math.min(0.6, comboAddAll / Math.max(1, chatSessions)) || null : null;
+  const aiSuggestedCartRate = live && cartConfirmed > 4
+    ? Math.min(0.6, (cartFromMira + cartFromWidgetStyle + cartFromTryon) / Math.max(1, cartConfirmed)) || null
+    : null;
+  const funnelLoss = (from: number, to: number) => {
+    if (from <= 0) return 0;
+    return Math.round((Math.max(0, from - to) / from) * 100) / 100;
+  };
+  const messagesSent = evt("CHAT_MESSAGE_SENT");
+  const combosProposed = evt("CHAT_COMBO_PROPOSED");
+  const productClicks = evt("CHAT_PRODUCT_CLICKED");
+  const fitSubmitted = evt("WIDGET_FIT_SUBMITTED");
+  const styleViewed = evt("WIDGET_STYLE_VIEWED");
+  const confidenceScore = live
+    ? Math.round(Math.min(95, 45 + Math.min(30, realSignalCount / 3) + ((aiSuggestedCartRate ?? 0) * 35)))
+    : Math.round(Math.min(70, 30 + realSignalCount));
+  const fullLookMultiplier = live && rawChatSessions > 0
+    ? Math.round((1 + Math.min(2.5, comboAddAll / rawChatSessions * 3)) * 10) / 10
+    : 0;
+  const stylistSpendLift = live && cartConfirmed > 0
+    ? Math.round(((cartFromMira + cartFromWidgetStyle + cartFromTryon) / cartConfirmed) * 100) / 100
+    : 0;
   const conversion: ConversionIntel = {
     tryOnPurchaseRate,
     baselinePurchaseRate,
     tryOnLiftX: tryOnPurchaseRate != null && baselinePurchaseRate != null
       ? Math.round((tryOnPurchaseRate / Math.max(0.01, baselinePurchaseRate)) * 10) / 10
       : null,
-    bundlePurchaseRate,
-    aiSuggestedAddRate,
-    confidenceScore: 74,
+    bundleIntentRate,
+    aiSuggestedCartRate,
+    bundlePurchaseRate: bundleIntentRate,
+    aiSuggestedAddRate: aiSuggestedCartRate,
+    confidenceScore,
     confidenceDrivers: [
       { label: "Tried it on", weight: 0.34 },
       { label: "Accepted size rec", weight: 0.26 },
@@ -472,13 +643,13 @@ export async function getFashionIntelligence(
       { label: "Viewed complete look", weight: 0.22 },
     ],
     dropOff: [
-      { stage: "Size selection", lossPct: 0.31 },
-      { stage: "Colour uncertainty", lossPct: 0.24 },
-      { stage: "Styling confusion", lossPct: 0.19 },
-      { stage: "Price hesitation", lossPct: 0.16 },
+      { stage: "Opened but did not message", lossPct: funnelLoss(rawChatSessions, messagesSent) },
+      { stage: "Messaged but no look shown", lossPct: funnelLoss(messagesSent, combosProposed + styleViewed) },
+      { stage: "Look shown but no product click", lossPct: funnelLoss(combosProposed + styleViewed, productClicks) },
+      { stage: "Fit started but not submitted", lossPct: funnelLoss(evt("WIDGET_EXPERIENCE_SELECTED"), fitSubmitted) },
     ],
-    fullLookMultiplier: 3.2,
-    stylistSpendLift: 0.48,
+    fullLookMultiplier,
+    stylistSpendLift,
   };
 
   // ── FIT & CONFIDENCE (real CART_CANCELLED vs CONFIRMED) ─────────────────────
@@ -499,8 +670,14 @@ export async function getFashionIntelligence(
       let confusion = Math.round(14 + fseed() * 40);
       const clicks = clickByProduct.get(p.id) ?? 0;
       const carts = cartByProduct.get(p.id) ?? 0;
-      if (live && clicks > 4) confusion = Math.round(Math.max(4, Math.min(62, (1 - carts / Math.max(1, clicks)) * 70)));
-      return { handle: p.handle, name: p.title, confusion, note: `${titleCase(p.category ?? p.productType ?? "Piece")} — repeated size toggling before checkout.` };
+      const measured = live && clicks > 4;
+      if (measured) confusion = Math.round(Math.max(4, Math.min(62, (1 - carts / Math.max(1, clicks)) * 70)));
+      return {
+        handle: p.handle,
+        name: p.title,
+        confusion,
+        note: fitEvidenceNote(p, measured),
+      };
     })
     .sort((a, b) => b.confusion - a.confusion)
     .slice(0, 5);
@@ -508,9 +685,9 @@ export async function getFashionIntelligence(
     sizeConfidence,
     returnRiskScore,
     returnRiskLevel: returnRiskScore < 18 ? "low" : returnRiskScore < 28 ? "moderate" : "elevated",
-    topReturnDriver: "Fit uncertainty on bias-cut & high-rise pieces (repeated size toggling before checkout)",
+    topReturnDriver: fitReturnDriverCopy(live && confirms + cancels > 6),
     productFit,
-    bestAudience: "Shoppers who shared height + weight and accepted the size rec keep at 91% — the highest-trust segment.",
+    bestAudience: fitAudienceCopy(live && fitEvents.length > 6),
   };
 
   // ── STYLE & MERCHANDISING ───────────────────────────────────────────────────
@@ -535,42 +712,133 @@ export async function getFashionIntelligence(
     .filter((r) => r.gap >= 3)
     .sort((a, b) => b.gap - a.gap)
     .slice(0, 4);
-  // Compatibility / collections / emerging trends are modelled (need k-anon
-  // network data for true trends — kept honest as modelled until that lands).
-  const compatibility: CompatRow[] = [
-    { pair: ["Tailored Blazer", "Wide-Leg Trouser"], score: 0.94, lift: 0.41 },
-    { pair: ["Silk Slip", "Leather Trench"], score: 0.9, lift: 0.37 },
-    { pair: ["Cashmere V-Neck", "Pleated Midi Skirt"], score: 0.86, lift: 0.29 },
-    { pair: ["Linen Shirt", "Wide-Leg Denim"], score: 0.83, lift: 0.26 },
-  ];
-  const collections: CollectionPerf[] = [
-    { collection: "Tailoring", share: 0.29, topAge: "28–38", topOccasion: "Office / work", topStyle: "Tailored Sharp" },
-    { collection: "Evening", share: 0.24, topAge: "25–34", topOccasion: "Evening / party", topStyle: "Evening Drama" },
-    { collection: "The Atelier", share: 0.2, topAge: "30–42", topOccasion: "Everyday", topStyle: "Minimal Luxe" },
-    { collection: "Outerwear", share: 0.16, topAge: "32–45", topOccasion: "Travel", topStyle: "Old Money" },
-    { collection: "Knitwear", share: 0.11, topAge: "26–40", topOccasion: "Everyday", topStyle: "Natural Tones" },
-  ];
-  const emergingTrends: TrendRow[] = [
-    { label: "Oversized silhouettes", direction: "up", deltaPct: 32, kind: "cut" },
-    { label: "Natural / earth tones", direction: "up", deltaPct: 18, kind: "color" },
-    { label: "Relaxed fit", direction: "up", deltaPct: 14, kind: "fit" },
-    { label: "Silk & charmeuse", direction: "up", deltaPct: 9, kind: "material" },
-    { label: "Slim-fit trousers", direction: "down", deltaPct: -21, kind: "cut" },
-    { label: "Bright / neon", direction: "down", deltaPct: -16, kind: "color" },
-  ];
+  const measuredCompatibility: CompatRow[] = [...comboPairTally.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4)
+    .map((p) => {
+      const a = productById.get(p.a);
+      const b = productById.get(p.b);
+      const base = a && b ? catalogCompatibilityPairs([a, b], 1)[0]?.score ?? 0.72 : 0.72;
+      const score = Math.min(0.98, Math.round((base + Math.min(0.18, p.count / 100)) * 100) / 100);
+      return {
+        pair: [a?.title ?? "Piece", b?.title ?? "Piece"],
+        score,
+        lift: Math.round(Math.min(0.5, p.count / Math.max(20, comboEvents.length)) * 100) / 100,
+      };
+    });
+  const compatibility: CompatRow[] = measuredCompatibility.length
+    ? measuredCompatibility
+    : catalogCompatibilityPairs(products, 4);
+  const collectionBuckets = new Map<string, { count: number; styleCounts: Map<string, number> }>();
+  for (const p of products) {
+    const collection = titleCase((p.category ?? p.productType ?? productSlot(p)).toString());
+    const styleName = styleRegisterOf(p);
+    const bucket = collectionBuckets.get(collection) ?? { count: 0, styleCounts: new Map<string, number>() };
+    bucket.count++;
+    bucket.styleCounts.set(styleName, (bucket.styleCounts.get(styleName) ?? 0) + 1);
+    collectionBuckets.set(collection, bucket);
+  }
+  const productTotal = Math.max(1, products.length);
+  const topOccasion = occasions[0]?.occasion ?? "Not enough demand data";
+  const collections: CollectionPerf[] = [...collectionBuckets.entries()]
+    .map(([collection, bucket]) => ({
+      collection,
+      share: Math.round((bucket.count / productTotal) * 100) / 100,
+      topAge: "Not collected",
+      topOccasion,
+      topStyle: [...bucket.styleCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Collecting",
+    }))
+    .sort((a, b) => b.share - a.share)
+    .slice(0, 5);
+  const trendCounts = new Map<string, { count: number; kind: TrendRow["kind"] }>();
+  const addTrend = (label: string, kind: TrendRow["kind"]) => {
+    const cur = trendCounts.get(label) ?? { count: 0, kind };
+    cur.count++;
+    trendCounts.set(label, cur);
+  };
+  for (const g of gaps) {
+    const q = g.rawQuery.toLowerCase();
+    if (/\b(oversized|relaxed|loose|boxy)\b/.test(q)) addTrend("Relaxed / oversized fit", "fit");
+    if (/\b(petite|plus|extended|tall)\b/.test(q)) addTrend("Extended size range", "fit");
+    if (/\b(linen|silk|cashmere|wool|leather|suede|cotton)\b/.test(q)) addTrend(titleCase(q.match(/\b(linen|silk|cashmere|wool|leather|suede|cotton)\b/)?.[1] ?? "Material"), "material");
+    if (/\b(red|pink|blue|green|black|white|ivory|cream|camel|brown|neutral|natural|navy)\b/.test(q)) addTrend(titleCase(q.match(/\b(red|pink|blue|green|black|white|ivory|cream|camel|brown|neutral|natural|navy)\b/)?.[1] ?? "Color"), "color");
+    if (/\b(cropped|wide leg|wide-leg|maxi|mini|tailored|bias|straight leg|straight-leg)\b/.test(q)) addTrend(titleCase(q.match(/\b(cropped|wide leg|wide-leg|maxi|mini|tailored|bias|straight leg|straight-leg)\b/)?.[1] ?? "Cut"), "cut");
+  }
+  const trendDenom = Math.max(1, gaps.length);
+  const emergingTrends: TrendRow[] = [...trendCounts.entries()]
+    .map(([label, v]) => ({
+      label,
+      direction: "up" as const,
+      deltaPct: Math.round((v.count / trendDenom) * 1000) / 10,
+      kind: v.kind,
+    }))
+    .sort((a, b) => b.deltaPct - a.deltaPct)
+    .slice(0, 6);
   const style: StyleIntel = { mostStyledNotSold, compatibility, collections, emergingTrends };
 
   // ── EXECUTIVE SUMMARY ────────────────────────────────────────────────────────
   const topShade = colors.find((c) => c.signal === "converter") ?? colors[0];
   const curiosity = colors.find((c) => c.signal === "curiosity");
   const topFit = fitPrefs[0];
+  const topShadeSource: InsightSource = topShade
+    ? modelledColors.has(topShade.color) ? "modelled" : "measured"
+    : "insufficient_data";
+  const curiositySource: InsightSource = curiosity
+    ? modelledColors.has(curiosity.color) ? "modelled" : "measured"
+    : "insufficient_data";
+  const returnRiskSource: InsightSource = live && confirms + cancels > 6 ? "measured" : "modelled";
   const exec: ExecCard[] = [
-    { label: "Most loved shade", value: topShade?.color ?? "Ivory", sub: `${pct(topShade?.convertRate ?? 0.3)}% try → buy · the reliable converter`, tone: "loved" },
-    { label: "Fastest-growing colour", value: "Natural tones", sub: "+18% try-ons this period", trend: "up", deltaPct: 18, tone: "growing" },
-    { label: "Highest-converting fit", value: topFit?.pref.split(" / ")[0] ?? "Relaxed", sub: `${pct(topFit?.share ?? 0.48)}% of shoppers · drives the size logic`, tone: "converting" },
-    { label: "Try-on lift", value: conversion.tryOnLiftX != null ? `${conversion.tryOnLiftX}×` : "Collecting data", sub: conversion.tryOnPurchaseRate != null ? `${pct(conversion.tryOnPurchaseRate)}% with try-on vs ${pct(conversion.baselinePurchaseRate ?? 0)}% without` : "Add more try-on sessions to see your lift", trend: "up", tone: "converting" },
-    { label: "Curiosity, not conversion", value: curiosity?.color ?? "Cardinal", sub: "High try-ons, low buy — merchandise as accent, not hero", tone: "watch" },
-    { label: "Return risk", value: `${fit.returnRiskScore}`, sub: `${fit.returnRiskLevel} · ${fit.sizeConfidence}% accept the size rec`, trend: fit.returnRiskLevel === "low" ? "down" : "flat", tone: "watch" },
+    {
+      label: "Most loved shade",
+      value: topShade?.color ?? "Collecting data",
+      sub: topShade ? `${pct(topShade.convertRate)}% interest → cart · the reliable converter` : "Needs colour and cart signals",
+      source: topShadeSource,
+      sourceDetail: topShadeSource === "measured" ? "From product clicks and confirmed carts by colour." : "Directional catalog model until enough colour-level signals accrue.",
+      tone: "loved",
+    },
+    {
+      label: "Strongest colour signal",
+      value: topShade?.color ?? "Collecting data",
+      sub: topShade ? `${pct(topShade.convertRate)}% interest → cart` : "Needs colour and cart signals",
+      source: topShadeSource,
+      sourceDetail: topShadeSource === "measured" ? "From product clicks and confirmed carts by colour." : "Directional catalog model until enough colour-level signals accrue.",
+      trend: topShadeSource === "measured" ? "up" : "flat",
+      tone: "growing",
+    },
+    {
+      label: "Highest-converting fit",
+      value: topFit?.pref.split(" / ")[0] ?? "Collecting data",
+      sub: topFit ? `${pct(topFit.share)}% of shoppers · drives the size logic` : "Needs fit submissions",
+      source: fitPrefsSource,
+      sourceDetail: fitPrefsSource === "measured" ? "From submitted shopper fit preferences." : "Directional fit mix until enough fit submissions accrue.",
+      tone: "converting",
+    },
+    {
+      label: "Try-on cart assist",
+      value: conversion.tryOnLiftX != null ? `${conversion.tryOnLiftX}×` : "Collecting data",
+      sub: conversion.tryOnPurchaseRate != null ? `${pct(conversion.tryOnPurchaseRate)}% try-on carts vs ${pct(conversion.baselinePurchaseRate ?? 0)}% baseline order proxy` : "Add more try-on and cart events to see the assist ratio",
+      source: conversion.tryOnLiftX != null ? "measured" : "insufficient_data",
+      sourceDetail: conversion.tryOnLiftX != null ? "From try-on render events, cart-origin events, and confirmed-order proxy. Not a controlled causal lift." : "Hidden until enough try-on and cart events exist.",
+      trend: "up",
+      tone: "converting",
+    },
+    {
+      label: "Curiosity, not conversion",
+      value: curiosity?.color ?? "Collecting data",
+      sub: curiosity ? "High try-ons, low buy — merchandise as accent, not hero" : "Needs colour-level curiosity signals",
+      source: curiositySource,
+      sourceDetail: curiositySource === "measured" ? "From colour-level clicks versus confirmed carts." : "Directional catalog model until enough colour-level signals accrue.",
+      tone: "watch",
+    },
+    {
+      label: "Fit confidence risk",
+      value: `${fit.returnRiskScore}`,
+      sub: `${fit.returnRiskLevel} · ${fit.sizeConfidence}% accept the size rec`,
+      source: returnRiskSource,
+      sourceDetail: returnRiskSource === "measured" ? "From cart confirmations and cancellations; not a returns-rate claim." : "Directional model until enough cart outcome signals accrue.",
+      trend: fit.returnRiskLevel === "low" ? "down" : "flat",
+      tone: "watch",
+    },
   ];
 
   // ── TIER GATING ──────────────────────────────────────────────────────────────

@@ -12,11 +12,14 @@
 
 import { prisma } from "../db.server";
 import type { BrainClientAction, BrainCombo, BrainProduct } from "@stylique/ai";
+import { inferStyleProductSlot, resolveTryonImage, type StyleProductSlot } from "@stylique/core";
 import { canConsume, recordConsume } from "./entitlement.server";
 import {
   appendChatTurns,
   buildShopperBrief,
   getOrCreateShopperSession,
+  persistMiraObjective,
+  readMiraObjective,
 } from "./session.server";
 
 // SYSTEMIC FALLBACK — the brain's LLM sometimes replies without calling its
@@ -96,12 +99,40 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
   // Add occasion-derived garment tokens so an occasion query maps to real pieces.
   const expanded = OCCASION_EXPANSION.filter(([re]) => re.test(lc)).flatMap(([, words]) => words);
   const tokens = Array.from(new Set([...rawTokens, ...expanded])).slice(0, 12);
-  const include = { images: { orderBy: { position: "asc" as const }, take: 1 }, variants: { select: { size: true, priceCents: true } } };
+  const catalogSearchSelect = {
+    handle: true,
+    title: true,
+    category: true,
+    primaryColor: true,
+    primaryTryonImageId: true,
+    images: {
+      orderBy: { position: "asc" as const },
+      select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true },
+      take: 8,
+    },
+    variants: { select: { size: true, priceCents: true } },
+  };
   // Drop obvious non-apparel noise (the dev store's leftover snowboard/gift-card demo data).
   const NOISE = ["snowboard", "gift card", "giftcard", "ski wax"];
   const notNoise = (title: string) => !NOISE.some((n) => title.toLowerCase().includes(n));
 
-  let rows: Array<{ handle: string; title: string; category: string | null; primaryColor: string | null; images: { url: string }[]; variants: { size: string | null; priceCents: number | null }[] }> = [];
+  let rows: Array<{
+    handle: string;
+    title: string;
+    category: string | null;
+    primaryColor: string | null;
+    primaryTryonImageId: string | null;
+    images: Array<{
+      id: string;
+      url: string;
+      preppedUrl: string | null;
+      position: number | null;
+      qualityScore: number | null;
+      garmentRole: string | null;
+      altText: string | null;
+    }>;
+    variants: { size: string | null; priceCents: number | null }[];
+  }> = [];
   // Bound every catalog query so a stalled Neon pooler (`Closed`, OI-49) can't hang
   // the whole adapter — it's awaited inline in the brain race, and the brain
   // AbortController does NOT cancel this Prisma promise (panel P1). On timeout we
@@ -119,7 +150,7 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
         { tags: { has: t } },
         { category: { contains: t, mode: "insensitive" as const } },
       ]) },
-      take: 8, include,
+      take: 8, select: catalogSearchSelect,
     }) as Promise<typeof rows>);
   }
   // Keyword search that returns ONLY the current product (then excluded below) is
@@ -130,14 +161,19 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
   // In strict mode a keyword miss is a real gap — return nothing rather than
   // recent products (which would paper over the absence).
   if (!strict && usable(rows).length === 0) {
-    rows = await raceCatalog(prisma.product.findMany({ where: { shopId: shop.id }, take: 12, orderBy: { updatedAt: "desc" }, include }) as Promise<typeof rows>);
+    rows = await raceCatalog(prisma.product.findMany({ where: { shopId: shop.id }, take: 12, orderBy: { updatedAt: "desc" }, select: catalogSearchSelect }) as Promise<typeof rows>);
   }
   const cleaned = rows.filter((r) => r.handle !== excludeHandle && notNoise(r.title));
   // Prefer products that actually have an image — an imageless card reads as a
   // broken demo on a visual-first purchase (panel rec #3). Keep imageless ones
   // only as a backfill so we never return an empty set.
-  const withImg = cleaned.filter((r) => !!r.images[0]?.url);
-  const ordered = [...withImg, ...cleaned.filter((r) => !r.images[0]?.url)];
+  const withResolvedImg = cleaned
+    .map((r) => ({ row: r, image: resolveTryonImage(r.images, r.primaryTryonImageId) }))
+    .filter((r) => !!r.image?.url);
+  const ordered = [
+    ...withResolvedImg.map((r) => ({ ...r.row, resolvedImageUrl: r.image?.url ?? null })),
+    ...cleaned.filter((r) => !withResolvedImg.some((img) => img.row.handle === r.handle)).map((r) => ({ ...r, resolvedImageUrl: null })),
+  ];
   return ordered
     .slice(0, 6)
     .map((r) => {
@@ -147,7 +183,7 @@ async function searchShopCatalog(shopDomain: string, query: string, excludeHandl
         name: r.title,
         category: r.category ?? null,
         priceUsd: prices.length ? Math.round(Math.min(...prices) / 100) : null,
-        image: r.images[0]?.url ?? null,
+        image: r.resolvedImageUrl,
         sizes: r.variants.map((v) => v.size).filter((s): s is string => !!s),
         colors: r.primaryColor ? [r.primaryColor] : [],
       };
@@ -176,18 +212,14 @@ export type AdaptedProduct = {
 // (one anchor + complementary pieces from DIFFERENT slots — never two bottoms),
 // season/occasion-filtered, with a real one-line stylist rationale — so even on
 // a brain dead-end / 429 the shopper gets a genuine "look", not a pile.
-type Slot = "dress" | "top" | "bottom" | "outerwear" | "footwear" | "accessory";
+type Slot = Exclude<StyleProductSlot, "unknown">;
 
-function slotOf(p: AdaptedProduct): Slot {
-  const s = `${p.name} ${p.category ?? ""}`.toLowerCase();
-  // Desi full-garments: lehenga/gharara/sharara/anarkali are complete looks
-  if (/(lehenga|lehnga|gharara|sharara|anarkali|abaya|kaftan|maxi dress|jumpsuit|saree|sari|gown|dress|slip|dungaree)/.test(s)) return "dress";
-  if (/(coat|blazer|jacket|trench|cardigan|overcoat|parka|shrug|bolero|cape|koti|waistcoat)/.test(s)) return "outerwear";
-  if (/(trouser|pant|jean|skirt|short|legging|culotte|palazzo|patiala|salwar|shalwar|churidar|sharara bottom|dhoti|culottes)/.test(s)) return "bottom";
-  if (/(shoe|heel|boot|sneaker|flat|loafer|sandal|pump|mule|chappal|khussa|jutii|juttis|kolhapuri)/.test(s)) return "footwear";
-  if (/(bag|belt|scarf|dupatta|stole|jewel|necklace|earring|maang tikka|tikka|jhumka|bangle|bracelet|ring|hat|clutch|tote|accessor|sunglass|glove|watch|potli|mang tikka)/.test(s)) return "accessory";
-  // Desi tops: kurti/kurta/choli/blouse/kameez/tunic
-  return "top"; // shirt/top/tee/knit/kurta/kurti/kameez/blouse/choli/cami/etc
+function slotOf(p: AdaptedProduct): StyleProductSlot {
+  return inferStyleProductSlot({
+    title: p.name,
+    category: p.category,
+    tags: [],
+  });
 }
 
 // Drop season-wrong anchors (panel rec #11): no wool/cashmere for a summer brief,
@@ -200,6 +232,50 @@ function seasonOk(p: AdaptedProduct, query: string): boolean {
   if (summer && /(wool|cashmere|heavy knit|fleece|shearling|parka|puffer)/.test(s)) return false;
   if (winter && /(linen sundress|swim|bikini|tank)/.test(s)) return false;
   return true;
+}
+
+function isNeutralColor(c: string | null | undefined): boolean {
+  return !c || /black|white|ivory|cream|beige|tan|camel|grey|gray|navy|brown|stone|neutral|charcoal|oat/i.test(c);
+}
+
+function colorPairScore(a: AdaptedProduct, b: AdaptedProduct): number {
+  const ac = a.colors[0] ?? null;
+  const bc = b.colors[0] ?? null;
+  if (!ac || !bc) return 0.58;
+  if (ac.toLowerCase() === bc.toLowerCase()) return 0.72;
+  if (isNeutralColor(ac) || isNeutralColor(bc)) return 0.88;
+  return 0.66;
+}
+
+function slotPairScore(a: StyleProductSlot, b: StyleProductSlot): number {
+  if (a === "unknown" || b === "unknown") return 0.28;
+  const pair = new Set([a, b]);
+  const has = (x: Slot, y: Slot) => pair.has(x) && pair.has(y);
+  if (has("top", "bottom")) return 1;
+  if (has("dress", "outerwear")) return 0.94;
+  if (has("dress", "footwear") || has("dress", "accessory")) return 0.84;
+  if (has("top", "outerwear") || has("bottom", "outerwear")) return 0.82;
+  if (has("top", "footwear") || has("bottom", "footwear")) return 0.72;
+  if (has("top", "accessory") || has("bottom", "accessory")) return 0.7;
+  if (a === b && a !== "accessory") return 0.12;
+  return 0.48;
+}
+
+function pricePairScore(anchor: AdaptedProduct, cand: AdaptedProduct): number {
+  if (!anchor.priceUsd || !cand.priceUsd) return 0.65;
+  const ratio = cand.priceUsd / Math.max(1, anchor.priceUsd);
+  if (ratio <= 1) return 1;
+  if (ratio <= 1.4) return 0.84;
+  if (ratio <= 2) return 0.58;
+  return 0.36;
+}
+
+function lookCandidateScore(anchor: AdaptedProduct, cand: AdaptedProduct, query: string): number {
+  const slot = slotPairScore(slotOf(anchor), slotOf(cand));
+  const color = colorPairScore(anchor, cand);
+  const price = pricePairScore(anchor, cand);
+  const season = seasonOk(cand, query) ? 1 : 0;
+  return 0.42 * slot + 0.32 * color + 0.16 * price + 0.1 * season;
 }
 
 function occasionTitle(query: string): string {
@@ -232,26 +308,38 @@ function buildStyledLook(
   const bySlot = new Map<Slot, AdaptedProduct[]>();
   for (const p of cand) {
     const sl = slotOf(p);
+    if (sl === "unknown") continue;
     (bySlot.get(sl) ?? bySlot.set(sl, []).get(sl)!).push(p);
   }
-  const take = (sl: Slot) => bySlot.get(sl)?.[0];
+  const anchor = cand.find((p) => slotOf(p) !== "unknown") ?? cand[0]!;
+  const used = new Set<string>([anchor.handle]);
+  const take = (sl: Slot) => {
+    const best = (bySlot.get(sl) ?? [])
+      .filter((p) => !used.has(p.handle))
+      .sort((a, b) => lookCandidateScore(anchor, b, query) - lookCandidateScore(anchor, a, query))[0];
+    if (best) used.add(best.handle);
+    return best;
+  };
   const pieces: AdaptedProduct[] = [];
-  const dress = take("dress");
-  if (dress) {
-    pieces.push(dress);
+  const anchorSlot = slotOf(anchor);
+  if (anchorSlot === "dress") {
+    pieces.push(anchor);
     const layer = take("outerwear"); if (layer) pieces.push(layer);
     const acc = take("footwear") ?? take("accessory"); if (acc) pieces.push(acc);
   } else {
-    const top = take("top"); const bottom = take("bottom");
-    if (top) pieces.push(top);
-    if (bottom) pieces.push(bottom);
+    pieces.push(anchor);
+    const top = anchorSlot === "top" ? undefined : take("top");
+    const bottom = anchorSlot === "bottom" ? undefined : take("bottom");
+    if (anchorSlot !== "bottom" && bottom) pieces.push(bottom);
+    if (anchorSlot !== "top" && top) pieces.push(top);
     const layer = take("outerwear"); if (layer && pieces.length < 3) pieces.push(layer);
+    const finish = take("footwear") ?? take("accessory"); if (finish && pieces.length < 3) pieces.push(finish);
     if (pieces.length < 2) { const extra = take("footwear") ?? take("accessory"); if (extra) pieces.push(extra); }
   }
   if (pieces.length < 2) return null;
 
   const names = pieces.map((p) => p.name);
-  const anchor = names[0];
+  const anchorName = names[0];
   const occasion = /\bwedding\b/i.test(query) ? "a wedding"
     : /\bdinner|date\b/i.test(query) ? "dinner"
     : /\bwork|office|interview\b/i.test(query) ? "the office"
@@ -259,8 +347,8 @@ function buildStyledLook(
     : "the occasion";
   const reasoning =
     pieces.length >= 3
-      ? `The ${anchor} anchors it, the ${names[1]} balances the silhouette, and the ${names[2]} finishes the look — pulled together for ${occasion}.`
-      : `The ${anchor} anchors the look — ${occasion === "a wedding" ? "elegant and occasion-ready" : occasion === "dinner" ? "polished for the evening" : "a considered pairing"} with the ${names[1]}.`;
+      ? `The ${anchorName} anchors it, the ${names[1]} balances the silhouette, and the ${names[2]} finishes the look — pulled together for ${occasion}.`
+      : `The ${anchorName} anchors the look — ${occasion === "a wedding" ? "elegant and occasion-ready" : occasion === "dinner" ? "polished for the evening" : "a considered pairing"} with the ${names[1]}.`;
   return { title: occasionTitle(query), reasoning, pieces };
 }
 
@@ -339,27 +427,21 @@ function chipsFor(route: MiraRoute): string[] {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSOLIDATED runMiraAdapter — ONE BRAIN, three callers (apps/web demo,
-// stylique-app /api/demo/mira, storefront proxy). All paths now run the
-// SAME brain code at apps/web/app/api/mira/route.ts.
+// stylique-app /api/demo/mira, storefront proxy). Production storefront calls
+// now run the SAME brain package in-process via @stylique/mira-brain.
 //
 // What this does:
 //   1. Load merchant's Prisma catalog (top ~80 products)
-//   2. Transform to the demo brain's Product shape
-//   3. POST to MIRA_DEMO_BRAIN_URL (= apps/web /api/mira) with
-//      injectedCatalog + injectedKnowledge
+//   2. Transform to the brain Product shape
+//   3. Call @stylique/mira-brain in-process with injectedCatalog +
+//      injectedKnowledge
 //   4. Map response back to MiraAdapterResult shape the storefront expects
 //
 // No more 568 lines of brain logic duplication. No more drift. ONE truth.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Audit P0 (this session): there used to be TWO default brain origins drifting
-// between the proxy route and this adapter (`stylique-web.up.railway.app` vs
-// `stylique-web-production.up.railway.app/api/mira`) — depending on whether
-// MIRA_DEMO_BRAIN_URL was set, conversions and chat could hit different
-// hosts. Now: one canonical env (`MIRA_BRAIN_ORIGIN`, origin only) with
-// MIRA_DEMO_BRAIN_URL retained as a backward-compatible alias that gets
-// normalized to origin. Both this adapter and proxy.shopper.$.tsx read from
-// the same shared resolver.
+// Legacy HTTP fallback resolver. Production startup rejects
+// USE_IN_PROCESS_BRAIN=0, so this exists only as a local/dev safety valve.
 function resolveBrainOrigin(): string {
   const raw =
     process.env.MIRA_BRAIN_ORIGIN ??
@@ -388,7 +470,7 @@ const UNIFIED_BRAIN_URL = `${MIRA_BRAIN_ORIGIN}/api/mira`;
  *   - `ProductVariant.measurementsJson` (D39 per-variant) → richest sizeChart row
  *   - `ProductVariant.inventoryQuantity` + `availableForSale` → inStockSizes
  *   - `primaryColor` + `colorFamily` + variant colors → colors (deduped)
- *   - `primaryTryonImageId` → preferred image when set, falls back to position:0
+ *   - `primaryTryonImageId` + image quality metadata → shared role/score-aware product image ordering
  *   - `tags` + `productType` + `vendor` → tags (visible to model for matching)
  *   - `category` (from Shopify productType or our normaliser) → category
  */
@@ -450,7 +532,7 @@ async function loadMerchantCatalog(shopDomain: string): Promise<{ catalog: unkno
           take: 50,
         },
         images: {
-          select: { id: true, url: true, role: true, position: true, qualityScore: true },
+          select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true },
           orderBy: { position: "asc" },
           take: 8,
         },
@@ -488,11 +570,9 @@ async function loadMerchantCatalog(shopDomain: string): Promise<{ catalog: unkno
       const prices = p.variants.map((v) => v.priceCents ?? Infinity).filter((c) => Number.isFinite(c));
       const minPrice = prices.length ? Math.min(...prices) : 0;
 
-      // Image: prefer primaryTryonImageId (image-quality scored), else position:0
-      const primaryImage =
-        p.images.find((i) => i.id === p.primaryTryonImageId)?.url
-        ?? p.images[0]?.url
-        ?? null;
+      // Image: use the same role/score/alt-aware resolver as try-on render and
+      // prewarm paths so UI cards do not drift back to Shopify gallery order.
+      const primaryImage = resolveTryonImage(p.images, p.primaryTryonImageId)?.url ?? null;
       const imageUrls = p.images.map((i) => i.url);
 
       // Tags — surface productType + vendor + tags so the model can match
@@ -572,17 +652,30 @@ async function loadMerchantBrand(shopDomain: string): Promise<Record<string, str
     const brandName = stylistCfg.brandName ?? fromDomain;
     const stylistName = stylistCfg.stylistName ?? "Mira";
 
-    // BrandProfile.toneJson typically: { pricePositioning, dominantFabrics, dominantColors, seasonality, formality, vibeWords[] }
+    // BrandProfile is written by catalog/Instagram DNA extraction as
+    // paletteJson.hex + toneJson.moodAdjectives/dominantFabrics/seasonality.
+    // Support legacy dominantColors/vibeWords too, but read the current shape
+    // first so extracted DNA actually reaches Mira's production prompt.
     const tone = (brandRow?.toneJson ?? {}) as Record<string, unknown>;
     const palette = (brandRow?.paletteJson ?? {}) as Record<string, unknown>;
     const fabrics = Array.isArray(tone.dominantFabrics) ? (tone.dominantFabrics as string[]).slice(0, 5).join(", ") : "";
-    const palettew = Array.isArray(palette.dominantColors) ? (palette.dominantColors as string[]).slice(0, 5).join(", ") : "";
-    const vibe = Array.isArray(tone.vibeWords) ? (tone.vibeWords as string[]).slice(0, 4).join(", ") : "";
+    const palettew = Array.isArray(palette.hex)
+      ? (palette.hex as string[]).slice(0, 5).join(", ")
+      : Array.isArray(palette.dominantColors)
+        ? (palette.dominantColors as string[]).slice(0, 5).join(", ")
+        : "";
+    const vibe = Array.isArray(tone.moodAdjectives)
+      ? (tone.moodAdjectives as string[]).slice(0, 4).join(", ")
+      : Array.isArray(tone.vibeWords)
+        ? (tone.vibeWords as string[]).slice(0, 4).join(", ")
+        : "";
     const positioning = typeof tone.pricePositioning === "string" ? tone.pricePositioning : "";
+    const seasonality = typeof tone.seasonality === "string" ? tone.seasonality : "";
 
     const povPieces: string[] = [];
     povPieces.push(`THE BRAND YOU WORK FOR, know it, speak from it. ${brandName} is the store you sell for.`);
     if (positioning) povPieces.push(`Positioning: ${positioning}.`);
+    if (seasonality) povPieces.push(`Seasonality: ${seasonality}.`);
     if (fabrics) povPieces.push(`Dominant fabrics in the catalog: ${fabrics}.`);
     if (palettew) povPieces.push(`Brand palette signals: ${palettew}.`);
     if (vibe) povPieces.push(`Vibe words from brand DNA: ${vibe}.`);
@@ -729,7 +822,7 @@ export async function runMiraAdapter(args: {
     cookieId: args.shopperCookieId,
   });
 
-  const [{ catalog: injectedCatalog, currency }, brandRaw, shopperBrief, shopperMemory] = await Promise.all([
+  const [{ catalog: injectedCatalog, currency }, brandRaw, shopperBrief, shopperMemory, savedObjective] = await Promise.all([
     loadMerchantCatalog(args.shopDomain),
     loadMerchantBrand(args.shopDomain),
     buildShopperBrief(shopperSession.row.id),
@@ -746,6 +839,7 @@ export async function runMiraAdapter(args: {
         },
       },
     }),
+    readMiraObjective(shopperSession.row.id),
   ]);
 
   // ── Currency directive (B5) ────────────────────────────────────────────────
@@ -810,7 +904,7 @@ export async function runMiraAdapter(args: {
     cartItemCount: b.cartItemCount,
     activeLookSummary: b.activeLookSummary,
     tryOnContextSummary: b.tryOnContextSummary,
-    priorObjective: b.priorObjective,
+    priorObjective: savedObjective ?? b.priorObjective,
     injectedKnowledge: shopperBrief.brief
       ? `SAVED SHOPPER CONTEXT:\n${shopperBrief.brief}`
       : undefined,
@@ -859,8 +953,8 @@ export async function runMiraAdapter(args: {
     // in this process — no cross-service HTTP hop to stylique-web, no SPOF on the
     // demo origin, lower latency. The merchant catalog is already injected via
     // reqBody.injectedCatalog, so the brain needs no defaultCatalog and there is
-    // no demo KB fallback in production. USE_IN_PROCESS_BRAIN=0 reverts to the
-    // legacy HTTP fetch (kept as a safety valve during rollout).
+    // no demo KB fallback in production. USE_IN_PROCESS_BRAIN=0 is rejected by
+    // production startup/readiness and remains only a local rollout safety valve.
     let payload: { source?: string; model?: string | null; decision?: Parameters<typeof decisionToAdapter>[0]; objective?: unknown };
     if (process.env.USE_IN_PROCESS_BRAIN !== "0") {
       const { decideMira } = await import("@stylique/mira-brain");
@@ -1015,6 +1109,8 @@ export async function runMiraAdapter(args: {
       },
     );
     result.objective = payload.objective;
+    void persistMiraObjective(shopperSession.row.id, payload.objective)
+      .catch((err) => console.error("[mira-adapter] objective persistence failed", err));
     void appendChatTurns(shopperSession.row.id, [
       { role: "user", text: lastUserMsg },
       { role: "model", text: result.decision.voice },

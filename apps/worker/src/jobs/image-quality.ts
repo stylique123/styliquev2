@@ -66,7 +66,7 @@ export async function processImageQuality(data: ImageQualityJobData): Promise<{
       select: {
         id: true,
         images: {
-          select: { id: true, url: true, position: true, shopifyId: true },
+          select: { id: true, url: true, position: true, shopifyId: true, altText: true },
           orderBy: { position: "asc" },
         },
       },

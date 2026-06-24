@@ -110,12 +110,132 @@ await t("addToCart returns variant_not_found when size lookup fails", async () =
   assert.equal(r.error, "variant_not_found");
 });
 
-await t("addToCart skips sold-out size variant and falls back to first available", async () => {
+await t("addToCart returns requested_size_unavailable and skips cart POST when requested size is sold out", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          variants: [
+            { id: 5001, title: "S", available: false, options: ["S"] },
+            { id: 5002, title: "M", available: false, options: ["M"] },
+          ],
+        }),
+      };
+    }
+    return { ok: true, status: 200 };
+  };
+  const r = await addToCart("sold-out-shirt", "M");
+  assert.equal(r.ok, false);
+  assert.equal(r.real, true);
+  assert.equal(r.error, "requested_size_unavailable");
+  assert.equal(fetchCalls.some((c) => c.url === "/cart/add.js"), false, "must not POST sold-out variants to cart");
+});
+
+await t("addToCart refuses a requested sold-out size instead of adding another size", async () => {
   setupStorefront({ withShopify: true });
   const r = await addToCart("linen-relaxed-shirt", "L"); // L is unavailable
+  assert.equal(r.ok, false);
+  assert.equal(r.real, true);
+  assert.equal(r.error, "requested_size_unavailable");
+  assert.equal(fetchCalls.some((c) => c.url === "/cart/add.js"), false, "must not POST a different size than the shopper requested");
+});
+
+await t("addToCart maps shorthand Mira size to long Shopify option labels", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          variants: [
+            { id: 6101, title: "Small", available: true, options: ["Small"] },
+            { id: 6102, title: "Medium", available: true, options: ["Medium"] },
+          ],
+        }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  const r = await addToCart("long-label-shirt", "M");
   assert.equal(r.ok, true);
   const cart = fetchCalls.find((c) => c.url === "/cart/add.js");
-  assert.equal(cart.body.items[0].id, 4001, "expected fallback to first available variant (S id 4001)");
+  assert.equal(cart.body.items[0].id, 6102, "M should resolve to Medium");
+});
+
+await t("addToCart maps OS to one-size Shopify labels", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          variants: [{ id: 6201, title: "One Size", available: true, options: ["One Size"] }],
+        }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  const r = await addToCart("silk-scarf", "OS");
+  assert.equal(r.ok, true);
+  const cart = fetchCalls.find((c) => c.url === "/cart/add.js");
+  assert.equal(cart.body.items[0].id, 6201, "OS should resolve to One Size");
+});
+
+await t("addToCart adds a single Default Title variant even when an internal size is present", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          variants: [{ id: 6301, title: "Default Title", available: true, options: ["Default Title"] }],
+        }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  const r = await addToCart("single-variant-accessory", "M");
+  assert.equal(r.ok, true);
+  const cart = fetchCalls.find((c) => c.url === "/cart/add.js");
+  assert.equal(cart.body.items[0].id, 6301, "single default variants should not be blocked by internal size state");
+});
+
+await t("addToCart falls back to first available only when no size was requested", async () => {
+  setupStorefront({ withShopify: true });
+  const r = await addToCart("linen-relaxed-shirt", null);
+  assert.equal(r.ok, true);
+  const cart = fetchCalls.find((c) => c.url === "/cart/add.js");
+  assert.equal(cart.body.items[0].id, 4001, "expected fallback to first available variant when size is unknown");
+});
+
+await t("addToCart returns cart_<status> and dispatches no success event when Shopify rejects the add", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ variants: [{ id: 4002, title: "M", available: true, options: ["M"] }] }),
+      };
+    }
+    return { ok: false, status: 422, json: async () => ({}) };
+  };
+  const r = await addToCart("linen-relaxed-shirt", "M");
+  assert.equal(r.ok, false);
+  assert.equal(r.real, true);
+  assert.equal(r.error, "cart_422");
+  assert.equal(dispatched.length, 0, "must not dispatch stylique:cart-added on failed Shopify add");
 });
 
 await t("addOutfitToCart fires ONE POST with all piece items", async () => {
@@ -137,6 +257,33 @@ await t("addOutfitToCart dispatches stylique:cart-added on success", async () =>
   const evt = dispatched.find((e) => e.type === "stylique:cart-added");
   assert.ok(evt, "expected stylique:cart-added CustomEvent on the window");
   assert.equal(evt.detail.kind, "outfit");
+});
+
+await t("addOutfitToCart fails all-or-nothing when any piece cannot resolve", async () => {
+  setupStorefront({ withShopify: true });
+  globalThis.fetch = async (url, init) => {
+    fetchCalls.push({ url, method: init?.method, body: init?.body ? JSON.parse(init.body) : null });
+    if (url === "/products/missing-piece.js") return { ok: false, status: 404 };
+    if (typeof url === "string" && url.startsWith("/products/")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          variants: [{ id: 4002, title: "M", available: true, options: ["M"] }],
+        }),
+      };
+    }
+    return { ok: true, status: 200, json: async () => ({}) };
+  };
+  const r = await addOutfitToCart([
+    { handle: "linen-relaxed-shirt", size: "M" },
+    { handle: "missing-piece", size: "M" },
+  ]);
+  assert.equal(r.ok, false);
+  assert.equal(r.real, true);
+  assert.equal(r.error, "variant_not_found");
+  assert.equal(fetchCalls.some((c) => c.url === "/cart/add.js"), false, "must not partially add an outfit");
+  assert.equal(dispatched.length, 0, "must not dispatch success when outfit add fails");
 });
 
 console.log("\n== Storefront mode (only __sqAssetBase set, no Shopify global) ==");

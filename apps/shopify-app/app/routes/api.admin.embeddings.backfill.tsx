@@ -19,6 +19,12 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!shop) return json({ ok: false, error: "shop_not_installed" }, { status: 404 });
 
   const result = await embedAllForShop(shop.id);
+  if (!result.providerConfigured) {
+    return json({ ok: false, error: "embedding_provider_not_configured", data: result }, { status: 503 });
+  }
+  if (result.failed > 0) {
+    return json({ ok: false, error: "embedding_backfill_partial_failure", data: result }, { status: 207 });
+  }
   return json({ ok: true, data: result });
 }
 

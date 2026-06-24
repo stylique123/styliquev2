@@ -9,7 +9,7 @@ import { join } from "node:path";
 export async function loader(_args: LoaderFunctionArgs) {
   const candidates = [
     join(process.cwd(), "public", "widget.js"),
-    join(process.cwd(), "extensions", "stylique-widget", "assets", "widget.js"),
+    join(process.cwd(), "extensions", "stylique-widget", "assets", "tryon.js"),
   ];
   let content: Buffer;
   for (const filePath of candidates) {

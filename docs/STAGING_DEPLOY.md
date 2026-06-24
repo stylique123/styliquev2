@@ -24,7 +24,7 @@ values differ from production as shown:
 | `SHOPIFY_API_KEY` | Staging Partners app `client_id` | Production Partners app `client_id` |
 | `SHOPIFY_API_SECRET` | Staging client secret | Production client secret |
 | `SHOPIFY_APP_URL` | Your tunnel URL (see below) | Stable production hostname |
-| `SHOPIFY_SCOPES` | `read_products,read_product_listings,read_inventory,read_orders,write_products` | Same |
+| `SHOPIFY_SCOPES` | `read_products,read_inventory,read_orders,write_script_tags` | Same |
 | `NODE_ENV` | `development` | `production` |
 
 ---

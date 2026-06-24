@@ -1,5 +1,5 @@
 import { prisma } from "@stylique/db";
-import { createCatalogSyncService, decryptField } from "@stylique/core";
+import { createCatalogSyncService, decryptField, resolveTryonImage } from "@stylique/core";
 import { Queue } from "bullmq";
 import { Redis as IORedis } from "ioredis";
 import { createShopifyCatalogClient } from "../shopifyClient.js";
@@ -48,7 +48,91 @@ function sizeChartQueue(): Queue {
   return _sizeChartQueue;
 }
 
+// Lazy Brand DNA queue producer. Catalog changes are the source material for
+// palette, product identity, fabrics, and styling voice, so every sync path
+// needs to refresh Brand DNA on a bounded cadence instead of leaving it as an
+// install/manual-only snapshot.
+let _brandDnaConnection: IORedis | null = null;
+let _brandDnaQueue: Queue | null = null;
+function brandDnaCatalogQueue(): Queue {
+  if (!_brandDnaQueue) {
+    _brandDnaConnection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+    _brandDnaQueue = new Queue("brand-dna-catalog", { connection: _brandDnaConnection });
+  }
+  return _brandDnaQueue;
+}
+
 const sync = createCatalogSyncService(prisma);
+
+function jobBucket(ms: number): number {
+  return Math.floor(Date.now() / ms);
+}
+
+type EnqueueFailure = { productId?: string; error: string };
+type EnqueueSummary = {
+  queued: number;
+  failed: number;
+  total: number;
+  failures: EnqueueFailure[];
+};
+
+function emptyEnqueueSummary(total = 0): EnqueueSummary {
+  return { queued: 0, failed: 0, total, failures: [] };
+}
+
+async function markShopifyBrandDnaSource(
+  shopId: string,
+  data: { status: "PENDING" | "FAILED"; error?: string | null },
+) {
+  const existing = await prisma.brandSource.findFirst({
+    where: { shopId, kind: "SHOPIFY" },
+    select: { id: true },
+  });
+  if (existing) {
+    await prisma.brandSource.update({
+      where: { id: existing.id },
+      data: {
+        status: data.status,
+        error: data.error ?? null,
+        updatedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.brandSource.create({
+      data: {
+        shopId,
+        kind: "SHOPIFY",
+        status: data.status,
+        error: data.error ?? null,
+      },
+    });
+  }
+}
+
+async function enqueueBrandDnaRefresh(shopId: string, log: ReturnType<typeof createLogger>): Promise<boolean> {
+  try {
+    await brandDnaCatalogQueue().add(
+      "extract",
+      { shopId },
+      {
+        jobId: `brand-dna-after-sync:${shopId}:${jobBucket(6 * 60 * 60 * 1000)}`,
+        attempts: 2,
+        backoff: { type: "exponential", delay: 30_000 },
+        removeOnComplete: 10,
+        removeOnFail: 50,
+      },
+    );
+    await markShopifyBrandDnaSource(shopId, { status: "PENDING", error: null }).catch((err) => {
+      log.warn({ err: (err as Error).message }, "failed to mark Brand DNA source pending");
+    });
+    return true;
+  } catch (err) {
+    const message = (err as Error).message;
+    log.warn({ err: message }, "failed to enqueue Brand DNA refresh");
+    await markShopifyBrandDnaSource(shopId, { status: "FAILED", error: message }).catch(() => undefined);
+    return false;
+  }
+}
 
 export type CatalogSyncJobData =
   | { kind: "full"; shopId: string }
@@ -69,6 +153,7 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
 
   if (data.kind === "delete") {
     await sync.deleteByShopifyId(data.shopId, data.shopifyProductId);
+    await enqueueBrandDnaRefresh(data.shopId, log);
     log.info({ durationMs: Date.now() - startedAt }, "catalog-sync delete complete");
     return { deleted: true };
   }
@@ -101,21 +186,35 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
     const res = await sync.syncAll(data.shopId, client);
     // Embed every product whose modelKey is stale or missing. Cheap at Gemini
     // quota; idempotent. Vector search becomes useful as soon as this finishes.
-    const embed = await embedAllForShop(data.shopId).catch(() => ({ embedded: 0, skipped: 0 }));
+    const embed = await embedAllForShop(data.shopId).catch((err) => ({
+      embedded: 0,
+      skipped: 0,
+      failed: 1,
+      total: 0,
+      providerConfigured: Boolean(process.env.GEMINI_API_KEY),
+      error: (err as Error).message,
+    }));
     // D37 — enqueue image-quality scoring so newly synced products get
     // primaryTryonImageId + tryonReady + widgetTier set before any shopper
     // hits the widget. Job is idempotent (re-runs harmlessly). Dedupe on
     // jobId so back-to-back full syncs don't pile up.
-    await imageQualityQueue().add(
-      "score-all",
-      { shopId: data.shopId, onlyStale: true },
-      {
-        jobId: `iq-after-sync:${data.shopId}`,
-        attempts: 2,
-        backoff: { type: "exponential", delay: 30_000 },
-        removeOnComplete: 20, removeOnFail: 100,
-      },
-    ).catch(() => undefined);
+    const imageQuality = emptyEnqueueSummary(1);
+    try {
+      await imageQualityQueue().add(
+        "score-all",
+        { shopId: data.shopId, onlyStale: true },
+        {
+          jobId: `iq-after-sync:${data.shopId}:${jobBucket(6 * 60 * 60 * 1000)}`,
+          attempts: 2,
+          backoff: { type: "exponential", delay: 30_000 },
+          removeOnComplete: 20, removeOnFail: 100,
+        },
+      );
+      imageQuality.queued = 1;
+    } catch (err) {
+      imageQuality.failed = 1;
+      imageQuality.failures.push({ error: (err as Error).message });
+    }
     // D39 — enqueue size-chart extraction for EVERY active product after a full
     // sync. Previously only the single-product path did this, so a fresh install
     // never ran the unstructured-source extraction (description/linked/image) and
@@ -126,26 +225,56 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
       where: { shopId: data.shopId },
       select: { id: true },
     });
+    const sizeCharts = emptyEnqueueSummary(activeProducts.length);
     for (const { id: pid } of activeProducts) {
-      await sizeChartQueue()
-        .add(
+      try {
+        await sizeChartQueue().add(
           "extract",
           { shopId: data.shopId, productId: pid },
           {
-            jobId: `size-chart:${data.shopId}:${pid}`,
+            jobId: `size-chart:${data.shopId}:${pid}:${jobBucket(60 * 60 * 1000)}`,
             attempts: 2,
             backoff: { type: "exponential", delay: 10_000 },
             removeOnComplete: 5,
             removeOnFail: 50,
           },
-        )
-        .catch(() => undefined);
+        );
+        sizeCharts.queued++;
+      } catch (err) {
+        sizeCharts.failed++;
+        sizeCharts.failures.push({ productId: pid, error: (err as Error).message });
+      }
     }
+    const brandDnaQueued = await enqueueBrandDnaRefresh(data.shopId, log);
     await prisma.notification.create({
-      data: { shopId: data.shopId, kind: "CATALOG_SYNC_COMPLETED", payload: { ...res, embed, sizeChartsQueued: activeProducts.length } },
+      data: {
+        shopId: data.shopId,
+        kind: "CATALOG_SYNC_COMPLETED",
+        payload: {
+          ...res,
+          embed,
+          imageQuality,
+          sizeCharts,
+          sizeChartsQueued: sizeCharts.queued,
+          sizeChartsFailed: sizeCharts.failed,
+          brandDnaQueued,
+        },
+      },
     });
-    log.info({ durationMs: Date.now() - startedAt, ...res, embed, sizeChartsQueued: activeProducts.length }, "catalog-sync full sync complete");
-    return { ...res, embed };
+    log.info(
+      {
+        durationMs: Date.now() - startedAt,
+        ...res,
+        embed,
+        imageQuality,
+        sizeCharts,
+        sizeChartsQueued: sizeCharts.queued,
+        sizeChartsFailed: sizeCharts.failed,
+        brandDnaQueued,
+      },
+      "catalog-sync full sync complete",
+    );
+    return { ...res, embed, imageQuality, sizeCharts, brandDnaQueued };
   }
 
   // single product
@@ -177,7 +306,7 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
         "extract",
         { shopId: shop.id, productId: pid },
         {
-          jobId: `size-chart:${shop.id}:${pid}`,
+          jobId: `size-chart:${shop.id}:${pid}:${jobBucket(60 * 60 * 1000)}`,
           attempts: 2,
           backoff: { type: "exponential", delay: 10_000 },
           removeOnComplete: 5,
@@ -200,10 +329,12 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
         primaryColor: true,
         colorFamily: true,
         tryonReady: true,
-        images: { orderBy: { position: "asc" }, take: 1, select: { url: true } },
+        primaryTryonImageId: true,
+        images: { orderBy: { position: "asc" }, select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true } },
       },
     });
-    const garmentUrl = localProduct?.images[0]?.url;
+    const primaryImage = localProduct ? resolveTryonImage(localProduct.images, localProduct.primaryTryonImageId) : null;
+    const garmentUrl = primaryImage?.preppedUrl ?? primaryImage?.url;
     if (garmentUrl) {
       await tryonRenderQueue().add(
         "render",
@@ -231,6 +362,8 @@ export async function processCatalogSync(data: CatalogSyncJobData) {
         },
       ).catch(() => undefined);
     }
+
+    await enqueueBrandDnaRefresh(shop.id, log);
   }
   log.info({ durationMs: Date.now() - startedAt }, "catalog-sync single-product complete");
   return synced;

@@ -4,10 +4,11 @@
 //
 // What it does per shop:
 //   1. Reads the last 30 days of CHAT_COMBO_PROPOSED, COMBO_ADD_ALL,
-//      CHAT_CART_REQUESTED, CART_CONFIRMED, CART_CANCELLED.
+//      the canonical Mira cart-assist event family, CART_CONFIRMED,
+//      CART_CANCELLED.
 //   2. Computes three real metrics:
 //        addAllRate30d        = COMBO_ADD_ALL / CHAT_COMBO_PROPOSED
-//        cartConvertRate30d   = CART_CONFIRMED / CHAT_CART_REQUESTED
+//        cartConvertRate30d   = distinct CART_CONFIRMED orders / canonical Mira cart assists
 //        keepBiasBySize       = per-size keep-rate from confirmed vs cancelled
 //   3. Gently nudges the per-shop combo scoring weights (LR 0.15, clamped).
 //   4. Writes back to Plan.planFeaturesJson.fashion.{lookWeights,addAllRate30d,
@@ -24,6 +25,7 @@
 
 import { prisma } from "@stylique/db";
 import { Prisma } from "@prisma/client";
+import { distinctOrderCountFromEvents, MIRA_CART_ASSIST_EVENT_NAMES } from "@stylique/core";
 
 const LOOKBACK_DAYS = 30;
 const MIN_SAMPLES = 10;
@@ -83,13 +85,13 @@ export async function tuneFitAndLook(shopId: string): Promise<TuneResult> {
         in: [
           "CHAT_COMBO_PROPOSED",
           "COMBO_ADD_ALL",
-          "CHAT_CART_REQUESTED",
+          ...MIRA_CART_ASSIST_EVENT_NAMES,
           "CART_CONFIRMED",
           "CART_CANCELLED",
         ],
       },
     },
-    select: { name: true, payload: true, createdAt: true },
+    select: { id: true, name: true, payload: true, createdAt: true },
     take: 20_000,
   });
 
@@ -97,8 +99,10 @@ export async function tuneFitAndLook(shopId: string): Promise<TuneResult> {
   const addAll   = events.filter((e) => e.name === "COMBO_ADD_ALL").length;
   const addAllRate = proposed >= MIN_SAMPLES ? +(addAll / proposed).toFixed(4) : undefined;
 
-  const cartRequested = events.filter((e) => e.name === "CHAT_CART_REQUESTED").length;
-  const cartConfirmed = events.filter((e) => e.name === "CART_CONFIRMED").length;
+  const cartRequested = events.filter((e) =>
+    (MIRA_CART_ASSIST_EVENT_NAMES as readonly string[]).includes(e.name),
+  ).length;
+  const cartConfirmed = distinctOrderCountFromEvents(events.filter((e) => e.name === "CART_CONFIRMED"));
   const cartConvertRate = cartRequested >= MIN_SAMPLES ? +(cartConfirmed / cartRequested).toFixed(4) : undefined;
 
   const sizeStats = new Map<string, { kept: number; cancelled: number }>();
@@ -148,7 +152,7 @@ export async function tuneFitAndLook(shopId: string): Promise<TuneResult> {
     };
   }
 
-  if (!addAllRate && !cartConvertRate && !keepBiasBySize) {
+  if (addAllRate == null && cartConvertRate == null && !keepBiasBySize) {
     return {
       ok: false,
       reason: "insufficient_signal",

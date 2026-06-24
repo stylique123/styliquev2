@@ -8,7 +8,10 @@ import { json } from "@remix-run/node";
 import { useLoaderData, useFetcher } from "@remix-run/react";
 import { requireInternalAuth } from "../lib/internal-auth.server";
 import { getAllBrandSummaries } from "../lib/internal-dashboard.server";
+import { generateCSRFToken, verifyCSRFToken } from "../lib/entitlement.server";
 import { prisma } from "../db.server";
+import { PLAN_DEFAULTS, PLAN_FEATURES } from "@stylique/core";
+import type { AnalyticsLevel, PlanTier } from "@stylique/types";
 
 // After json() serialization, Dates become strings. Use this type in the UI.
 type SerializedBrandSummary = {
@@ -33,6 +36,57 @@ type SerializedBrandSummary = {
   suggestions: string[];
 };
 
+const PLAN_TIERS = ["STARTER", "GROWTH", "ULTIMATE"] as const;
+
+function normalizeTier(raw: FormDataEntryValue | string | null): PlanTier | null {
+  const tier = String(raw ?? "").toUpperCase();
+  return PLAN_TIERS.includes(tier as PlanTier) ? tier as PlanTier : null;
+}
+
+function buildOpsPlanPatch(args: {
+  tier: PlanTier;
+  current: Record<string, unknown>;
+  comp?: boolean;
+  provisioningStatus?: string;
+  source: string;
+}) {
+  const defaults = PLAN_DEFAULTS[args.tier];
+  const features = PLAN_FEATURES[args.tier];
+  const comp = args.comp ?? args.current.comp === true;
+  const now = new Date().toISOString();
+  return {
+    tier: args.tier,
+    monthlyTryOnPersonal: defaults.monthlyTryOnPersonal,
+    monthlyTryOnBody: defaults.monthlyTryOnBody,
+    monthlyStylistTurns: features.stylist.monthlyTurns,
+    monthlyStyleRecs: defaults.monthlyStyleRecs,
+    monthlyFitRecs: defaults.monthlyFitRecs,
+    analyticsLevel: features.analytics.level as AnalyticsLevel,
+    planFeaturesJson: {
+      ...args.current,
+      comp,
+      billingActive: comp,
+      billing: {
+        ...((typeof args.current.billing === "object" && args.current.billing
+          ? args.current.billing
+          : {}) as Record<string, unknown>),
+        status: comp ? "ops_comp" : "pending",
+        tier: args.tier,
+        source: args.source,
+        updatedAt: now,
+      },
+      provisioning: {
+        ...((typeof args.current.provisioning === "object" && args.current.provisioning
+          ? args.current.provisioning
+          : {}) as Record<string, unknown>),
+        ...(args.provisioningStatus ? { status: args.provisioningStatus } : {}),
+        updatedBy: "internal_ops",
+        updatedAt: now,
+      },
+    },
+  };
+}
+
 // ─── Loader ──────────────────────────────────────────────────────────────
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -43,8 +97,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const totalBrands = brands.length;
   const activeBrands = brands.filter((b) => b.sessionsLast7Days > 0).length;
   const totalVTO = brands.reduce((s, b) => s + b.totalTryOnSessions, 0);
+  const csrf = generateCSRFToken(process.env.STYLIQUE_INTERNAL_SECRET ?? "");
 
-  return json({ brands, stats: { totalBrands, activeBrands, totalVTO } });
+  return json({ brands, stats: { totalBrands, activeBrands, totalVTO }, csrf });
 }
 
 // ─── Action (quick overrides) ─────────────────────────────────────────────
@@ -52,20 +107,72 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   requireInternalAuth(request);
   const formData = await request.formData();
+  const secret = process.env.STYLIQUE_INTERNAL_SECRET ?? "";
+  if (!verifyCSRFToken(formData.get("csrf") as string | null, secret)) {
+    return json({ ok: false, error: "Invalid or missing CSRF token." }, { status: 403 });
+  }
   const intent = formData.get("intent") as string;
-  const shopId = formData.get("shopId") as string;
 
+  if (intent === "provision_brand") {
+    const rawDomain = String(formData.get("shopifyDomain") ?? "").trim().toLowerCase();
+    const tier = normalizeTier(formData.get("tier") ?? "STARTER");
+    const comp = formData.get("comp") === "1";
+    const shopifyDomain = normalizeShopifyDomain(rawDomain);
+    if (!shopifyDomain) return json({ ok: false, error: "valid shop domain required" }, { status: 400 });
+    if (!tier) {
+      return json({ ok: false, error: "invalid tier" }, { status: 400 });
+    }
+    const shop = await prisma.shop.upsert({
+      where: { shopifyDomain },
+      update: {},
+      create: {
+        shopifyDomain,
+        accessToken: "manual-provisioning-pending",
+        scopes: "",
+        uninstalledAt: new Date(),
+      },
+      select: { id: true, plan: { select: { planFeaturesJson: true } } },
+    });
+    const current = (shop.plan?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+    const patch = buildOpsPlanPatch({
+      tier,
+      current,
+      comp,
+      provisioningStatus: "PENDING_INSTALL",
+      source: "internal_ops_provision",
+    });
+    await prisma.plan.upsert({
+      where: { shopId: shop.id },
+      create: {
+        shopId: shop.id,
+        ...patch,
+      },
+      update: {
+        ...patch,
+      },
+    });
+    return json({ ok: true, message: `Provisioned ${shopifyDomain} as ${tier}${comp ? " (comp)" : " pending billing"}` });
+  }
+
+  const shopId = formData.get("shopId") as string;
   if (!shopId) return json({ ok: false, error: "shopId required" }, { status: 400 });
 
   if (intent === "change_tier") {
-    const tier = formData.get("tier") as string;
-    if (!["STARTER", "GROWTH", "ULTIMATE"].includes(tier)) {
+    const tier = normalizeTier(formData.get("tier"));
+    if (!tier) {
       return json({ ok: false, error: "invalid tier" }, { status: 400 });
     }
+    const plan = await prisma.plan.findUnique({ where: { shopId }, select: { planFeaturesJson: true } });
+    const current = (plan?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+    const patch = buildOpsPlanPatch({
+      tier,
+      current,
+      source: "internal_ops_change_tier",
+    });
     await prisma.plan.upsert({
       where: { shopId },
-      update: { tier: tier as "STARTER" | "GROWTH" | "ULTIMATE" },
-      create: { shopId, tier: tier as "STARTER" | "GROWTH" | "ULTIMATE" },
+      update: patch,
+      create: { shopId, ...patch },
     });
     return json({ ok: true, message: `Tier updated to ${tier}` });
   }
@@ -115,6 +222,17 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
+
+function normalizeShopifyDomain(input: string): string | null {
+  const cleaned = input
+    .replace(/^https?:\/\//, "")
+    .replace(/\/.*$/, "")
+    .trim()
+    .toLowerCase();
+  const domain = cleaned.endsWith(".myshopify.com") ? cleaned : `${cleaned}.myshopify.com`;
+  if (!/^[a-z0-9][a-z0-9-]*\.myshopify\.com$/.test(domain)) return null;
+  return domain;
+}
 
 function healthDot(status: string) {
   const colors: Record<string, string> = {
@@ -181,9 +299,11 @@ function timeAgo(date: Date | string | null): string {
 
 function QuickActionModal({
   brand,
+  csrf,
   onClose,
 }: {
   brand: SerializedBrandSummary;
+  csrf: string;
   onClose: () => void;
 }) {
   const fetcher = useFetcher<{ ok: boolean; message?: string; error?: string }>();
@@ -248,6 +368,7 @@ function QuickActionModal({
                   <input type="hidden" name="intent" value="change_tier" />
                   <input type="hidden" name="shopId" value={brand.shopId} />
                   <input type="hidden" name="tier" value={t} />
+                  <input type="hidden" name="csrf" value={csrf} />
                   <button
                     type="submit"
                     style={{
@@ -273,6 +394,7 @@ function QuickActionModal({
           <fetcher.Form method="post">
             <input type="hidden" name="intent" value="pause_generation" />
             <input type="hidden" name="shopId" value={brand.shopId} />
+            <input type="hidden" name="csrf" value={csrf} />
             <button
               type="submit"
               style={{
@@ -299,6 +421,7 @@ function QuickActionModal({
             <fetcher.Form method="post">
               <input type="hidden" name="intent" value="send_notification" />
               <input type="hidden" name="shopId" value={brand.shopId} />
+              <input type="hidden" name="csrf" value={csrf} />
               <textarea
                 name="message"
                 value={notifMessage}
@@ -489,7 +612,8 @@ function BrandCard({
 // ─── Main page ────────────────────────────────────────────────────────────
 
 export default function InternalIndex() {
-  const { brands, stats } = useLoaderData<typeof loader>();
+  const { brands, stats, csrf } = useLoaderData<typeof loader>();
+  const provisionFetcher = useFetcher<{ ok: boolean; message?: string; error?: string }>();
   const [tierFilter, setTierFilter] = useState("all");
   const [healthFilter, setHealthFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -564,6 +688,41 @@ export default function InternalIndex() {
               ))}
             </div>
 
+            {/* Manual provisioning */}
+            <div style={{ background: "#fff", border: "1px solid #e5e5e5", borderRadius: 7, padding: "14px 16px", marginBottom: 20 }}>
+              <provisionFetcher.Form method="post" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <input type="hidden" name="intent" value="provision_brand" />
+                <input type="hidden" name="csrf" value={csrf} />
+                <strong style={{ fontSize: 13, marginRight: 4 }}>Provision merchant</strong>
+                <input
+                  name="shopifyDomain"
+                  placeholder="brand.myshopify.com"
+                  style={{ ...selectStyle, minWidth: 230 }}
+                />
+                <select name="tier" defaultValue="STARTER" style={selectStyle}>
+                  <option value="STARTER">Starter</option>
+                  <option value="GROWTH">Growth</option>
+                  <option value="ULTIMATE">Ultimate</option>
+                </select>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#555" }}>
+                  <input type="checkbox" name="comp" value="1" />
+                  comp access
+                </label>
+                <button
+                  type="submit"
+                  disabled={provisionFetcher.state !== "idle"}
+                  style={{ padding: "7px 12px", border: "none", borderRadius: 5, background: "#1a1a1a", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                >
+                  {provisionFetcher.state !== "idle" ? "Provisioning..." : "Create pending merchant"}
+                </button>
+                {provisionFetcher.data && (
+                  <span style={{ fontSize: 12, color: provisionFetcher.data.ok ? "#166534" : "#dc2626" }}>
+                    {provisionFetcher.data.message ?? provisionFetcher.data.error}
+                  </span>
+                )}
+              </provisionFetcher.Form>
+            </div>
+
             {/* Filters */}
             <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
               <input
@@ -617,7 +776,7 @@ export default function InternalIndex() {
           </div>
 
           {activeModal && (
-            <QuickActionModal brand={activeModal} onClose={() => setActiveModal(null)} />
+            <QuickActionModal brand={activeModal} csrf={csrf} onClose={() => setActiveModal(null)} />
           )}
         </body>
       </html>

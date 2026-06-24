@@ -41,6 +41,51 @@ export type ProductUpdate = {
   perImage: PerImageUpdate[];
 };
 
+export type TryonImageCandidate = {
+  id: string;
+  url: string;
+  preppedUrl?: string | null;
+  position?: number | null;
+  qualityScore?: number | null;
+  garmentRole?: "FRONT" | "BACK" | "DETAIL" | "LIFESTYLE" | "SWATCH" | string | null;
+  altText?: string | null;
+};
+
+export function resolveTryonImage(
+  images: TryonImageCandidate[],
+  primaryTryonImageId: string | null | undefined,
+): TryonImageCandidate | null {
+  const byPrimary = primaryTryonImageId
+    ? images.find((img) => img.id === primaryTryonImageId)
+    : null;
+  if (byPrimary?.preppedUrl || byPrimary?.url) return byPrimary;
+
+  const altPenalty = (altText: string | null | undefined) =>
+    /\b(size\s*(chart|guide)|measurement|measurements|sizing|swatch|fabric|detail|zoom|close)\b/i.test(altText ?? "") ? 1 : 0;
+  const roleRank = (role: TryonImageCandidate["garmentRole"]) => {
+    switch (role) {
+      case "FRONT": return 0;
+      case "BACK": return 1;
+      case "LIFESTYLE": return 3;
+      case "DETAIL": return 4;
+      case "SWATCH": return 5;
+      default: return 2;
+    }
+  };
+
+  return [...images]
+    .filter((img) => img.preppedUrl || img.url)
+    .sort((a, b) => {
+      const roleDelta = roleRank(a.garmentRole) - roleRank(b.garmentRole);
+      if (roleDelta !== 0) return roleDelta;
+      const altDelta = altPenalty(a.altText) - altPenalty(b.altText);
+      if (altDelta !== 0) return altDelta;
+      const scoreDelta = (b.qualityScore ?? -1) - (a.qualityScore ?? -1);
+      if (scoreDelta !== 0) return scoreDelta;
+      return (a.position ?? 9999) - (b.position ?? 9999);
+    })[0] ?? null;
+}
+
 const STAGE2_SURVIVOR_CAP = 4;   // never send more than 4 to Stage 2
 const STAGE2_MIN_SCORE    = 4.5; // only send Stage 1 survivors at or above this
 
@@ -143,12 +188,14 @@ export function toImageInput(p: {
   url: string;
   position: number;
   shopifyId?: string | null;
+  altText?: string | null;
 }): ImageInput {
   return {
     id: p.id,
     url: p.url,
     position: p.position,
     shopifyFilename: p.shopifyId ? null : extractFilename(p.url),
+    altText: p.altText ?? null,
   };
 }
 

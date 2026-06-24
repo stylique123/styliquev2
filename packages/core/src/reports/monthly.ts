@@ -24,6 +24,7 @@
 // the admin route without forking the logic.
 
 import type { PrismaClient } from "@prisma/client";
+import { MIRA_CART_ASSIST_EVENT_NAMES, MIRA_CART_SUCCESS_EVENT_NAMES } from "../analytics/cart-events.js";
 
 const DAY = 86_400_000;
 const ATTRIBUTION_WINDOW_DAYS = 7;
@@ -33,7 +34,6 @@ const BUNDLE_MIN_COENGAGE = 15;
 const BUNDLE_MIN_COINTENT = 5;
 const BUNDLE_MIN_COPURCHASE = 3;
 const MIN_ABS_ORDER_CENTS = 1000;       // $10 — excludes test orders
-
 export interface MonthlyReportData {
   period: { start: string; end: string; days: number };
   prior:  { start: string; end: string; days: number };
@@ -89,6 +89,32 @@ function pct(delta: number, base: number): number | null {
   return Math.round(((delta - base) / base) * 1000) / 10;
 }
 
+export function monthlyReportCatalogGapWhere(
+  shopId: string,
+  createdAt: { gte: Date; lt: Date },
+) {
+  return {
+    shopId,
+    createdAt,
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
+export function orderTotalsFromCartRows(
+  rows: Array<{ id?: string; payload: unknown }>,
+): Map<string, number> {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    const p = row.payload as { orderId?: string | number | null; lineValue?: number } | null;
+    const lineValue = typeof p?.lineValue === "number" && p.lineValue > 0 ? p.lineValue : 0;
+    if (lineValue <= 0) continue;
+    const orderKey = p?.orderId != null ? `o:${p.orderId}` : `e:${row.id ?? totals.size}`;
+    totals.set(orderKey, (totals.get(orderKey) ?? 0) + lineValue);
+  }
+  return totals;
+}
+
 /**
  * Pull the assisted revenue total for one window. Reads MIRA_ASSISTED_ORDER
  * events (written by webhooks.orders.fulfilled.tsx) and sums
@@ -125,6 +151,24 @@ async function eventCount(
 ): Promise<number> {
   return prisma.analyticsEvent.count({
     where: { shopId, name: name as never, createdAt: { gte: start, lt: end } },
+  });
+}
+
+async function eventCountAny(
+  prisma: PrismaClient,
+  shopId: string,
+  names: readonly string[],
+  start: Date,
+  end: Date,
+  extraWhere: Record<string, unknown> = {},
+): Promise<number> {
+  return prisma.analyticsEvent.count({
+    where: {
+      shopId,
+      ...extraWhere,
+      name: { in: names as unknown as never },
+      createdAt: { gte: start, lt: end },
+    },
   });
 }
 
@@ -181,9 +225,10 @@ export async function synthesizeMonthlyReport(
   const regressions = ranked.filter((c) => c.deltaPct! < 0).slice(0, 2);
 
   // ── Catalog Gaps & Near-Misses ────────────────────────────────────────
-  // CatalogGap rows = honest signal (search returning 0). Top 10 by count.
+  // CatalogGap rows = honest shopper demand (search returning 0). Exclude
+  // internal extraction bookkeeping rows such as no_size_chart:<productId>.
   const gaps = await prisma.catalogGap.findMany({
-    where: { shopId: args.shopId, createdAt: { gte: periodStart, lt: periodEnd } },
+    where: monthlyReportCatalogGapWhere(args.shopId, { gte: periodStart, lt: periodEnd }),
     select: { category: true, rawQuery: true },
   }).catch(() => [] as Array<{ category: string | null; rawQuery: string }>);
   // Bucket by category → count + sample queries.
@@ -196,18 +241,17 @@ export async function synthesizeMonthlyReport(
     byCategory.set(cat, cur);
   }
   // Need a store AOV to convert demand → revenue-at-risk. Use the period's
-  // mean from CART_CONFIRMED.payload.lineValue (cents). Falls back to 8500
-  // ($85) — explicitly the panel's stated industry default.
+  // mean full-order total from CART_CONFIRMED.payload.orderId + lineValue
+  // (cents). Falls back to 8500 ($85) when order totals are unavailable.
   const cartRows = await prisma.analyticsEvent.findMany({
     where: { shopId: args.shopId, name: "CART_CONFIRMED", createdAt: { gte: periodStart, lt: periodEnd } },
-    select: { payload: true },
+    select: { id: true, payload: true },
   });
+  const cartOrderTotals = orderTotalsFromCartRows(cartRows);
   let aovCents = 8500;
-  if (cartRows.length > 0) {
-    const totals = cartRows
-      .map((r) => Number((r.payload as { lineValue?: number } | null)?.lineValue ?? 0))
-      .filter((n) => n > 0);
-    if (totals.length > 0) aovCents = Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
+  if (cartOrderTotals.size > 0) {
+    const totals = [...cartOrderTotals.values()];
+    aovCents = Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
   }
   // ~30% capture rate per the panel's "honest estimate" rule.
   const topGaps = Array.from(byCategory.entries())
@@ -265,10 +309,16 @@ export async function synthesizeMonthlyReport(
     .slice(0, 10);
 
   // ── Funnel & Conversion ───────────────────────────────────────────────
-  const [atcEvents, confirmedOrders] = await Promise.all([
-    eventCount(prisma, args.shopId, "CHAT_CART_REQUESTED", periodStart, periodEnd),
-    eventCount(prisma, args.shopId, "CART_CONFIRMED", periodStart, periodEnd),
-  ]);
+  const atcEvents = await eventCountAny(
+    prisma,
+    args.shopId,
+    MIRA_CART_SUCCESS_EVENT_NAMES,
+    periodStart,
+    periodEnd,
+  );
+  const confirmedOrders = cartOrderTotals.size > 0
+    ? cartOrderTotals.size
+    : await eventCount(prisma, args.shopId, "CART_CONFIRMED", periodStart, periodEnd);
   // AOV split: assisted vs baseline. Assisted = MIRA_ASSISTED_ORDER; baseline
   // = CART_CONFIRMED where no MIRA_ASSISTED_ORDER exists for same orderId.
   const assistedRows = await prisma.analyticsEvent.findMany({
@@ -276,19 +326,24 @@ export async function synthesizeMonthlyReport(
     select: { payload: true },
   });
   const assistedTotals: number[] = [];
+  const assistedOrderKeys = new Set<string>();
   for (const r of assistedRows) {
-    const p = r.payload as { assistedRevenueCents?: number } | null;
+    const p = r.payload as { assistedRevenueCents?: number; orderId?: string | number | null } | null;
     const v = typeof p?.assistedRevenueCents === "number" ? p.assistedRevenueCents : 0;
-    if (v >= MIN_ABS_ORDER_CENTS) assistedTotals.push(v);
+    if (v >= MIN_ABS_ORDER_CENTS) {
+      assistedTotals.push(v);
+      if (p?.orderId != null) assistedOrderKeys.add(`o:${p.orderId}`);
+    }
   }
   const aovAssisted = assistedTotals.length > 0
     ? Math.round(assistedTotals.reduce((a, b) => a + b, 0) / assistedTotals.length)
     : null;
-  // Baseline AOV = mean lineValue of CART_CONFIRMED that aren't in an
-  // assisted-order set. We approximate by NOT joining (baseline N counts all
-  // confirms; the assisted set is a subset).
-  const baselineTotals = cartRows
-    .map((r) => Number((r.payload as { lineValue?: number } | null)?.lineValue ?? 0))
+  // Baseline AOV = mean full order totals for CART_CONFIRMED orders that are
+  // not in the assisted-order set. Older rows without orderId fall back to
+  // per-event keys, preserving compatibility without averaging multi-line orders.
+  const baselineTotals = [...cartOrderTotals.entries()]
+    .filter(([orderKey]) => !assistedOrderKeys.has(orderKey))
+    .map(([, total]) => total)
     .filter((n) => n >= MIN_ABS_ORDER_CENTS);
   const aovBaseline = baselineTotals.length > 0
     ? Math.round(baselineTotals.reduce((a, b) => a + b, 0) / baselineTotals.length)
@@ -351,11 +406,17 @@ export async function synthesizeMonthlyReport(
   // (both in CART_CONFIRMED for same shopperId within 24h).
   const orphanAttachPairs: MonthlyReportData["bundles"]["orphanAttachPairs"] = [];
   for (const cp of candidatePairs.slice(0, 50)) {
-    // coIntent ≈ CHAT_CART_REQUESTED for A whose shopper didn't request B
-    // within 24h (approximation: just CHAT_CART_REQUESTED count for A).
-    const intentA = await prisma.analyticsEvent.count({
-      where: { shopId: args.shopId, name: "CHAT_CART_REQUESTED", productId: cp.a, createdAt: { gte: periodStart, lt: periodEnd } },
-    });
+    // coIntent ≈ cart interest for A whose shopper didn't request B within
+    // 24h. This may include pre-cart assist intent, but it is deliberately kept
+    // separate from the report's add-to-bag funnel count above.
+    const intentA = await eventCountAny(
+      prisma,
+      args.shopId,
+      MIRA_CART_ASSIST_EVENT_NAMES,
+      periodStart,
+      periodEnd,
+      { productId: cp.a },
+    );
     if (intentA < BUNDLE_MIN_COINTENT) continue;
     // coPurchase = CART_CONFIRMED for both products by same shopper within 24h.
     const confirmA = await prisma.analyticsEvent.findMany({

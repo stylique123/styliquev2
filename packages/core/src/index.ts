@@ -6,6 +6,8 @@ export * from "./billing/costs.js";
 export * from "./usage/service.js";
 export * from "./analytics/index.js";
 export * from "./analytics/service.js";
+export * from "./analytics/cart-events.js";
+export * from "./analytics/order-events.js";
 export * from "./colors/rules.js";
 export * from "./catalog/index.js";
 export * from "./fit/service.js";

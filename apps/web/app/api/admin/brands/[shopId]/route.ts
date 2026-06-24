@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "~/lib/db";
 import { PlanTier } from "@stylique/db";
+import { PLAN_DEFAULTS, PLAN_FEATURES } from "@stylique/core";
 
 function checkAuth(req: Request): boolean {
   const adminSecret = process.env.STYLIQUE_ADMIN_SECRET;
@@ -24,6 +25,7 @@ export async function PATCH(
   const body = (await req.json()) as {
     action: "change_tier" | "terminate" | "suspend";
     tier?: string;
+    comp?: boolean;
   };
 
   try {
@@ -31,9 +33,61 @@ export async function PATCH(
       if (!body.tier) {
         return NextResponse.json({ ok: false, error: "tier required" }, { status: 400 });
       }
-      await prisma.plan.update({
+      const tier = normalizeTier(body.tier);
+      if (!tier) {
+        return NextResponse.json({ ok: false, error: "invalid tier" }, { status: 400 });
+      }
+      const existing = await prisma.plan.findUnique({
         where: { shopId },
-        data: { tier: body.tier as PlanTier },
+        select: { planFeaturesJson: true },
+      });
+      const current = (existing?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+      const comp = body.comp ?? current.comp === true;
+      const defaults = PLAN_DEFAULTS[tier];
+      const features = PLAN_FEATURES[tier];
+      await prisma.plan.upsert({
+        where: { shopId },
+        update: {
+          tier,
+          monthlyTryOnPersonal: defaults.monthlyTryOnPersonal,
+          monthlyTryOnBody: defaults.monthlyTryOnBody,
+          monthlyStylistTurns: features.stylist.monthlyTurns,
+          monthlyStyleRecs: defaults.monthlyStyleRecs,
+          monthlyFitRecs: defaults.monthlyFitRecs,
+          analyticsLevel: features.analytics.level,
+          planFeaturesJson: {
+            ...current,
+            comp,
+            billingActive: comp || current.billingActive === true,
+            billing: {
+              ...((typeof current.billing === "object" && current.billing ? current.billing : {}) as Record<string, unknown>),
+              status: comp ? "ops_comp" : "pending",
+              tier,
+              source: "super_admin_brand_action",
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        },
+        create: {
+          shopId,
+          tier,
+          monthlyTryOnPersonal: defaults.monthlyTryOnPersonal,
+          monthlyTryOnBody: defaults.monthlyTryOnBody,
+          monthlyStylistTurns: features.stylist.monthlyTurns,
+          monthlyStyleRecs: defaults.monthlyStyleRecs,
+          monthlyFitRecs: defaults.monthlyFitRecs,
+          analyticsLevel: features.analytics.level,
+          planFeaturesJson: {
+            comp,
+            billingActive: comp,
+            billing: {
+              status: comp ? "ops_comp" : "pending",
+              tier,
+              source: "super_admin_brand_action",
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        },
       });
       return NextResponse.json({ ok: true });
     }
@@ -70,4 +124,9 @@ export async function PATCH(
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
+}
+
+function normalizeTier(input: string): PlanTier | null {
+  const tier = input.trim().toUpperCase();
+  return tier === "STARTER" || tier === "GROWTH" || tier === "ULTIMATE" ? tier : null;
 }

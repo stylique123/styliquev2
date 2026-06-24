@@ -63,6 +63,7 @@ export type NormalizedProduct = {
   images: Array<{
     shopifyId: string | null;
     url: string;
+    altText: string | null;
     position: number;
   }>;
 };
@@ -149,6 +150,7 @@ export function normalizeProduct(input: ShopifyProductInput): NormalizedProduct 
   const images = (input.images ?? []).map((img, i) => ({
     shopifyId: img.id != null ? gid("ProductImage", img.id) : null,
     url: img.url ?? img.src ?? "",
+    altText: img.altText ?? null,
     position: img.position ?? i,
   })).filter((i) => i.url);
 

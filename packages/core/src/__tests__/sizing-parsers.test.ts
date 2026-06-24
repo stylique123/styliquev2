@@ -2,13 +2,14 @@
 // These parsers are the highest-accuracy input for fit recommendations.
 // Previously untested; any regression here silently breaks fit accuracy.
 
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   parseJsonSizeChart,
   parseHtmlSizeChart,
   parseVariantMeasurements,
   pickProductSizeChart,
 } from "../sizing/metafield.js";
+import { extractSizeChartMultiSource as extractMultiSource } from "../sizing/index.js";
 
 // ─── parseJsonSizeChart ───────────────────────────────────────────────────────
 
@@ -201,5 +202,53 @@ describe("pickProductSizeChart — priority order", () => {
 
   it("returns null when json is invalid and html is absent", () => {
     expect(pickProductSizeChart({ jsonMetafieldValue: "not-json{" })).toBeNull();
+  });
+});
+
+describe("extractSizeChartMultiSource — image OCR selection", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("prioritizes explicit size-chart image metadata before generic detail images", async () => {
+    const imageFetches: string[] = [];
+    let activeImageUrl = "";
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL) => {
+        const href = String(url);
+        if (href.includes("generativelanguage.googleapis.com")) {
+          const chart =
+            activeImageUrl.includes("real-size-chart")
+              ? { sizes: [{ name: "S", chest: 86 }, { name: "M", chest: 92 }], unit: "cm" }
+              : { sizes: [], unit: "cm" };
+          return new Response(
+            JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(chart) }] } }] }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        activeImageUrl = href;
+        imageFetches.push(href);
+        return new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "image/jpeg" },
+        });
+      }),
+    );
+
+    const result = await extractMultiSource({
+      geminiApiKey: "test-key",
+      images: [
+        { url: "https://cdn.example.com/detail-1.jpg", garmentRole: "DETAIL" },
+        { url: "https://cdn.example.com/detail-2.jpg", garmentRole: "DETAIL" },
+        { url: "https://cdn.example.com/detail-3.jpg", garmentRole: "DETAIL" },
+        { url: "https://cdn.example.com/real-size-chart.jpg", alt: "Size guide" },
+      ],
+    });
+
+    expect(imageFetches[0]).toContain("real-size-chart");
+    expect(result.winner?.source).toBe("image_ocr");
+    expect(result.winner?.sizes).toHaveLength(2);
   });
 });

@@ -30,9 +30,15 @@ function tryGetService(): EmbeddingsService | null {
 export async function embedAllForShop(
   shopId: string,
   opts?: { limit?: number; delayMs?: number },
-): Promise<{ embedded: number; skipped: number }> {
+): Promise<{
+  embedded: number;
+  skipped: number;
+  failed: number;
+  total: number;
+  providerConfigured: boolean;
+}> {
   const svc = tryGetService();
-  if (!svc) return { embedded: 0, skipped: 0 };
+  if (!svc) return { embedded: 0, skipped: 0, failed: 0, total: 0, providerConfigured: false };
   const limit = opts?.limit ?? 5000;
   const delay = opts?.delayMs ?? 40;
 
@@ -46,7 +52,7 @@ export async function embedAllForShop(
     take: limit,
   });
 
-  let embedded = 0, skipped = 0;
+  let embedded = 0, skipped = 0, failed = 0;
   for (const p of products) {
     if (p.embedding?.modelKey === svc.provider.modelKey) { skipped++; continue; }
     const text = svc.productEmbeddingText(p);
@@ -59,11 +65,11 @@ export async function embedAllForShop(
       });
       embedded++;
     } catch {
-      // Partial backfill beats none.
+      failed++;
     }
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
   }
-  return { embedded, skipped };
+  return { embedded, skipped, failed, total: products.length, providerConfigured: true };
 }
 
 // Embed a single product if missing or stale. Used after single-product sync.

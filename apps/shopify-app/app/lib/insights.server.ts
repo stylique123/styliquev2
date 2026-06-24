@@ -14,6 +14,52 @@
 // Missing data (shops with no events) returns zeros, never throws.
 
 import { prisma } from "../db.server";
+import { distinctOrderCountFromEvents } from "@stylique/core";
+
+export function realDemandCatalogGapWhere(
+  shopId: string | null,
+  createdAt: { gte?: Date; lt?: Date },
+) {
+  return {
+    ...(shopId ? { shopId } : {}),
+    createdAt,
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
+export function customerSegmentsFromEvidence(
+  sessions: Array<{ id: string; signalCount: number }>,
+  cartEvents: Array<{ shopperId: string | null }>,
+): UltimateInsights["customerSegments"] {
+  const confirmedByShopper = new Map<string, number>();
+  for (const event of cartEvents) {
+    if (!event.shopperId) continue;
+    confirmedByShopper.set(event.shopperId, (confirmedByShopper.get(event.shopperId) ?? 0) + 1);
+  }
+
+  const highRepeat = sessions.filter((session) =>
+    session.signalCount >= 10 && (confirmedByShopper.get(session.id) ?? 0) >= 1
+  ).length;
+  const singlePurchase = [...confirmedByShopper.values()].filter((count) => count === 1).length;
+  const highEngagementNoPurchase = sessions.filter((session) =>
+    session.signalCount >= 5 && !confirmedByShopper.has(session.id)
+  ).length;
+
+  let topSegmentInsight = "Collecting shopper data — segments surface after first interactions.";
+  if (highRepeat >= 10) {
+    topSegmentInsight = `${highRepeat} shoppers show VIP signals — consider early access or loyalty offers.`;
+  } else if (highEngagementNoPurchase >= 20) {
+    topSegmentInsight = `${highEngagementNoPurchase} highly engaged shoppers haven't purchased yet — a targeted offer could convert them.`;
+  }
+
+  return {
+    highRepeat,
+    singlePurchase,
+    highEngagementNoPurchase,
+    topSegmentInsight,
+  };
+}
 
 // ─── Public types ──────────────────────────────────────────────────────────
 
@@ -111,7 +157,7 @@ async function getStarterInsights(shopId: string): Promise<StarterInsights> {
   const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
 
-  const [weeklyEvents, topClickEvents, topCartEvents, gapCount, recentErrors, recentChats] =
+  const [weeklyEvents, topClickEvents, topCartEvents, cartOrderRows, gapCount, recentErrors, recentChats] =
     await Promise.all([
       // Weekly event counts by name
       prisma.analyticsEvent.groupBy({
@@ -131,9 +177,16 @@ async function getStarterInsights(shopId: string): Promise<StarterInsights> {
         select: { productId: true },
         take: 500,
       }),
+      // Order-level cart conversion denominator for weekly stats. The top-cart
+      // product list above remains product-level; this one is order-level.
+      prisma.analyticsEvent.findMany({
+        where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: sevenDaysAgo } },
+        select: { id: true, payload: true },
+        take: 5000,
+      }),
       // Catalog gap count (unresolved = no explicit resolved field, just count recent ones)
       prisma.catalogGap.count({
-        where: { shopId, createdAt: { gte: sevenDaysAgo } },
+        where: realDemandCatalogGapWhere(shopId, { gte: sevenDaysAgo }),
       }),
       // Error proxy: TRYON_RENDER_FAILED + CART_FAILED in last 24h
       prisma.analyticsEvent.count({
@@ -157,7 +210,7 @@ async function getStarterInsights(shopId: string): Promise<StarterInsights> {
     weeklyEvents.find((g) => g.name === name)?._count._all ?? 0;
 
   const conversations = evt("CHAT_OPENED");
-  const addToCarts = evt("CART_CONFIRMED");
+  const addToCarts = distinctOrderCountFromEvents(cartOrderRows);
   const tryOnRenders = evt("TRYON_RENDER_COMPLETED");
 
   // Build top products from click and cart events
@@ -259,7 +312,7 @@ async function getGrowthInsights(
     // Top catalog gaps with counts — we'll join purchase signal manually
     prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
-      where: { shopId, createdAt: { gte: sevenDaysAgo } },
+      where: realDemandCatalogGapWhere(shopId, { gte: sevenDaysAgo }),
       _count: { _all: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
       take: 20,
@@ -583,21 +636,19 @@ async function getUltimateInsights(
     brandGapsPrevious,
     // For restocking: product cart velocity
     cartEvents,
-    // For customer segments: shopper sessions with repeat signals
-    highRepeatSessions,
-    singlePurchaseSessions,
-    highEngagementSessions,
+    // For customer segments: shopper engagement depth joined to confirmed carts.
+    shopperSessions,
   ] = await Promise.all([
     // This brand's gap queries (current 30d)
     prisma.catalogGap.findMany({
-      where: { shopId, createdAt: { gte: thirtyDaysAgo } },
+      where: realDemandCatalogGapWhere(shopId, { gte: thirtyDaysAgo }),
       select: { normalizedQuery: true },
       take: 2000,
     }),
 
     // This brand's gap queries (previous 30d — for growth rate)
     prisma.catalogGap.findMany({
-      where: { shopId, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+      where: realDemandCatalogGapWhere(shopId, { gte: sixtyDaysAgo, lt: thirtyDaysAgo }),
       select: { normalizedQuery: true },
       take: 2000,
     }),
@@ -605,34 +656,14 @@ async function getUltimateInsights(
     // Cart confirmed events for velocity calculation
     prisma.analyticsEvent.findMany({
       where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: thirtyDaysAgo } },
-      select: { productId: true, createdAt: true },
+      select: { productId: true, createdAt: true, shopperId: true },
       take: 2000,
     }),
 
-    // High-repeat: 3+ return visits (signalCount proxy) with cart confirms
-    prisma.shopperSession.count({
-      where: {
-        shopifyDomain: shopDomain,
-        signalCount: { gte: 10 }, // proxy for repeat visits (each visit adds signals)
-      },
-    }),
-
-    // Single purchase — low signal count but cart confirmed event exists
-    prisma.analyticsEvent.groupBy({
-      by: ["shopperId"],
-      where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: thirtyDaysAgo } },
-      _count: { _all: true },
-      having: { shopperId: { _count: { equals: 1 } } },
-    }).then((rows) => rows.length),
-
-    // High engagement, no purchase
-    prisma.shopperSession.count({
-      where: {
-        shopifyDomain: shopDomain,
-        signalCount: { gte: 5 },
-        // No CART_CONFIRMED events — we can't join directly, use signalCount as proxy
-        accountClaimedAt: null, // engaged but haven't committed
-      },
+    prisma.shopperSession.findMany({
+      where: { shopifyDomain: shopDomain },
+      select: { id: true, signalCount: true },
+      take: 5000,
     }),
   ]);
 
@@ -646,12 +677,12 @@ async function getUltimateInsights(
   // MUST have k-anonymity floor of ≥3 brands (§3 invariant #5)
   const networkGapsCurrent = await prisma.catalogGap.groupBy({
     by: ["shopId", "normalizedQuery"],
-    where: { createdAt: { gte: thirtyDaysAgo } },
+    where: realDemandCatalogGapWhere(null, { gte: thirtyDaysAgo }),
     _count: { _all: true },
   });
   const networkGapsPrevious = await prisma.catalogGap.groupBy({
     by: ["shopId", "normalizedQuery"],
-    where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } },
+    where: realDemandCatalogGapWhere(null, { gte: sixtyDaysAgo, lt: thirtyDaysAgo }),
     _count: { _all: true },
   });
 
@@ -747,20 +778,7 @@ async function getUltimateInsights(
     .sort((a, b) => a.predictedStockoutDays - b.predictedStockoutDays);
 
   // ─── Customer segments ────────────────────────────────────────────────
-  const totalKnownShoppers = highRepeatSessions + highEngagementSessions;
-  let topSegmentInsight = "Collecting shopper data — segments surface after first interactions.";
-  if (highRepeatSessions >= 10) {
-    topSegmentInsight = `${highRepeatSessions} shoppers show VIP signals — consider early access or loyalty offers.`;
-  } else if (highEngagementSessions >= 20) {
-    topSegmentInsight = `${highEngagementSessions} highly engaged shoppers haven't purchased yet — a targeted offer could convert them.`;
-  }
-
-  const customerSegments: UltimateInsights["customerSegments"] = {
-    highRepeat: highRepeatSessions,
-    singlePurchase: singlePurchaseSessions,
-    highEngagementNoPurchase: highEngagementSessions,
-    topSegmentInsight,
-  };
+  const customerSegments = customerSegmentsFromEvidence(shopperSessions, cartEvents);
 
   return {
     ...growth,

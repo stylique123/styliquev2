@@ -10,6 +10,7 @@ export type ImageInput = {
   url: string;            // public image URL (Shopify CDN typically)
   position: number;       // Shopify display order
   shopifyFilename?: string | null; // when known — used by filename heuristics
+  altText?: string | null; // Shopify image alt text — often carries front/detail/swatch/size hints
 };
 
 export type QualityReason =

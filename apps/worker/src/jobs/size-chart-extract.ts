@@ -18,7 +18,7 @@
 //   • catalog-sync after every product upsert (idempotent via jobId)
 //   • POST /api/admin/size-charts/backfill (manual backfill for all products)
 
-import { prisma } from "@stylique/db";
+import { prisma, Prisma } from "@stylique/db";
 import { extractSizeChartMultiSource } from "@stylique/core";
 
 export type SizeChartExtractJobData = { shopId: string; productId: string };
@@ -37,6 +37,19 @@ function normSize(s: string | null | undefined): string {
 
 const MEASURE_KEYS = ["chest", "bust", "waist", "hip", "length", "sleeve", "inseam", "shoulder"] as const;
 
+const SIZE_CHART_MEASUREMENT_SOURCES = new Set([
+  "size_chart",
+  "json_metafield",
+  "html_metafield",
+  "description_html",
+  "linked_page",
+  "image_ocr",
+]);
+
+function bridgeOwnsMeasurements(source: string | null | undefined): boolean {
+  return !source || SIZE_CHART_MEASUREMENT_SOURCES.has(source);
+}
+
 export async function processSizeChartExtract(data: SizeChartExtractJobData): Promise<void> {
   const product = await prisma.product.findFirst({
     where: { id: data.productId, shopId: data.shopId },
@@ -45,10 +58,11 @@ export async function processSizeChartExtract(data: SizeChartExtractJobData): Pr
       shopId: true,
       descriptionHtml: true, // text/HTML size charts pasted into the description
       sizeChartJson: true,    // metafield-derived chart already set at sync time
-      variants: { select: { id: true, size: true, measurementsJson: true } },
+      variants: { select: { id: true, size: true, measurementsJson: true, measurementsSource: true } },
       images: {
-        select: { url: true, garmentRole: true },
-        take: 5,
+        orderBy: { position: "asc" },
+        select: { url: true, altText: true, garmentRole: true },
+        take: 12,
       },
     },
   });
@@ -68,7 +82,7 @@ export async function processSizeChartExtract(data: SizeChartExtractJobData): Pr
   const result = await extractSizeChartMultiSource({
     shopDomain: shop?.shopifyDomain,
     bodyHtml: product.descriptionHtml ?? undefined,
-    images: product.images.map((i) => ({ url: i.url, garmentRole: i.garmentRole })),
+    images: product.images.map((i) => ({ url: i.url, alt: i.altText ?? undefined, garmentRole: i.garmentRole })),
     geminiApiKey: process.env.GEMINI_API_KEY,
   });
 
@@ -98,8 +112,9 @@ export async function processSizeChartExtract(data: SizeChartExtractJobData): Pr
       const name = normSize(typeof row.name === "string" ? row.name : undefined);
       if (name) rowBySize.set(name, row);
     }
+    const bridgedVariantIds = new Set<string>();
     for (const v of product.variants) {
-      if (v.measurementsJson) continue; // don't clobber explicit per-SKU data
+      if (v.measurementsJson && !bridgeOwnsMeasurements(v.measurementsSource)) continue;
       const row = rowBySize.get(normSize(v.size));
       if (!row) continue;
       const measurements: Record<string, number> = {};
@@ -118,7 +133,21 @@ export async function processSizeChartExtract(data: SizeChartExtractJobData): Pr
             },
           })
           .catch(() => undefined);
+        bridgedVariantIds.add(v.id);
       }
+    }
+    for (const v of product.variants) {
+      if (!v.measurementsJson || !bridgeOwnsMeasurements(v.measurementsSource) || bridgedVariantIds.has(v.id)) continue;
+      if (rowBySize.has(normSize(v.size))) continue;
+      await prisma.productVariant
+        .update({
+          where: { id: v.id },
+          data: {
+            measurementsJson: Prisma.JsonNull,
+            measurementsSource: null,
+          },
+        })
+        .catch(() => undefined);
     }
   }
 

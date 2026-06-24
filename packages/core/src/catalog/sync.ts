@@ -13,7 +13,7 @@ export interface ShopifyCatalogClient {
 
 export interface CatalogSyncService {
   syncAll(shopId: string, client: ShopifyCatalogClient): Promise<{ upserted: number; deactivated: number }>;
-  syncOne(shopId: string, input: ShopifyProductInput): Promise<{ productId: string }>;
+  syncOne(shopId: string, input: ShopifyProductInput): Promise<{ productId?: string; deleted?: true }>;
   deleteByShopifyId(shopId: string, shopifyProductId: string | number): Promise<void>;
   markShopUninstalled(shopId: string): Promise<void>;
 }
@@ -66,19 +66,46 @@ export function createCatalogSyncService(prisma: PrismaClient): CatalogSyncServi
         create: { productId: product.id, shopifyId: v.shopifyId, sku: v.sku, size: v.size, color: v.color, priceCents: v.priceCents, ...inventoryPatch },
       });
     }
+    await prisma.productVariant.deleteMany({
+      where: {
+        productId: product.id,
+        NOT: { shopifyId: { in: n.variants.map((v) => v.shopifyId) } },
+      },
+    });
 
-    // Replace images: simplest correct strategy — delete + recreate by stable position id.
-    await prisma.productImage.deleteMany({ where: { productId: product.id } });
-    if (n.images.length) {
-      await prisma.productImage.createMany({
-        data: n.images.map((img) => ({
-          productId: product.id,
-          shopifyId: img.shopifyId,
-          url: img.url,
-          position: img.position,
-          role: "CATALOG" as const,
-        })),
+    const existingImages = await prisma.productImage.findMany({
+      where: { productId: product.id },
+      orderBy: { position: "asc" },
+      select: { shopifyId: true, url: true, altText: true, position: true },
+    });
+    const imagesChanged = !sameImageSet(existingImages, n.images);
+    if (imagesChanged) {
+      // Replace images when Shopify image truth actually changed. Reset
+      // product-level image quality in the same window: image rows get new DB
+      // ids, so any previous primaryTryonImageId points at a row that is about
+      // to disappear until the async scorer catches up.
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          primaryTryonImageId: null,
+          tryonReady: false,
+          widgetTier: 3,
+          qualityComputedAt: null,
+        },
       });
+      await prisma.productImage.deleteMany({ where: { productId: product.id } });
+      if (n.images.length) {
+        await prisma.productImage.createMany({
+          data: n.images.map((img) => ({
+            productId: product.id,
+            shopifyId: img.shopifyId,
+            url: img.url,
+            altText: img.altText,
+            position: img.position,
+            role: "CATALOG" as const,
+          })),
+        });
+      }
     }
 
     const audit = baselineAudit(n);
@@ -136,6 +163,10 @@ export function createCatalogSyncService(prisma: PrismaClient): CatalogSyncServi
 
     async syncOne(shopId, input) {
       const n = normalizeProduct(input);
+      if (!n.isActive) {
+        await prisma.product.deleteMany({ where: { shopId, shopifyId: n.shopifyId } });
+        return { deleted: true };
+      }
       const productId = await upsertNormalized(shopId, n);
       return { productId };
     },
@@ -160,4 +191,18 @@ export function createCatalogSyncService(prisma: PrismaClient): CatalogSyncServi
       }).catch(() => { /* best-effort during uninstall */ });
     },
   };
+}
+
+function sameImageSet(
+  existing: Array<{ shopifyId: string | null; url: string; altText?: string | null; position: number }>,
+  next: Array<{ shopifyId: string | null; url: string; altText: string | null; position: number }>,
+): boolean {
+  if (existing.length !== next.length) return false;
+  return existing.every((img, idx) => {
+    const n = next[idx];
+    return img.shopifyId === n.shopifyId
+      && img.url === n.url
+      && (img.altText ?? null) === (n.altText ?? null)
+      && img.position === n.position;
+  });
 }

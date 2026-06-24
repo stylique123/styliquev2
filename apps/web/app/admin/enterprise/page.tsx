@@ -5,8 +5,11 @@ import { useState, FormEvent } from "react";
 export default function EnterprisePage() {
   const [form, setForm] = useState({
     domain: "",
+    tier: "ULTIMATE",
+    comp: "true",
     monthlyTryOnPersonal: "",
     monthlyTryOnBody: "",
+    monthlyStylistTurns: "",
     monthlyStyleRecs: "",
     monthlyFitRecs: "",
     supportLevel: "DEDICATED",
@@ -34,6 +37,8 @@ export default function EnterprisePage() {
     try {
       const body: Record<string, unknown> = {
         domain: form.domain.trim(),
+        tier: form.tier,
+        comp: form.comp === "true",
         supportLevel: form.supportLevel,
         notes: form.notes || undefined,
       };
@@ -41,6 +46,7 @@ export default function EnterprisePage() {
       const numFields = [
         "monthlyTryOnPersonal",
         "monthlyTryOnBody",
+        "monthlyStylistTurns",
         "monthlyStyleRecs",
         "monthlyFitRecs",
       ] as const;
@@ -63,8 +69,11 @@ export default function EnterprisePage() {
         setResult({ ok: true, message: `Enterprise plan created for ${form.domain}` });
         setForm({
           domain: "",
+          tier: "ULTIMATE",
+          comp: "true",
           monthlyTryOnPersonal: "",
           monthlyTryOnBody: "",
+          monthlyStylistTurns: "",
           monthlyStyleRecs: "",
           monthlyFitRecs: "",
           supportLevel: "DEDICATED",
@@ -152,8 +161,8 @@ export default function EnterprisePage() {
             lineHeight: 1.6,
           }}
         >
-          Upgrades an existing shop to ULTIMATE tier with custom limits and dedicated support.
-          The shop must already be installed on the platform.
+          Upgrades an existing shop to the selected tier with custom limits and dedicated support.
+          If the shop has not installed yet, this creates a pending onboarding record that becomes active after Shopify OAuth.
         </p>
       </div>
 
@@ -179,6 +188,34 @@ export default function EnterprisePage() {
           />
         </div>
 
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}
+        >
+          <div>
+            <label style={labelStyle}>Tier</label>
+            <select
+              value={form.tier}
+              onChange={(e) => update("tier", e.target.value)}
+              style={{ ...inputStyle, cursor: "pointer" }}
+            >
+              <option value="STARTER">STARTER</option>
+              <option value="GROWTH">GROWTH</option>
+              <option value="ULTIMATE">ULTIMATE</option>
+            </select>
+          </div>
+          <div>
+            <label style={labelStyle}>Billing / comp</label>
+            <select
+              value={form.comp}
+              onChange={(e) => update("comp", e.target.value)}
+              style={{ ...inputStyle, cursor: "pointer" }}
+            >
+              <option value="true">Ops comp / manual contract active</option>
+              <option value="false">Pending billing checkout</option>
+            </select>
+          </div>
+        </div>
+
         {/* Custom limits */}
         <div
           style={{
@@ -192,13 +229,14 @@ export default function EnterprisePage() {
             borderBottom: "1px solid var(--line)",
           }}
         >
-          Custom monthly limits (leave blank for unlimited)
+          Custom monthly limits (blank uses the selected tier default; Ultimate defaults are unlimited where shown as blank)
         </div>
         <div
           style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}
         >
           {fieldGroup("Try-on personal", "monthlyTryOnPersonal", "number", "e.g. 5000")}
           {fieldGroup("Try-on body model", "monthlyTryOnBody", "number", "e.g. 10000")}
+          {fieldGroup("Stylist turns", "monthlyStylistTurns", "number", "e.g. 50000")}
           {fieldGroup("Style recs", "monthlyStyleRecs", "number", "e.g. 20000")}
           {fieldGroup("Fit recs", "monthlyFitRecs", "number", "e.g. 20000")}
         </div>

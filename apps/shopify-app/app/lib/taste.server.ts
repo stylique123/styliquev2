@@ -63,6 +63,16 @@ const EVENT_WEIGHTS: Record<string, number> = {
 const LOOKBACK_DAYS = 90;
 const MAX_EVENTS = 500;       // hard cap per recompute
 
+export function gapIntensityCatalogGapWhere(shopId: string, normalizedQuery: string, since: Date) {
+  return {
+    shopId,
+    normalizedQuery,
+    createdAt: { gte: since },
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
 function bump(map: Record<string, number>, key: string | null | undefined, weight: number) {
   if (!key) return;
   const k = key.toLowerCase();
@@ -420,7 +430,7 @@ export async function getGapIntensity(
 
   const since = new Date(Date.now() - windowDays * 86_400_000);
   const rows = await prisma.catalogGap.findMany({
-    where: { shopId, normalizedQuery: normalized, createdAt: { gte: since } },
+    where: gapIntensityCatalogGapWhere(shopId, normalized, since),
     select: { createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 1000,

@@ -15,6 +15,7 @@ import morgan from "morgan";
 import * as Sentry from "@sentry/remix";
 import { initSentry } from "./app/lib/sentry.server";
 import { validateRequiredEnvVars } from "./app/lib/startup-validation.server";
+import { assertRequiredDatabaseShape } from "./app/lib/database-shape.server";
 import { attachRequestId } from "./app/lib/request-id.server";
 
 // Initialise Sentry as early as possible — no-op when SENTRY_DSN absent.
@@ -23,6 +24,7 @@ initSentry();
 // Validate required environment variables before accepting any traffic.
 // Exits with a clear message if a required var is missing.
 validateRequiredEnvVars();
+await assertRequiredDatabaseShape();
 
 const app = express();
 app.disable("x-powered-by");

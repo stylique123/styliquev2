@@ -14,6 +14,7 @@
 // Processes one shopId at a time (serialised by BullMQ queue — see scheduler).
 
 import { prisma, Prisma } from "@stylique/db";
+import { PLAN_FEATURES } from "@stylique/core";
 import { Worker, Queue } from "bullmq";
 import type { Redis as IORedisClient } from "ioredis";
 import { createDecipheriv } from "node:crypto";
@@ -139,18 +140,48 @@ export async function processBillingReconcile(
   console.log(`[billing-reconcile] subscription CANCELLED for shop ${shopId} — downgrading to FREE`);
 
   try {
+    const existing = await prisma.plan.findUnique({
+      where: { shopId },
+      select: { planFeaturesJson: true },
+    });
+    const current = (existing?.planFeaturesJson as Record<string, unknown> | null) ?? {};
+    const nextFeatures = { ...current };
+    delete nextFeatures.billingActive;
+    nextFeatures.billing = {
+      ...(typeof current.billing === "object" && current.billing ? current.billing as Record<string, unknown> : {}),
+      status: "CANCELLED",
+      active: false,
+      reconciledAt: new Date().toISOString(),
+    };
+    const nextFeaturesJson = nextFeatures as Prisma.InputJsonValue;
+
+    const starter = PLAN_FEATURES.STARTER;
     // Update or create the Plan row — downgrade to STARTER (the minimum tier).
     // There is no FREE tier in the schema; STARTER is the base entitlement.
+    // Preserve non-billing overrides (stylist voice, provider, policy, tuning)
+    // so cancellation does not erase merchant configuration.
     await prisma.plan.upsert({
       where: { shopId },
       create: {
         shopId,
         tier: "STARTER",
-        planFeaturesJson: Prisma.JsonNull,
+        monthlyTryOnPersonal: starter.widget.monthlyTryOnPersonal,
+        monthlyTryOnBody: starter.widget.monthlyTryOnBody,
+        monthlyStylistTurns: starter.stylist.monthlyTurns,
+        monthlyStyleRecs: starter.widget.monthlyStyleRecs,
+        monthlyFitRecs: starter.widget.monthlyFitRecs,
+        analyticsLevel: starter.analytics.level,
+        planFeaturesJson: nextFeaturesJson,
       },
       update: {
         tier: "STARTER",
-        planFeaturesJson: Prisma.JsonNull,
+        monthlyTryOnPersonal: starter.widget.monthlyTryOnPersonal,
+        monthlyTryOnBody: starter.widget.monthlyTryOnBody,
+        monthlyStylistTurns: starter.stylist.monthlyTurns,
+        monthlyStyleRecs: starter.widget.monthlyStyleRecs,
+        monthlyFitRecs: starter.widget.monthlyFitRecs,
+        analyticsLevel: starter.analytics.level,
+        planFeaturesJson: nextFeaturesJson,
       },
     });
 

@@ -109,4 +109,68 @@ describe("decisionToAdapter tenant grounding", () => {
     ]);
     expect(result.products.every((p) => CATALOG.includes(p))).toBe(true);
   });
+
+  it("builds styled looks from merchant product-type aliases without exact category strings", () => {
+    const aliasCatalog: AdaptedProduct[] = [
+      {
+        id: "prod-blouse",
+        handle: "embroidered-blouse",
+        name: "Embroidered Blouse",
+        category: "Blouses",
+        priceUsd: 120,
+        image: "https://cdn.example/blouse.jpg",
+        sizes: ["S", "M"],
+        colors: ["cream"],
+      },
+      {
+        id: "prod-pants",
+        handle: "wide-pants",
+        name: "Wide Pants",
+        category: "Pants",
+        priceUsd: 130,
+        image: "https://cdn.example/pants.jpg",
+        sizes: ["S", "M"],
+        colors: ["black"],
+      },
+      {
+        id: "prod-heels",
+        handle: "gold-heels",
+        name: "Gold Heels",
+        category: "Heels",
+        priceUsd: 95,
+        image: "https://cdn.example/heels.jpg",
+        sizes: ["38", "39"],
+        colors: ["gold"],
+      },
+      {
+        id: "prod-bag",
+        handle: "satin-clutch",
+        name: "Satin Clutch Bag",
+        category: "Bags",
+        priceUsd: 80,
+        image: "https://cdn.example/bag.jpg",
+        sizes: [],
+        colors: ["white"],
+      },
+    ];
+
+    const result = decisionToAdapter(
+      {
+        voice: "Here is the full look.",
+        route: "look",
+        productHandle: "embroidered-blouse",
+        quickReplies: [],
+        intent: "outfit",
+      },
+      "fallback",
+      aliasCatalog,
+      { shopperQuery: "dinner look" },
+    );
+
+    expect(result.look?.pieces.map((p) => p.handle)).toEqual([
+      "embroidered-blouse",
+      "wide-pants",
+      "gold-heels",
+    ]);
+  });
 });

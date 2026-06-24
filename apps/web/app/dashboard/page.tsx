@@ -142,6 +142,8 @@ interface ConversionIntel {
   tryOnPurchaseRate: number;
   baselinePurchaseRate: number;
   tryOnLiftX: number;
+  bundleIntentRate?: number;
+  aiSuggestedCartRate?: number;
   bundlePurchaseRate: number;
   aiSuggestedAddRate: number;
   confidenceScore: number;
@@ -173,6 +175,8 @@ interface ExecCard {
   label: string;
   value: string;
   sub: string;
+  source?: "measured" | "mixed" | "modelled" | "insufficient_data";
+  sourceDetail?: string;
   trend?: Trend;
   deltaPct?: number;
   tone: "loved" | "growing" | "converting" | "watch";
@@ -407,6 +411,12 @@ const TONE_COLOR: Record<ExecCard["tone"], string> = {
   converting: "#7FE3C0",
   watch: "#E8A86B",
 };
+const SOURCE_LABEL: Record<NonNullable<ExecCard["source"]>, string> = {
+  measured: "Measured",
+  mixed: "Measured + modelled",
+  modelled: "Modelled",
+  insufficient_data: "Collecting",
+};
 const SIGNAL_LABEL: Record<ColorRow["signal"], string> = {
   converter: "converts",
   curiosity: "curiosity",
@@ -587,11 +597,19 @@ function FashionIntelligenceSection() {
                   <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--mute)" }}>
                     {e.label}
                   </span>
+                  {e.source && (
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase", color: e.source === "measured" ? "#7FE3C0" : "#E8A86B" }}>
+                      {SOURCE_LABEL[e.source]}
+                    </span>
+                  )}
                   <span style={{ fontFamily: "var(--serif)", fontSize: 26, fontStyle: "italic", lineHeight: 1.1, color: col }}>{e.value}</span>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ fontFamily: "var(--sans)", fontSize: 11.5, color: "var(--mute)", lineHeight: 1.4 }}>{e.sub}</span>
                     {e.trend && <TrendArrow trend={e.trend} deltaPct={e.deltaPct} />}
                   </div>
+                  {e.sourceDetail && (
+                    <span style={{ fontFamily: "var(--sans)", fontSize: 10.5, color: "var(--mute)", lineHeight: 1.45 }}>{e.sourceDetail}</span>
+                  )}
                 </div>
               );
             })}
@@ -634,8 +652,8 @@ function FashionIntelligenceSection() {
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 14 }}>
-                      <Row k="Bought a recommended bundle" v={`${Math.round(cv.bundlePurchaseRate * 100)}%`} />
-                      <Row k="Added an AI-suggested item" v={`${Math.round(cv.aiSuggestedAddRate * 100)}%`} />
+                      <Row k="Asked for a recommended bundle" v={`${Math.round((cv.bundleIntentRate ?? cv.bundlePurchaseRate) * 100)}%`} />
+                      <Row k="Added an AI-suggested item" v={`${Math.round((cv.aiSuggestedCartRate ?? cv.aiSuggestedAddRate) * 100)}%`} />
                       <Row k="Full-look bundles convert" v={`${cv.fullLookMultiplier.toFixed(1)}× better`} />
                       <Row k="Stylist users spend" v={`+${Math.round(cv.stylistSpendLift * 100)}%`} />
                     </div>

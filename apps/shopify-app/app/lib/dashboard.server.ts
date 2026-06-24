@@ -13,15 +13,25 @@
 //   • recs      — tier-filtered BrandRecommendation rows
 
 import { prisma } from "../db.server";
+import { Prisma } from "@stylique/db";
 import { getEffectivePlan } from "./entitlement.server";
 import { listRecommendations } from "./recommendations.server";
 import { readBenchmarksForShop, readLatestSnapshot } from "./network.server";
 import { getInsights, type StarterInsights, type GrowthInsights, type UltimateInsights } from "./insights.server";
 import { getFashionIntelligence, type FashionIntelligence } from "./fashion-intelligence.server";
-import { currentPeriodStart, type PlanFeatures } from "@stylique/core";
+import { currentPeriodStart, distinctOrderCountFromEvents, LEGACY_EVENT_ALIASES, PLAN_PRICE_USD, type PlanFeatures } from "@stylique/core";
 import type { PlanTier } from "@stylique/types";
 
 const DAY = 86_400_000;
+
+export function realCatalogGapWhere(shopId: string, since: Date) {
+  return {
+    shopId,
+    createdAt: { gte: since },
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  } as const;
+}
 
 /**
  * Placement-confidence summary from WIDGET_PLACEMENT_AUDIT events.
@@ -107,11 +117,9 @@ async function buildPlacementSummary(shopId: string, since: Date) {
 // ── Analytics revenue + demand-intelligence helpers (brand-leader panel) ──
 // Plan list price in cents per tier — a KNOWN CONSTANT divisor (not a model),
 // so miraRoiMultiple stays a MEASURED figure (panel: founder/CFO #1 ask).
-const PLAN_PRICE_CENTS: Record<string, number> = {
-  STARTER: 19900, GROWTH: 44900, ULTIMATE: 84900, SCALE: 84900,
-};
 function planPriceCents(tier: string): number {
-  return PLAN_PRICE_CENTS[tier] ?? 44900;
+  const price = PLAN_PRICE_USD[tier as keyof typeof PLAN_PRICE_USD] ?? PLAN_PRICE_USD.GROWTH;
+  return price * 100;
 }
 
 // 7-day half-life recency weight (port of demo D60) — "what's hot NOW" beats
@@ -151,12 +159,7 @@ async function topCatalogGaps(
   const rows = await prisma.catalogGap
     .groupBy({
       by: ["normalizedQuery", "category"],
-      where: {
-        shopId,
-        createdAt: { gte: since },
-        source: { not: "size_chart_extract" },
-        NOT: { rawQuery: { startsWith: "no_size_chart" } },
-      },
+      where: realCatalogGapWhere(shopId, since),
       _count: { _all: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
       take: 5,
@@ -342,14 +345,8 @@ export async function buildOverview(args: {
     where: { shopId: args.shopId, createdAt: { gte: since } },
     _count: { _all: true },
   });
-  const EVENT_ALIASES: Record<string, string[]> = {
-    CHAT_OPENED: ["MIRA_OPENED"],
-    CHAT_PRODUCT_CLICKED: ["MIRA_PRODUCT_RECOMMENDED"],
-    CHAT_CART_REQUESTED: ["MIRA_ADD_TO_CART_ASSIST"],
-    CHAT_NEAR_MISS: ["MIRA_NEAR_MISS"],
-  };
   const evt = (name: string) => {
-    const names = [name, ...(EVENT_ALIASES[name] ?? [])];
+    const names = [name, ...(LEGACY_EVENT_ALIASES[name] ?? [])];
     return names.reduce((sum, n) => sum + (grouped.find((g) => g.name === n)?._count._all ?? 0), 0);
   };
 
@@ -391,6 +388,7 @@ export async function buildOverview(args: {
     set.add(orderKey);
   }
   const totalBuyers = ordersByShopper.size;
+  const confirmedOrders = distinctOrderCountFromEvents(confirmRows);
   const repeatBuyers = [...ordersByShopper.values()].filter((s) => s.size >= 2).length;
   const repeatPurchaseRate = {
     pct: totalBuyers > 0 ? Math.round((repeatBuyers / totalBuyers) * 1000) / 10 : 0,
@@ -403,7 +401,7 @@ export async function buildOverview(args: {
     chatSessions:        evt("CHAT_OPENED"),
     chatTurns:           evt("CHAT_MESSAGE_SENT"),
     combosProposed:      evt("CHAT_COMBO_PROPOSED"),
-    cartConfirmed:       evt("CART_CONFIRMED"),
+    cartConfirmed:       confirmedOrders,
     cartFromMira:        evt("CART_FROM_MIRA"),
     cartFromTryon:       evt("CART_FROM_TRYON"),
     cartFromWidgetStyle: evt("CART_FROM_WIDGET_STYLE"),
@@ -425,7 +423,7 @@ export async function buildOverview(args: {
     // Real shopper-demand gaps ONLY — exclude internal 'size_chart_extract'
     // (no_size_chart:<id>) bookkeeping rows that inflated the count (543 internal
     // vs ~1806 real shopper queries). The honest "what shoppers want" number.
-    catalogGaps:         await prisma.catalogGap.count({ where: { shopId: args.shopId, createdAt: { gte: since }, source: { not: "size_chart_extract" } } }),
+    catalogGaps:         await prisma.catalogGap.count({ where: realCatalogGapWhere(args.shopId, since) }),
     topGaps:             await topCatalogGaps(args.shopId, since),
     windowDays:          win,
   };
@@ -436,7 +434,7 @@ export async function buildOverview(args: {
     messaged:       evt("CHAT_MESSAGE_SENT"),
     combosShown:    evt("CHAT_COMBO_PROPOSED"),
     productClicked: evt("CHAT_PRODUCT_CLICKED"),
-    cartConfirmed:  evt("CART_CONFIRMED"),
+    cartConfirmed:  confirmedOrders,
   };
   // Real combo CTR (F3 fix, Sprint 6 audit round 2). Was hardcoded 0.
   // Combo proposals carry { comboName, productIds }. Product clicks carry
@@ -552,7 +550,7 @@ export async function buildOverview(args: {
     const qCount = countBy(queryRows.map((r) => (r.payload as { query?: string } | null)?.query?.toLowerCase()));
     const gapRows = await prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
-      where: { shopId: args.shopId, createdAt: { gte: since } },
+      where: realCatalogGapWhere(args.shopId, since),
       _count: { _all: true },
       _max: { createdAt: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
@@ -628,7 +626,7 @@ export async function buildOverview(args: {
   if (plan.tier !== "STARTER" && f.stylist.tasteVectorEnabled) {
     const sessions = await prisma.shopperSession.findMany({
       where: { shopifyDomain: (await prisma.shop.findUnique({ where: { id: args.shopId }, select: { shopifyDomain: true } }))?.shopifyDomain ?? "__none__",
-               tasteVectorJson: { not: undefined }, signalCount: { gte: 3 } },
+               tasteVectorJson: { not: Prisma.AnyNull }, signalCount: { gte: 3 } },
       select: { tasteVectorJson: true }, take: 2000,
     });
     const agg = { colorFamily: {} as Record<string, number>, silhouette: {} as Record<string, number>, category: {} as Record<string, number> };

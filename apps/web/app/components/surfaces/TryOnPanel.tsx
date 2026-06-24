@@ -24,6 +24,16 @@ function shopperApi(): string {
   const api = (window as unknown as { __sqApi?: unknown }).__sqApi;
   return typeof api === "string" ? api : ASSET_BASE;
 }
+function themeFlag(name: string, fallback: boolean): boolean {
+  if (typeof window === "undefined") return fallback;
+  const theme = (window as unknown as Record<string, unknown>).__sqTheme;
+  if (!theme || typeof theme !== "object") return fallback;
+  const value = (theme as Record<string, unknown>)[name];
+  return typeof value === "boolean" ? value : fallback;
+}
+function productVisualImage(product: Product): string | null {
+  return product.tryonImageUrl ?? product.cardImageUrl ?? product.images[0] ?? null;
+}
 
 // Loophole A — slot-aware worn outfit. Given an ordered worn list (focus first),
 // keep only the pieces that genuinely combine into ONE outfit: a dress occupies
@@ -110,6 +120,7 @@ function useIsDesktop(): boolean {
 }
 
 const PHASES = ["Reading your frame", "Draping the piece", "Finishing your look"] as const;
+const TRYON_ONLY_PHASES = ["Preparing model", "Draping the piece", "Finishing try-on"] as const;
 
 // Vertical placement (% from top of a full-body frame) for each fit region.
 const REGION_Y: Record<string, number> = { bust: 30, waist: 44, hip: 54, inseam: 78 };
@@ -211,6 +222,8 @@ export default function TryOnPanel({
   onRenderComplete?: (imageUrl: string) => void;
   onRenderFailed?: (errorCode: string) => void;
 }) {
+  const showSize = !ASSET_BASE || themeFlag("showSize", true);
+  const showStyle = !ASSET_BASE || themeFlag("showStyle", true);
   const defaultProduct = catalog.find((p) => p.handle === "onyx-silk-slip") ?? catalog[0];
   const [currentProduct, setCurrentProduct] = useState<Product>(initialProduct ?? defaultProduct);
 
@@ -224,7 +237,7 @@ export default function TryOnPanel({
   // model picker — they've sized themselves before, the next step that matters is
   // choosing the avatar. A first-timer (no body) lands on Size first so the panel
   // never opens without the shopper having a frame on file.
-  const [step,           setStep          ] = useState(savedBody ? 1 : 0);
+  const [step,           setStep          ] = useState(savedBody || !showSize ? 1 : 0);
   // NO auto-selection — the shopper MUST pick a muse before we proceed. Starts
   // null; the footer is gated until a choice is made.
   const [muse,           setMuse          ] = useState<MuseId | null>(null);
@@ -251,6 +264,7 @@ export default function TryOnPanel({
   const [renderErrCode,  setRenderErrCode ] = useState<string | null>(null);
   // Pieces layered onto the SAME body alongside the primary product (demand l).
   const [lookItems,      setLookItems     ] = useState<Product[]>([]);
+  const effectiveLookItems = useMemo(() => showStyle ? lookItems : [], [showStyle, lookItems]);
   // chosenSize = the size the CURRENT render was produced at (null → fitResult).
   // previewSize = a size the shopper TAPPED but hasn't committed to yet — it only
   // updates the fit map; the actual re-render waits for the explicit
@@ -279,7 +293,7 @@ export default function TryOnPanel({
   const isDesktop = useIsDesktop();
 
   const emitStorefrontEvent = useCallback((
-    name: "PDP_TRYON_CLICKED" | "TRYON_ABANDONED" | "CART_FROM_TRYON",
+    name: "PDP_TRYON_CLICKED" | "TRYON_ABANDONED" | "CART_FROM_TRYON" | "SIZE_SELECTED",
     product: Product,
     payload: Record<string, unknown>,
   ) => {
@@ -324,7 +338,7 @@ export default function TryOnPanel({
   // Invalidate the per-size render memo whenever an input OTHER than size changes
   // the fit (body, muse, focus piece, or the worn-look set) — those make every
   // cached size render stale, so we drop them and let the next tap re-render.
-  const lookKey = lookItems.map((p) => p.handle).join(",");
+  const lookKey = effectiveLookItems.map((p) => p.handle).join(",");
   useEffect(() => {
     setRenderedBySize({});
   }, [muse, height, weight, fitAge, usualSize, currentProduct.handle, lookKey]);
@@ -479,11 +493,13 @@ export default function TryOnPanel({
   // pieces that genuinely complete what's currently worn (no camisole-with-a-gown,
   // no two jackets) and RE-RANKS every time a piece is added/removed — so adding a
   // top surfaces trousers, adding trousers surfaces a coat, never the same stale list.
-  const recommendationCatalog = catalogProducts ?? (ASSET_BASE ? [currentProduct, ...lookItems] : catalog);
-  const outfit = completeLookFor(
-    [currentProduct, ...lookItems],
-    recommendationCatalog,
-  ).map((e) => e.product);
+  const recommendationCatalog = catalogProducts ?? (ASSET_BASE ? [currentProduct, ...effectiveLookItems] : catalog);
+  const outfit = showStyle
+    ? completeLookFor(
+        [currentProduct, ...effectiveLookItems],
+        recommendationCatalog,
+      ).map((e) => e.product)
+    : [];
   // The body the garment is composited onto — the chosen muse.
   // null → nothing chosen yet (gates the flow).
   const bodyImg     = activeMuse?.img ? resolveAsset(activeMuse.img) : null;
@@ -501,10 +517,25 @@ export default function TryOnPanel({
       setRenderError(false);
     }
   }, [initialProduct?.handle]);
+  useEffect(() => {
+    if (!showStyle && lookItems.length) setLookItems([]);
+  }, [showStyle, lookItems.length]);
 
   // The effective size: whatever the shopper chose on the result step, else the
   // recommendation. The complete-the-look footer + filmstrip read this. (B7)
   const effectiveSize = chosenSize ?? fitResult.size;
+  const emitSizeSelected = useCallback((chosen: string) => {
+    const recommended = fitResult.size;
+    const ladder = currentProduct.sizes.map((s) => s.toUpperCase());
+    const chosenIdx = ladder.indexOf(chosen.toUpperCase());
+    const recommendedIdx = ladder.indexOf(recommended.toUpperCase());
+    emitStorefrontEvent("SIZE_SELECTED", currentProduct, {
+      chosenSize: chosen,
+      recommendedSize: recommended,
+      sizeDelta: chosenIdx >= 0 && recommendedIdx >= 0 ? chosenIdx - recommendedIdx : 0,
+      trigger,
+    });
+  }, [currentProduct, emitStorefrontEvent, fitResult.size, trigger]);
 
   // REAL add-to-cart (P0). On a live Shopify storefront this resolves the variant
   // for the chosen size and POSTs to /cart/add.js; on the demo it's a simulated
@@ -521,19 +552,22 @@ export default function TryOnPanel({
         return;
       }
       cartAddedRef.current = true;
+      emitSizeSelected(effectiveSize);
       emitStorefrontEvent("CART_FROM_TRYON", currentProduct, {
         renderId: undefined,
+        size: effectiveSize,
       });
       onClose?.();
     } finally {
       setAdding(false);
     }
-  }, [currentProduct, effectiveSize, emitStorefrontEvent, onClose]);
+  }, [currentProduct, effectiveSize, emitSizeSelected, emitStorefrontEvent, onClose]);
   const addLookToBag = useCallback(async () => {
+    if (!showStyle) return;
     setAdding(true);
     const pieces = [
       { handle: currentProduct.handle, size: effectiveSize },
-      ...lookItems.map((p) => ({ handle: p.handle, size: null as string | null })),
+      ...effectiveLookItems.map((p) => ({ handle: p.handle, size: null as string | null })),
     ];
     try {
       const result = await addOutfitToCart(pieces);
@@ -542,14 +576,21 @@ export default function TryOnPanel({
         return;
       }
       cartAddedRef.current = true;
+      emitSizeSelected(effectiveSize);
+      const productIds = [
+        currentProduct.productId,
+        ...effectiveLookItems.map((p) => p.productId),
+      ].filter((id): id is string => typeof id === "string" && id.length > 0);
       emitStorefrontEvent("CART_FROM_TRYON", currentProduct, {
         comboName: `${pieces.length}-piece look`,
+        productIds,
+        size: effectiveSize,
       });
       onClose?.();
     } finally {
       setAdding(false);
     }
-  }, [currentProduct, effectiveSize, lookItems, emitStorefrontEvent, onClose]);
+  }, [currentProduct, effectiveSize, effectiveLookItems, emitSizeSelected, emitStorefrontEvent, onClose, showStyle]);
 
   // SIZE-1: the muse is the picture, NOT the body. Picking a muse must NEVER
   // overwrite the shopper's typed height/weight (that silent autofill was the
@@ -636,7 +677,10 @@ export default function TryOnPanel({
         : focus.category === "outerwear" ? "outerwear"
         : focus.category === "accessory" ? "accessory"
         : "top";
-      const garmentImages = garments.map((g) => g.images[0]).filter(Boolean).map(resolveAsset);
+      const garmentImages = garments
+        .map(productVisualImage)
+        .filter((image): image is string => Boolean(image))
+        .map(resolveAsset);
       // The HONEST size signal: the real per-body ease (signed cm) and tightness
       // (−1..+1) of THIS size on THIS shopper, from the brand-exact size map. The
       // render uses these concrete numbers so S/M/L look genuinely different and
@@ -809,16 +853,17 @@ export default function TryOnPanel({
   );
 
   // "Generate my look" / re-render the current focus + look at the active size.
-  const startRender = () => { runRender([currentProduct, ...lookItems], effectiveSize); };
+  const startRender = () => { runRender([currentProduct, ...effectiveLookItems], effectiveSize); };
 
   // The live selection signature (focus + look + size) vs what's actually been
   // rendered. When they diverge, the result step shows a "Try the look on" button.
-  const currentSig = sigOf([currentProduct, ...lookItems], effectiveSize);
+  const currentSig = sigOf([currentProduct, ...effectiveLookItems], effectiveSize);
   const lookDirty = currentSig !== renderedSig;
 
   // Tap a size pill → PREVIEW only (updates the fit map). The render waits for the
   // explicit "Try on this size →" button. (founder: "tap previews, button re-renders")
   const previewSizeTap = (sz: string) => {
+    if (!showSize) return;
     // If we already have this size's composite for the current body + look, flip
     // to it INSTANTLY — no Gemini call, no progress wait. This is what lets the
     // shopper actually compare how each size looks ON the body (founder: "I have
@@ -827,11 +872,12 @@ export default function TryOnPanel({
     const cached = renderedBySize[sz];
     if (cached && sz !== effectiveSize) {
       setChosenSize(sz);
+      emitSizeSelected(sz);
       setPreviewSize(null);
       setRenderError(false);
       setRenderErrCode(null);
       setRenderedUrl(cached);
-      setRenderedSig(sigOf([currentProduct, ...lookItems], sz));
+      setRenderedSig(sigOf([currentProduct, ...effectiveLookItems], sz));
       return;
     }
     setPreviewSize(sz === effectiveSize ? null : sz);
@@ -842,8 +888,9 @@ export default function TryOnPanel({
     const sz = previewSize;
     if (!sz || sz === effectiveSize) return;
     setChosenSize(sz);
+    emitSizeSelected(sz);
     setPreviewSize(null);
-    runRender([currentProduct, ...lookItems], sz);
+    runRender([currentProduct, ...effectiveLookItems], sz);
   };
 
   // Tap a "complete the look" piece → TOGGLE it into the look. This is SELECTION
@@ -851,6 +898,7 @@ export default function TryOnPanel({
   // automatically just tries those on. No."). The explicit "Try the look on"
   // button does the combined render. Tapping an already-selected piece removes it.
   const toggleLookPiece = (p: Product) => {
+    if (!showStyle) return;
     if (p.handle === currentProduct.handle) return;
     setLookItems((prev) => {
       // Removing an already-selected piece is always allowed.
@@ -869,6 +917,7 @@ export default function TryOnPanel({
   // no render; the look signature goes dirty so the "Try the look on" button
   // reappears for the shopper to confirm.
   const focusPiece = (p: Product) => {
+    if (!showStyle) return;
     if (p.handle === currentProduct.handle) return;
     const without = lookItems.filter((x) => x.handle !== p.handle);
     const hasOutgoing = without.some((x) => x.handle === currentProduct.handle);
@@ -881,13 +930,13 @@ export default function TryOnPanel({
 
   // The explicit combined render — composites the focus + every selected look
   // piece onto the SAME body at the active size, in one call.
-  const tryTheLook = () => { runRender([currentProduct, ...lookItems], effectiveSize); };
+  const tryTheLook = () => { if (showStyle) runRender([currentProduct, ...effectiveLookItems], effectiveSize); };
 
   const removeLookItem = (handle: string) =>
     setLookItems((prev) => prev.filter((x) => x.handle !== handle));
 
   // The whole outfit being built = the focus piece + every other tried piece.
-  const outfitCount = lookItems.length + 1;
+  const outfitCount = effectiveLookItems.length + 1;
 
   return (
     <div
@@ -913,6 +962,7 @@ export default function TryOnPanel({
         role="dialog"
         aria-modal="true"
         aria-label="Virtual Try-On fitting room"
+        data-stylique-tryon-sheet="1"
         onClick={(e) => e.stopPropagation()}
         ref={(el) => {
           // Focus trap: on mount focus first focusable element; on Tab/Shift-Tab
@@ -968,6 +1018,7 @@ export default function TryOnPanel({
             weight={fitW}
             body={fitBody}
             displaySize={previewSize ?? effectiveSize}
+            showSize={showSize}
           />
         )}
 
@@ -1016,7 +1067,7 @@ export default function TryOnPanel({
         </div>
 
         {/* Step dots */}
-        <StepDots step={isRendering ? 1 : step} />
+        <StepDots step={isRendering ? 1 : step} showSize={showSize} />
 
         {/* Scrollable body */}
         <ScrollBody>
@@ -1063,16 +1114,22 @@ export default function TryOnPanel({
             <StepRendering
               progress={renderProgress}
               phase={renderPhase}
-              bodyImg={bodyImg ?? currentProduct.images[0]}
+              bodyImg={bodyImg ?? productVisualImage(currentProduct) ?? ""}
+              showSize={showSize}
+              showStyle={showStyle}
             />
           )}
           {isRendering && isDesktop && (
             <div style={{ padding: "18px 4px 8px", display: "flex", flexDirection: "column", gap: 10, animation: "sqFadeSlide 280ms ease both" }}>
               <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--electric)", margin: 0 }}>
-                Generating your look
+                {showStyle ? "Generating your look" : "Generating try-on"}
               </p>
               <p style={{ fontFamily: "var(--sans)", fontSize: 13, color: "rgba(244,242,238,0.78)", margin: 0, lineHeight: 1.5 }}>
-                {renderPhase === 0 ? "Reading your measurements…" : renderPhase === 1 ? "Composing the piece on the body…" : renderPhase === 2 ? "Refining the drape…" : "Finishing up…"}
+                {renderPhase === 0
+                  ? showSize ? "Reading your measurements…" : "Preparing the model…"
+                  : renderPhase === 1 ? "Composing the piece on the body…"
+                  : renderPhase === 2 ? "Refining the drape…"
+                  : showStyle ? "Finishing the look…" : "Finishing the try-on…"}
               </p>
               <div style={{ position: "relative", height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
                 <div style={{
@@ -1098,7 +1155,7 @@ export default function TryOnPanel({
               body={fitBody}
               fitResult={fitResult}
               outfit={outfit}
-              lookItems={lookItems}
+              lookItems={effectiveLookItems}
               onToggleLook={toggleLookPiece}
               onFocus={focusPiece}
               onRemoveLook={removeLookItem}
@@ -1115,15 +1172,17 @@ export default function TryOnPanel({
               onRetry={startRender}
               renderedBySize={renderedBySize}
               isDesktop={isDesktop}
+              showSize={showSize}
+              showStyle={showStyle}
             />
           )}
         </ScrollBody>
 
         {/* Footer nav */}
         {!isRendering && step !== 2 && (
-          <div style={{ flexShrink: 0, padding: isDesktop ? "14px 20px 18px" : "14px 20px max(48px, env(safe-area-inset-bottom))", display: "flex", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", background: "#12101A" }}>
-            <button onClick={() => (step > 0 ? setStep(step - 1) : onClose?.())} className="sq-tt-btn" style={ghostBtn()}>
-              {step === 0 ? "Close" : "← Back"}
+          <div data-stylique-tryon-footer="1" style={{ flexShrink: 0, padding: isDesktop ? "14px 20px 18px" : "14px 20px max(48px, env(safe-area-inset-bottom))", display: "flex", gap: 10, borderTop: "1px solid rgba(255,255,255,0.06)", background: "#12101A" }}>
+            <button onClick={() => (step > 0 && showSize ? setStep(step - 1) : onClose?.())} className="sq-tt-btn" style={ghostBtn()}>
+              {step === 0 || !showSize ? "Close" : "← Back"}
             </button>
             <button
               onClick={() => {
@@ -1145,31 +1204,31 @@ export default function TryOnPanel({
             >
               {step === 0
                 ? fitPending ? "Verifying your size…" : fitError ? "Sizing unavailable" : "Choose your model →"
-                : "Generate my look →"}
+                : showStyle ? "Generate my look →" : "Generate try-on →"}
             </button>
           </div>
         )}
 
         {step === 2 && !isRendering && (
-          <div style={{ flexShrink: 0, padding: isDesktop ? "12px 20px 16px" : "12px 20px max(40px, env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,0.08)", background: "#12101A", boxShadow: "0 -12px 24px rgba(8,7,10,0.55)" }}>
+          <div data-stylique-tryon-footer="1" style={{ flexShrink: 0, padding: isDesktop ? "12px 20px 16px" : "12px 20px max(40px, env(safe-area-inset-bottom))", borderTop: "1px solid rgba(255,255,255,0.08)", background: "#12101A", boxShadow: "0 -12px 24px rgba(8,7,10,0.55)" }}>
             {/* Simple: buy THIS piece at the chosen size, or buy the whole look.
                 When only one piece is on, it's just one clear "Add to bag". */}
             <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
               <button onClick={addOneToBag} disabled={adding} className="sq-tt-btn sq-tt-primary" style={{ ...primaryBtn(), flex: 1, padding: "13px 12px", opacity: adding ? 0.7 : 1 }}>
                 {adding ? "Adding…" : outfitCount > 1
-                  ? `Add this · ${effectiveSize} · $${currentProduct.priceUsd}`
-                  : `Add to bag · ${effectiveSize} →`}
+                  ? showSize ? `Add this · ${effectiveSize} · $${currentProduct.priceUsd}` : `Add this · $${currentProduct.priceUsd}`
+                  : showSize ? `Add to bag · ${effectiveSize} →` : "Add to bag →"}
               </button>
 
-              {outfitCount > 1 && (
+              {showStyle && outfitCount > 1 && (
                 <button onClick={addLookToBag} disabled={adding} className="sq-tt-btn" style={{ ...ghostBtn(), flex: 1, padding: "12px 10px", minWidth: 0, opacity: adding ? 0.7 : 1 }}>
                   Add all {outfitCount} →
                 </button>
               )}
             </div>
-            {outfitCount > 1 && (
+            {showStyle && outfitCount > 1 && (
               <p style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.32)", margin: "9px 0 0", textAlign: "center" }}>
-                The whole look · {outfitCount} pieces · ${[currentProduct, ...lookItems].reduce((s, p) => s + p.priceUsd, 0)}
+                The whole look · {outfitCount} pieces · ${[currentProduct, ...effectiveLookItems].reduce((s, p) => s + p.priceUsd, 0)}
               </p>
             )}
           </div>
@@ -1215,7 +1274,7 @@ export default function TryOnPanel({
 // owns all interaction.
 function DesktopVisual({
   step, product, muse, renderedUrl, renderError,
-  height, weight, body, displaySize,
+  height, weight, body, displaySize, showSize,
 }: {
   step: number;
   product: Product;
@@ -1229,6 +1288,7 @@ function DesktopVisual({
   // with the body on screen.
   body?: MuseBody;
   displaySize: string;
+  showSize: boolean;
 }) {
   const onResult = step === 2;
   const onChoose = step === 1; // 1 = MODEL picker
@@ -1238,12 +1298,13 @@ function DesktopVisual({
   // shopper has actually chosen one (step 1+) or the render is back (step 2).
   const showMuse = onChoose || onResult;
   const bodyImg = showMuse && muse?.img ? resolveAsset(muse.img) : null;
+  const productImage = productVisualImage(product) ?? undefined;
   // The composited render. On the result step, if it failed we DON'T silently
   // swap to the studio shot here — StepResult owns the explicit error banner;
   // this pane just holds the last body image so the layout stays stable.
   const img = onResult && renderedUrl && !renderError
     ? renderedUrl                                         // the real worn render
-    : bodyImg ?? product.images[0];                       // muse at step 1+, product at step 0
+    : bodyImg ?? productImage;                            // muse at step 1+, product at step 0
   const caption = onResult
     ? product.name
     : showMuse && muse
@@ -1258,7 +1319,7 @@ function DesktopVisual({
   const fit: SizeFit = haveRender
     ? fitBreakdown(product, displaySize, height, weight, body)
     : { size: displaySize, regions: [], overallEaseCm: 0, overallTightness: 0, headline: "" };
-  const fitMarkers = haveRender ? fit.regions.filter((r) => r.label.toLowerCase() !== "inseam") : [];
+  const fitMarkers = showSize && haveRender ? fit.regions.filter((r) => r.label.toLowerCase() !== "inseam") : [];
 
   return (
     <div style={{
@@ -1286,6 +1347,7 @@ function DesktopVisual({
       }}>
         <img
           key={img}
+          data-stylique-tryon-garment-image={img === productImage ? "resolved" : undefined}
           src={img} alt={caption}
           style={{
             position: "absolute", inset: 0, width: "100%", height: "100%",
@@ -1326,7 +1388,7 @@ function DesktopVisual({
       </div>
 
       {/* Size badge — top right on the result step, honest about what's shown */}
-      {haveRender && (
+      {showSize && haveRender && (
         <div style={{
           position: "absolute", top: 16, right: 16,
           padding: "7px 13px", background: "rgba(14,11,20,0.90)", backdropFilter: "blur(8px)",
@@ -1354,7 +1416,7 @@ function DesktopVisual({
 
           {/* Fit-telling strip — "this runs tight / true / loose", region by region.
               Founder: the lines telling how it fits live on the LEFT with the image. */}
-          {haveRender && fit.regions.length > 0 && (
+          {showSize && haveRender && fit.regions.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <p style={{ fontFamily: "var(--sans)", fontSize: 13, color: "rgba(244,242,238,0.95)", margin: "0 0 10px", lineHeight: 1.5 }}>
                 {fit.headline}
@@ -1428,7 +1490,7 @@ function ScrollBody({ children }: { children: React.ReactNode }) {
 
   return (
     <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
-      <div ref={ref} style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "4px 20px 16px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+      <div ref={ref} data-stylique-tryon-body="1" style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "4px 20px 16px", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {children}
       </div>
       {more && (
@@ -1452,31 +1514,32 @@ function ScrollBody({ children }: { children: React.ReactNode }) {
 
 // ── Step progress dots ────────────────────────────────────────────────────────
 
-function StepDots({ step }: { step: number }) {
-  const labels = ["Size", "Model", "Your look"];
+function StepDots({ step, showSize }: { step: number; showSize: boolean }) {
+  const labels = showSize ? ["Size", "Model", "Your look"] : ["Model", "Your look"];
+  const displayStep = showSize ? step : Math.max(0, step - 1);
   return (
     <div style={{ flexShrink: 0, padding: "14px 20px 10px" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "32px 1fr 32px 1fr 32px", alignItems: "center" }}>
-        {[0, 1, 2].map((i) => (
+      <div style={{ display: "grid", gridTemplateColumns: showSize ? "32px 1fr 32px 1fr 32px" : "32px 1fr 32px", alignItems: "center" }}>
+        {labels.map((_label, i) => (
           <Fragment key={i}>
             <div
               style={{
                 width: 32, height: 32, borderRadius: "50%",
-                background: i <= step ? "var(--grad)" : "rgba(255,255,255,0.06)",
-                border: i > step ? "1.5px solid rgba(255,255,255,0.14)" : "none",
+                background: i <= displayStep ? "var(--grad)" : "rgba(255,255,255,0.06)",
+                border: i > displayStep ? "1.5px solid rgba(255,255,255,0.14)" : "none",
                 display: "grid", placeItems: "center",
-                color: i <= step ? "#0E0A14" : "var(--mute)",
+                color: i <= displayStep ? "#0E0A14" : "var(--mute)",
                 fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700,
                 transition: "all 300ms cubic-bezier(.2,.8,.2,1)",
               }}
             >
-              {i < step ? "✓" : i + 1}
+              {i < displayStep ? "✓" : i + 1}
             </div>
-            {i < 2 && (
+            {i < labels.length - 1 && (
               <div
                 style={{
                   height: 2, borderRadius: 1,
-                  background: i < step ? "var(--electric)" : "rgba(255,255,255,0.08)",
+                  background: i < displayStep ? "var(--electric)" : "rgba(255,255,255,0.08)",
                   transition: "background 400ms ease",
                 }}
               />
@@ -1487,14 +1550,14 @@ function StepDots({ step }: { step: number }) {
       {/* Labels centered in equal-width columns. Was left/center/right which left
           "SIZE" hugging the left edge of the panel while dot 1 sat 16px in →
           the label looked like it belonged to nothing. */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", marginTop: 6 }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${labels.length}, 1fr)`, marginTop: 6 }}>
         {labels.map((label, i) => (
           <span
             key={label}
             style={{
               fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.22em",
               textTransform: "uppercase", whiteSpace: "nowrap",
-              color: i <= step ? "#F4F2EE" : "var(--mute)",
+              color: i <= displayStep ? "#F4F2EE" : "var(--mute)",
               textAlign: "center",
               transition: "color 300ms",
             }}
@@ -1924,7 +1987,16 @@ function NumberField({
 
 // ── Rendering animation — scans over the actual body (demand g) ───────────────
 
-function StepRendering({ progress, phase, bodyImg }: { progress: number; phase: number; bodyImg: string }) {
+function StepRendering({
+  progress, phase, bodyImg, showSize, showStyle,
+}: {
+  progress: number;
+  phase: number;
+  bodyImg: string;
+  showSize: boolean;
+  showStyle: boolean;
+}) {
+  const phases = showSize || showStyle ? PHASES : TRYON_ONLY_PHASES;
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 0 20px", gap: 18, animation: "sqFadeSlide 280ms ease both" }}>
       {/* The body with a sweeping scan line + shimmer — reads as a real render */}
@@ -1950,7 +2022,7 @@ function StepRendering({ progress, phase, bodyImg }: { progress: number; phase: 
         }} />
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(14,11,20,0.55), transparent 45%)" }} />
         <div style={{ position: "absolute", left: 12, bottom: 10, fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(255,255,255,0.85)" }}>
-          {PHASES[Math.min(phase, PHASES.length - 1)]}
+          {phases[Math.min(phase, phases.length - 1)]}
         </div>
       </div>
 
@@ -1967,7 +2039,7 @@ function StepRendering({ progress, phase, bodyImg }: { progress: number; phase: 
       </p>
 
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        {PHASES.map((p, i) => (
+        {phases.map((p, i) => (
           <div key={p} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
             <span style={{
               width: 20, height: 20, borderRadius: "50%",
@@ -2012,6 +2084,7 @@ function StepResult({
   onToggleLook, onFocus, onRemoveLook, onTryTheLook, lookDirty, onRetry,
   size, previewSize, onPreviewSize, onTryThisSize,
   renderedUrl, renderError, rateInfo, errCode, renderedBySize, isDesktop,
+  showSize, showStyle,
 }: {
   product: Product;
   muse: (typeof MUSES)[number] | null;
@@ -2036,6 +2109,8 @@ function StepResult({
   errCode: string | null;             // specific failure code for honest per-code copy
   renderedBySize: Record<string, string>; // size → already-rendered composite (instant flip + compare)
   isDesktop: boolean;                 // desktop → image + fit-telling live in the LEFT pane
+  showSize: boolean;
+  showStyle: boolean;
 }) {
   const museLabel = muse?.label ?? "your model";
   const sizeRun = product.sizes;
@@ -2126,7 +2201,8 @@ function StepResult({
         ) : (
           /* The garment, actually worn on the muse */
           <img
-            src={renderedUrl ?? wornLook[0].images[0]}
+            data-stylique-tryon-garment-image={renderedUrl ? "rendered" : "resolved"}
+            src={renderedUrl ?? productVisualImage(wornLook[0]) ?? ""}
             alt={`${product.name} worn`}
             style={{
               position: "absolute", inset: 0, width: "100%", height: "100%",
@@ -2169,7 +2245,7 @@ function StepResult({
         )}
 
         {/* Size badge (only over a real render) */}
-        {haveRender && (
+        {showSize && haveRender && (
           <div style={{
             position: "absolute", bottom: 14, right: 14,
             padding: "8px 14px",
@@ -2188,7 +2264,7 @@ function StepResult({
 
       {/* Your look so far — the focus piece (shown big) is starred; tap any other
           to bring it back into focus, × to drop it. */}
-      {wornLook.length > 1 && (
+      {showStyle && wornLook.length > 1 && (
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
             <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.32em", textTransform: "uppercase", color: "#C7B8FF", margin: 0 }}>
@@ -2205,7 +2281,7 @@ function StepResult({
                   className="sq-tt-card"
                   style={{
                     width: "100%", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", padding: 0,
-                    backgroundImage: `url(${p.images[0]})`, backgroundSize: "cover", backgroundPosition: "top center",
+                    backgroundImage: `url(${productVisualImage(p) ?? ""})`, backgroundSize: "cover", backgroundPosition: "top center",
                     border: i === 0 ? "2px solid rgba(139,92,246,0.9)" : "1px solid rgba(255,255,255,0.1)",
                     boxShadow: i === 0 ? "0 0 16px rgba(139,92,246,0.4)" : "none",
                     cursor: "pointer", display: "block",
@@ -2262,6 +2338,7 @@ function StepResult({
       {/* ── Size — TAP a pill to PREVIEW the fit (the map + badge update instantly);
               the render only changes when you press "Try on this size →".
               (founder: "tap previews, button re-renders") ── */}
+      {showSize && (
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <span style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--mute)" }}>
@@ -2332,13 +2409,14 @@ function StepResult({
           </p>
         )}
       </div>
+      )}
 
       {/* ── Compare on you — appears once the shopper has rendered 2+ sizes, so the
               actual composites sit SIDE BY SIDE and "how large is large vs small"
               is visible at once, not one-at-a-time (founder: "they can actually
               see how large the large is, how tight the tight is"). Tapping a frame
               flips the hero to it instantly — these are already rendered. ── */}
-      {renderedSizes.length >= 2 && (
+      {showSize && renderedSizes.length >= 2 && (
         <div>
           <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "#C7B8FF", margin: "0 0 8px" }}>
             Compare on you · {renderedSizes.length} sizes
@@ -2386,7 +2464,7 @@ function StepResult({
       {/* ── Complete the look — tap a piece to ADD it to your look (selection only,
               no render). Press "Try the look on" to render them all together on the
               same body. (founder: tapping must NOT auto-render). ── */}
-      {outfit.length > 0 && (
+      {showStyle && outfit.length > 0 && (
         <div>
           <p style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--mute)", margin: "0 0 4px" }}>
             Complete the look
@@ -2418,7 +2496,7 @@ function StepResult({
                 >
                   <div style={{
                     width: "100%", aspectRatio: "3 / 4",
-                    backgroundImage: `url(${p.images[0]})`,
+                    backgroundImage: `url(${productVisualImage(p) ?? ""})`,
                     backgroundSize: "cover", backgroundPosition: "top center",
                     borderRadius: 10,
                     border: inLook ? "2px solid rgba(139,92,246,0.9)" : "1px solid rgba(255,255,255,0.07)",

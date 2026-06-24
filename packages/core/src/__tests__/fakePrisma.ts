@@ -16,9 +16,13 @@ type Product = {
   id: string; shopId: string; shopifyId: string; handle: string; title: string;
   productType: string | null; vendor: string | null; tags: string[]; category: string | null;
   primaryColor: string | null; colorFamily: string | null;
+  primaryTryonImageId?: string | null;
+  tryonReady?: boolean;
+  widgetTier?: number;
+  qualityComputedAt?: Date | null;
 };
 type Variant = { id: string; productId: string; shopifyId: string; sku: string | null; size: string | null; color: string | null; priceCents: number | null };
-type Image = { id: string; productId: string; shopifyId: string | null; url: string; position: number; role: string };
+type Image = { id: string; productId: string; shopifyId: string | null; url: string; altText?: string | null; position: number; role: string };
 type Audit = {
   id: string; shopId: string; productId: string;
   missingSizeChart: boolean; weakImageQuality: boolean; missingStyling: boolean;
@@ -119,6 +123,12 @@ export function createFakePrisma(initial?: { plans?: Plan[]; shops?: Shop[] }) {
         products.set(k, p);
         return p;
       },
+      async update({ where: { id }, data }: any) {
+        const existing = [...products.values()].find((p) => p.id === id);
+        if (!existing) throw new Error(`Product ${id} not found`);
+        Object.assign(existing, data);
+        return existing;
+      },
       async findMany({ where, select }: any = {}) {
         let out = [...products.values()];
         if (where?.shopId) out = out.filter((p) => p.shopId === where.shopId);
@@ -156,9 +166,28 @@ export function createFakePrisma(initial?: { plans?: Plan[]; shops?: Shop[] }) {
         variants.set(k, v);
         return v;
       },
+      async deleteMany({ where }: any) {
+        let removed = 0;
+        const keepShopifyIds = where?.NOT?.shopifyId?.in ? new Set(where.NOT.shopifyId.in) : null;
+        for (const [k, v] of variants) {
+          if (where.productId && v.productId !== where.productId) continue;
+          if (where.shopifyId && v.shopifyId !== where.shopifyId) continue;
+          if (keepShopifyIds?.has(v.shopifyId)) continue;
+          variants.delete(k);
+          removed++;
+        }
+        return { count: removed };
+      },
     },
 
     productImage: {
+      async findMany({ where, orderBy, select }: any = {}) {
+        let out = [...images.values()];
+        if (where?.productId) out = out.filter((i) => i.productId === where.productId);
+        if (orderBy?.position === "asc") out.sort((a, b) => a.position - b.position);
+        if (select) return out.map((i) => Object.fromEntries(Object.keys(select).map((k) => [k, (i as any)[k]])));
+        return out;
+      },
       async deleteMany({ where }: any) {
         let removed = 0;
         for (const [k, i] of images) {

@@ -10,6 +10,7 @@ interface Props {
 
 export default function BrandActions({ shopId, domain, currentTier }: Props) {
   const [tier, setTier] = useState(currentTier);
+  const [comp, setComp] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [confirmTerminate, setConfirmTerminate] = useState(false);
@@ -23,7 +24,7 @@ export default function BrandActions({ shopId, domain, currentTier }: Props) {
           ?.split("=")[1] ?? "")
       : "";
 
-  async function callAction(action: string, extra?: Record<string, string>) {
+  async function callAction(action: string, extra?: Record<string, string | boolean>) {
     setLoading(action);
     setMessage(null);
     try {
@@ -114,8 +115,27 @@ export default function BrandActions({ shopId, domain, currentTier }: Props) {
             <option value="GROWTH">GROWTH</option>
             <option value="ULTIMATE">ULTIMATE</option>
           </select>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              color: "var(--mute)",
+              fontFamily: "var(--mono)",
+              fontSize: 11,
+              whiteSpace: "nowrap",
+            }}
+            title="Keeps paid-tier features active for manually contracted or founder-comped brands when billing enforcement is enabled."
+          >
+            <input
+              type="checkbox"
+              checked={comp}
+              onChange={(e) => setComp(e.target.checked)}
+            />
+            Ops comp
+          </label>
           <button
-            onClick={() => callAction("change_tier", { tier })}
+            onClick={() => callAction("change_tier", { tier, comp })}
             disabled={loading !== null}
             style={{
               ...btnBase,

@@ -22,6 +22,8 @@
 // exist on the generated client type yet. Every call is wrapped in try/catch so
 // a missing table / delegate degrades to a safe fallback rather than throwing.
 
+import { distinctOrderCountFromEvents } from "../analytics/order-events.js";
+
 // ─── Public types ───────────────────────────────────────────────────────────
 
 export type OutcomeStatus = "PENDING" | "RESOLVED" | "INCONCLUSIVE" | "ABANDONED";
@@ -81,6 +83,15 @@ export interface OutcomeWeight {
 
 export type OutcomeWeights = Record<string, OutcomeWeight>;
 
+export function outcomeCatalogGapWhere(shopId: string, since: Date) {
+  return {
+    shopId,
+    createdAt: { gte: since },
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
 // ─── Tunables ─────────────────────────────────────────────────────────────
 
 const DEFAULT_WINDOW_DAYS = 7;
@@ -137,9 +148,10 @@ export function createOutcomeService(prisma: any): OutcomeService {
       switch (recommendationType) {
         case "CATALOG_GAP": {
           // The gap shrinking = the brand stocked/relabelled and queries now
-          // return matches. We count CatalogGap rows in the window.
+          // return matches. Count only real shopper-demand gaps in the window;
+          // maintenance rows from size-chart extraction must not teach outcomes.
           const gapQueries = await prisma.catalogGap
-            .count({ where: { shopId, createdAt: { gte: since } } })
+            .count({ where: outcomeCatalogGapWhere(shopId, since) })
             .catch(() => 0);
           snap.gapQueries = gapQueries ?? 0;
           break;
@@ -151,16 +163,20 @@ export function createOutcomeService(prisma: any): OutcomeService {
             createdAt: { gte: since },
           };
           if (entityId) where.productId = entityId;
-          const [tryon, cart] = await Promise.all([
+          const [tryon, cartRows] = await Promise.all([
             prisma.analyticsEvent
               .count({ where: { ...where, name: "TRYON_RENDER_REQUESTED" } })
               .catch(() => 0),
             prisma.analyticsEvent
-              .count({ where: { ...where, name: "CART_CONFIRMED" } })
-              .catch(() => 0),
+              .findMany({
+                where: { ...where, name: "CART_CONFIRMED" },
+                select: { id: true, payload: true },
+                take: 5000,
+              })
+              .catch(() => []),
           ]);
           snap.tryonRequested = tryon ?? 0;
-          snap.cartConfirmed = cart ?? 0;
+          snap.cartConfirmed = distinctOrderCountFromEvents(cartRows ?? []);
           break;
         }
         case "TOP_COMBO_TO_PROMOTE": {
@@ -181,10 +197,14 @@ export function createOutcomeService(prisma: any): OutcomeService {
           break;
         }
         default: {
-          const cart = await prisma.analyticsEvent
-            .count({ where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: since } } })
-            .catch(() => 0);
-          snap.cartConfirmed = cart ?? 0;
+          const cartRows = await prisma.analyticsEvent
+            .findMany({
+              where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: since } },
+              select: { id: true, payload: true },
+              take: 5000,
+            })
+            .catch(() => []);
+          snap.cartConfirmed = distinctOrderCountFromEvents(cartRows ?? []);
           break;
         }
       }

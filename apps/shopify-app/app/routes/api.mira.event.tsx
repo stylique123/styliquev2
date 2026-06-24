@@ -6,6 +6,7 @@ import { prisma } from "../db.server";
 import { analytics, rateOk } from "../lib/shopper-helpers.server";
 import { getOrCreateShopperSession } from "../lib/session.server";
 import { logCatalogGap } from "../lib/taste.server";
+import { validateShopProductEvidence } from "../lib/product-evidence.server";
 
 export async function loader(_args: LoaderFunctionArgs) {
   return json({ ok: true, route: "api.mira.event" });
@@ -19,6 +20,32 @@ const MiraBridgeSchema = z.object({
   source: z.string().optional(),
   data: z.record(z.unknown()).optional(),
 });
+
+const BRIDGE_ACCEPTED_EVENTS: ReadonlySet<string> = new Set([
+  "MIRA_INTENT_CAPTURED",
+  "MIRA_PRODUCT_RECOMMENDED",
+  "MIRA_OUTFIT_RECOMMENDED",
+  "MIRA_SIZE_HELP_STARTED",
+  "MIRA_TRYON_OFFERED",
+  "MIRA_HESITATION_DETECTED",
+  "MIRA_ADD_TO_CART_ASSIST",
+  "MIRA_UNMET_DEMAND",
+  "MIRA_NEAR_MISS",
+  "CHAT_NEAR_MISS",
+  "PDP_TRYON_CLICKED",
+  "TRYON_RENDER_REQUESTED",
+  "TRYON_RENDER_COMPLETED",
+  "TRYON_RENDER_FAILED",
+  "TRYON_ABANDONED",
+  "CART_FROM_TRYON",
+  "MIRA_PROACTIVE_TRIGGERED",
+  "MIRA_BEHAVIORAL_TRIGGER_FIRED",
+  "MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED",
+]);
+
+const BRIDGE_CART_SUCCESS_EVENTS: ReadonlySet<string> = new Set([
+  "CART_FROM_TRYON",
+]);
 
 function normalizeShopDomain(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
@@ -64,6 +91,9 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   const bridgeSecret = process.env.MIRA_EVENT_BRIDGE_SECRET;
+  if (!bridgeSecret && process.env.NODE_ENV === "production") {
+    return json({ ok: false, error: "bridge_secret_required" }, { status: 503 });
+  }
   if (bridgeSecret && request.headers.get("x-stylique-bridge-secret") !== bridgeSecret) {
     return json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
@@ -72,6 +102,9 @@ export async function action({ request }: ActionFunctionArgs) {
   const parsed = MiraBridgeSchema.safeParse(body);
   if (!parsed.success) {
     return json({ ok: false, error: "invalid_input" }, { status: 400 });
+  }
+  if (!BRIDGE_ACCEPTED_EVENTS.has(parsed.data.event)) {
+    return json({ ok: false, error: "unauthorized_event" }, { status: 403 });
   }
 
   const shopifyDomain = normalizeShopDomain(parsed.data.shopifyDomain)
@@ -105,14 +138,22 @@ export async function action({ request }: ActionFunctionArgs) {
       })
     : null;
   const payload = normalizeBridgePayload(parsed.data.event, parsed.data.data ?? {});
+  const productEvidence = await validateShopProductEvidence({
+    shopId: shop.id,
+    eventName: parsed.data.event,
+    productId: product?.id,
+    payload,
+    cartSuccessEvents: BRIDGE_CART_SUCCESS_EVENTS,
+  });
+  if (!productEvidence.ok) return json({ ok: false, error: "invalid_payload" }, { status: 422 });
 
   try {
     await analytics.track({
       shopId: shop.id,
       shopperId: session?.row.id,
-      productId: product?.id,
+      productId: productEvidence.productId,
       name: parsed.data.event,
-      payload,
+      payload: productEvidence.payload,
     });
   } catch {
     return json({ ok: false, error: "invalid_payload" }, { status: 422 });

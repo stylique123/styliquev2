@@ -15,6 +15,23 @@ export async function action({ request }: ActionFunctionArgs) {
   });
   if (!shop) return json({ ok: false, error: "shop_not_installed" }, { status: 404 });
 
-  const result = await runAllRecommendations(shop.id);
-  return json({ ok: true, data: result });
+  try {
+    const result = await runAllRecommendations(shop.id);
+    if (result.failed > 0) {
+      return json(
+        { ok: false, error: "recommendations_run_partial_failure", data: result },
+        { status: 207 },
+      );
+    }
+    return json({ ok: true, data: result });
+  } catch (error) {
+    return json(
+      {
+        ok: false,
+        error: "recommendations_run_failed",
+        message: error instanceof Error ? error.message : "unknown_error",
+      },
+      { status: 500 },
+    );
+  }
 }

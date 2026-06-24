@@ -51,11 +51,44 @@ export type StyleContext = {
   fitPreference?: "FITTED" | "REGULAR" | "RELAXED" | "OVERSIZED";
 };
 
+export type StyleProductSlot = "top" | "bottom" | "dress" | "outerwear" | "footwear" | "accessory" | "unknown";
+
+export function canonicalStyleCategory(
+  product: Pick<StyleProduct, "category" | "title" | "tags"> & { productType?: string | null },
+): string | null {
+  const hay = [product.category ?? "", product.productType ?? "", product.title, ...(product.tags ?? [])].join(" ").toLowerCase();
+  if (/\b(dress|gown|slip|saree|sari|jumpsuit|lehenga|lehnga|ghagra|gharara|sharara|anarkali|abaya|kaftan|dungaree)\b/.test(hay)) return "dress";
+  if (/\b(coat|jacket|blazer|trench|outerwear|cardigan|cape|overcoat|parka|shrug|bolero|koti|waistcoat)\b/.test(hay)) return "outerwear";
+  if (/\b(trouser|trousers|pant|pants|jean|jeans|denim|skirt|short|bottom|legging|leggings|culotte|culottes|palazzo|patiala|shalwar|salwar|churidar|dhoti)\b/.test(hay)) return "trouser";
+  if (/\b(shoe|shoes|heel|heels|boot|boots|sneaker|sneakers|loafer|loafers|sandal|sandals|flat|flats|footwear|pump|pumps|mule|mules|chappal|khussa|jutii|juttis|kolhapuri)\b/.test(hay)) return "shoe";
+  if (/\b(bag|bags|belt|scarf|dupatta|stole|shawl|jewel|jewelry|jewellery|necklace|earring|jhumka|bracelet|bangle|ring|accessory|clutch|tote|potli|hat|sunglass|sunglasses|glove|watch|maang tikka|mang tikka|tikka)\b/.test(hay)) return "accessory";
+  if (/\b(knit|sweater|jumper|cashmere|merino|turtleneck|cardigan)\b/.test(hay)) return "knitwear";
+  if (/\b(shirt|top|blouse|tee|t-shirt|tank|camisole|cami|kurta|kurti|kameez|choli|tunic)\b/.test(hay)) return "shirt";
+  return product.category?.toLowerCase() ?? null;
+}
+
+export function inferStyleProductSlot(
+  product: Pick<StyleProduct, "category" | "title" | "tags"> & { productType?: string | null },
+): StyleProductSlot {
+  const category = canonicalStyleCategory(product);
+  if (category === "dress") return "dress";
+  if (category === "outerwear") return "outerwear";
+  if (category === "trouser" || category === "bottom" || category === "skirt") return "bottom";
+  if (category === "shoe" || category === "footwear") return "footwear";
+  if (category === "accessory") return "accessory";
+  if (category === "shirt" || category === "top" || category === "knitwear") return "top";
+  return "unknown";
+}
+
 // ─── Category graph ─────────────────────────────────────────────────────
 const COMPLEMENT_ROLES: Record<string, Array<OutfitItem["role"]>> = {
   shirt:     ["BOTTOM", "SHOES", "OUTERWEAR", "ACCESSORY"],
+  top:       ["BOTTOM", "SHOES", "OUTERWEAR", "ACCESSORY"],
+  knitwear:  ["BOTTOM", "SHOES", "OUTERWEAR", "ACCESSORY"],
   trouser:   ["TOP", "SHOES", "OUTERWEAR", "ACCESSORY"],
+  bottom:    ["TOP", "SHOES", "OUTERWEAR", "ACCESSORY"],
   shoe:      ["BOTTOM", "TOP", "OUTERWEAR", "ACCESSORY"],
+  footwear:  ["BOTTOM", "TOP", "OUTERWEAR", "ACCESSORY"],
   outerwear: ["TOP", "BOTTOM", "SHOES"],
   dress:     ["SHOES", "OUTERWEAR", "ACCESSORY"],
   skirt:     ["TOP", "SHOES", "ACCESSORY"],
@@ -64,10 +97,10 @@ const COMPLEMENT_ROLES: Record<string, Array<OutfitItem["role"]>> = {
 
 const ROLE_CATEGORIES: Record<OutfitItem["role"], string[]> = {
   ANCHOR:    [],
-  TOP:       ["shirt"],
-  BOTTOM:    ["trouser", "skirt"],
+  TOP:       ["shirt", "top", "knitwear"],
+  BOTTOM:    ["trouser", "bottom", "skirt"],
   OUTERWEAR: ["outerwear"],
-  SHOES:     ["shoe"],
+  SHOES:     ["shoe", "footwear"],
   ACCESSORY: ["accessory"],
 };
 
@@ -138,7 +171,7 @@ function bodyWeight(body: StyleContext["bodyType"], role: OutfitItem["role"], ta
 const FORMAL = new Set(["blazer", "trouser", "loafer", "derby", "oxford", "silk", "wool"]);
 const CASUAL = new Set(["jean", "tee", "sneaker", "chino", "hoodie"]);
 function formalityTier(p: StyleProduct): "formal" | "casual" | "neutral" {
-  const hay = [p.category ?? "", p.title, ...(p.tags ?? [])].join(" ").toLowerCase();
+  const hay = [canonicalStyleCategory(p) ?? "", p.category ?? "", p.title, ...(p.tags ?? [])].join(" ").toLowerCase();
   if ([...FORMAL].some((k) => hay.includes(k))) return "formal";
   if ([...CASUAL].some((k) => hay.includes(k))) return "casual";
   return "neutral";
@@ -169,7 +202,10 @@ function pickForRole(
 ): { product: StyleProduct; confidence: number; rationale: string[]; colorRelation: string } | null {
   const wanted = ROLE_CATEGORIES[role];
   const candidates = catalog.filter(
-    (p) => p.id !== anchor.id && !used.has(p.id) && p.category && wanted.includes(p.category),
+    (p) => {
+      const category = canonicalStyleCategory(p);
+      return p.id !== anchor.id && !used.has(p.id) && category != null && wanted.includes(category);
+    },
   );
   if (!candidates.length) return null;
 
@@ -193,7 +229,8 @@ function colorNoteFor(anchor: StyleProduct, item: StyleProduct, relation: string
 
 // ─── Public API ─────────────────────────────────────────────────────────
 export function buildOutfit(anchor: StyleProduct, catalog: StyleProduct[], ctx: StyleContext = {}): StyleResult {
-  const roles = COMPLEMENT_ROLES[anchor.category ?? ""] ?? ["TOP", "BOTTOM", "SHOES", "ACCESSORY"];
+  const anchorCategory = canonicalStyleCategory(anchor);
+  const roles = COMPLEMENT_ROLES[anchorCategory ?? ""] ?? ["TOP", "BOTTOM", "SHOES", "ACCESSORY"];
   const used = new Set<string>([anchor.id]);
   const items: OutfitItem[] = [{
     product: anchor, role: "ANCHOR",
@@ -229,7 +266,7 @@ export function buildOutfit(anchor: StyleProduct, catalog: StyleProduct[], ctx: 
       id: item.product.id,
       handle: item.product.handle,
       title: item.product.title,
-      category: item.product.category,
+      category: canonicalStyleCategory(item.product),
       primaryColor: item.product.primaryColor,
       inStock: true,        // catalog fetch = in stock assumption
       occasionTags: [],     // no occasion tags at this surface

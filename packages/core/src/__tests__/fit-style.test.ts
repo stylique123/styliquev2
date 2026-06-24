@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { recommendFit } from "../fit/service.js";
-import { buildOutfit, type StyleProduct } from "../style/service.js";
+import { buildOutfit, canonicalStyleCategory, inferStyleProductSlot, type StyleProduct } from "../style/service.js";
 import type { FitInput } from "../fit/service.js";
 
 describe("recommendFit — letter sizing", () => {
@@ -89,6 +89,61 @@ describe("buildOutfit", () => {
     const bottom = r.outfit.find((i) => i.role === "BOTTOM");
     // For a blue anchor, white/beige score higher than blue itself.
     expect(bottom?.product.colorFamily === "white" || bottom?.product.colorFamily === "beige").toBe(true);
+  });
+
+  it("understands widget category aliases like top, bottom, and footwear", () => {
+    const topAnchor: StyleProduct = {
+      id: "p-top", handle: "linen-top", title: "Linen Top",
+      category: "top", primaryColor: "#F8FAFC", colorFamily: "white",
+    };
+    const aliasCatalog: StyleProduct[] = [
+      topAnchor,
+      { id: "p-bottom", handle: "black-bottom", title: "Black Wide Leg", category: "bottom", primaryColor: "#111111", colorFamily: "black" },
+      { id: "p-footwear", handle: "tan-sandal", title: "Tan Sandal", category: "footwear", primaryColor: "#C09062", colorFamily: "tan" },
+    ];
+    const r = buildOutfit(topAnchor, aliasCatalog);
+    expect(r.outfit.map((i) => i.role)).toEqual(expect.arrayContaining(["BOTTOM", "SHOES"]));
+  });
+
+  it("normalizes merchant product-type aliases before selecting outfit slots", () => {
+    const rawAnchor: StyleProduct = {
+      id: "p-raw-anchor", handle: "embroidered-blouse", title: "Embroidered Blouse",
+      category: "Blouses", primaryColor: "#E8DCCB", colorFamily: "cream",
+    };
+    const rawCatalog: StyleProduct[] = [
+      rawAnchor,
+      { id: "p-raw-pants", handle: "wide-pants", title: "Wide Pants", category: "Pants", primaryColor: "#111111", colorFamily: "black" },
+      { id: "p-raw-heels", handle: "gold-heels", title: "Gold Heels", category: "Heels", primaryColor: "#C7A24B", colorFamily: "gold" },
+      { id: "p-raw-bag", handle: "satin-clutch", title: "Satin Clutch Bag", category: "Bags", primaryColor: "#F8FAFC", colorFamily: "white" },
+    ];
+
+    const r = buildOutfit(rawAnchor, rawCatalog);
+
+    expect(r.outfit.map((i) => i.role)).toEqual(expect.arrayContaining(["BOTTOM", "SHOES", "ACCESSORY"]));
+    expect(r.comboScore.breakdown.coverage).toBe(1);
+  });
+
+  it("exposes a shared slot classifier for sales and intelligence surfaces", () => {
+    expect(canonicalStyleCategory({
+      title: "Embroidered Saree",
+      category: "Sarees",
+      tags: [],
+    })).toBe("dress");
+    expect(inferStyleProductSlot({
+      title: "Wide Pants",
+      category: "Pants",
+      tags: [],
+    })).toBe("bottom");
+    expect(inferStyleProductSlot({
+      title: "Gold Khussa",
+      category: "Shoes",
+      tags: [],
+    })).toBe("footwear");
+    expect(inferStyleProductSlot({
+      title: "Pearl Maang Tikka",
+      category: "Jewellery",
+      tags: [],
+    })).toBe("accessory");
   });
 });
 

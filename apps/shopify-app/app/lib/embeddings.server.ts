@@ -71,9 +71,15 @@ export async function embedProductIfMissing(productId: string): Promise<void> {
 // Batch backfill — used on first install or after switching providers.
 // Throttled with a soft delay between embed calls to stay friendly to the
 // embed-API rate limit (Gemini ~1500 req/min on default key).
-export async function embedAllForShop(shopId: string, opts?: { limit?: number; delayMs?: number }): Promise<{ embedded: number; skipped: number }> {
+export async function embedAllForShop(shopId: string, opts?: { limit?: number; delayMs?: number }): Promise<{
+  embedded: number;
+  skipped: number;
+  failed: number;
+  total: number;
+  providerConfigured: boolean;
+}> {
   const svc = tryGetService();
-  if (!svc) return { embedded: 0, skipped: 0 };
+  if (!svc) return { embedded: 0, skipped: 0, failed: 0, total: 0, providerConfigured: false };
   const limit = opts?.limit ?? 5000;
   const delay = opts?.delayMs ?? 40;
 
@@ -87,7 +93,7 @@ export async function embedAllForShop(shopId: string, opts?: { limit?: number; d
     take: limit,
   });
 
-  let embedded = 0, skipped = 0;
+  let embedded = 0, skipped = 0, failed = 0;
   for (const p of products) {
     if (p.embedding?.modelKey === svc.provider.modelKey) { skipped++; continue; }
     const text = svc.productEmbeddingText(p);
@@ -100,11 +106,11 @@ export async function embedAllForShop(shopId: string, opts?: { limit?: number; d
       });
       embedded++;
     } catch {
-      // swallow + continue — partial backfill better than none
+      failed++;
     }
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
   }
-  return { embedded, skipped };
+  return { embedded, skipped, failed, total: products.length, providerConfigured: true };
 }
 
 // ─── vectorSearchProducts ──────────────────────────────────────────────

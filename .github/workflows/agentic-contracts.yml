@@ -1,0 +1,43 @@
+name: Agentic contracts
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run static agentic contract guards
+        run: pnpm check:agentic-contracts
+
+      - name: Verify storefront widget bundle
+        run: pnpm --filter @stylique/widget verify:bundle
+
+      - name: Run focused Shopify app contract tests
+        run: pnpm --filter @stylique/shopify-app test -- app/lib/serialize.test.ts app/lib/mira-adapter.server.test.ts
+
+      - name: Run focused core intelligence tests
+        run: pnpm --filter @stylique/core test -- src/__tests__/sizing-parsers.test.ts src/__tests__/fit-style.test.ts src/__tests__/imagery-quality.test.ts src/__tests__/brand-dna.test.ts

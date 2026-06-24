@@ -22,6 +22,12 @@ export type LookPiece = {
   rejected: boolean;   // shopper said no / dismissed
 };
 
+export type LookProductMeta = {
+  handle: string;
+  name: string;
+  priceUsd?: number | null;
+};
+
 export type AestheticDirection =
   | "minimal"
   | "tailored"
@@ -48,7 +54,7 @@ export type ActiveLookMemory = {
 
 // ── Catalog reference (mirror of catalog.ts for pure-module use) ──────────────
 // Keeps this module dependency-free from the Next.js import graph.
-const PRODUCT_NAMES: Record<string, { name: string; priceUsd: number }> = {
+const DEMO_PRODUCT_NAMES: Record<string, { name: string; priceUsd: number }> = {
   "onyx-silk-slip":           { name: "Onyx Silk Slip",                  priceUsd: 690 },
   "ivory-silk-camisole":      { name: "Ivory Silk Camisole",             priceUsd: 320 },
   "atelier-wide-leg-trouser": { name: "Atelier Wide-Leg Trouser",        priceUsd: 540 },
@@ -63,7 +69,24 @@ const PRODUCT_NAMES: Record<string, { name: string; priceUsd: number }> = {
   "wide-leg-denim":           { name: "Wide-Leg Heritage Denim",         priceUsd: 320 },
 };
 
-const ALL_HANDLES = new Set(Object.keys(PRODUCT_NAMES));
+const productRegistry = new Map<string, { name: string; priceUsd: number }>(
+  Object.entries(DEMO_PRODUCT_NAMES),
+);
+
+export function registerActiveLookProducts(products: LookProductMeta[]): void {
+  for (const p of products) {
+    const handle = p.handle?.trim().toLowerCase();
+    if (!handle) continue;
+    productRegistry.set(handle, {
+      name: p.name || handle,
+      priceUsd: Math.max(0, Math.round(Number(p.priceUsd ?? 0) || 0)),
+    });
+  }
+}
+
+function hasProduct(handle: string): boolean {
+  return productRegistry.has(handle.trim().toLowerCase());
+}
 
 // ── Voice mention extraction ──────────────────────────────────────────────────
 // Scan a Mira voice line for product handles mentioned by name.
@@ -96,12 +119,47 @@ const HANDLE_KEYWORDS: Array<[string, string]> = [
   ["wide.leg denim",   "wide-leg-denim"],
 ];
 
+const GENERIC_PRODUCT_WORDS = new Set([
+  "the", "a", "an", "and", "of", "for", "with", "new", "classic",
+  "shirt", "top", "dress", "trouser", "trousers", "pants", "skirt",
+  "coat", "jacket", "blazer", "knit", "sweater", "shoe", "bag",
+]);
+
+function normalizeMentionText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dynamicMentionPhrases(handle: string, name: string): string[] {
+  const normalizedName = normalizeMentionText(name);
+  const normalizedHandle = normalizeMentionText(handle.replace(/-/g, " "));
+  const tokens = normalizedName.split(" ").filter(Boolean);
+  const meaningful = tokens.filter((t) => !GENERIC_PRODUCT_WORDS.has(t));
+  const phrases = new Set<string>();
+  if (normalizedName.split(" ").length >= 2) phrases.add(normalizedName);
+  if (normalizedHandle.split(" ").length >= 2) phrases.add(normalizedHandle);
+  if (meaningful.length >= 2) phrases.add(meaningful.join(" "));
+  return [...phrases].filter((p) => p.length >= 6);
+}
+
 export function extractHandlesFromVoice(voice: string): string[] {
   const lower = voice.toLowerCase();
+  const normalized = normalizeMentionText(voice);
   const found = new Set<string>();
   for (const [keyword, handle] of HANDLE_KEYWORDS) {
     const re = new RegExp(keyword, "i");
     if (re.test(lower)) found.add(handle);
+  }
+  for (const [handle, meta] of productRegistry) {
+    for (const phrase of dynamicMentionPhrases(handle, meta.name)) {
+      if (normalized.includes(phrase)) {
+        found.add(handle);
+        break;
+      }
+    }
   }
   return Array.from(found);
 }
@@ -123,9 +181,10 @@ function inferAesthetic(handles: string[]): AestheticDirection {
 // ── Factory ───────────────────────────────────────────────────────────────────
 
 function makePiece(handle: string, via: LookPiece["addedVia"]): LookPiece | null {
-  const meta = PRODUCT_NAMES[handle];
+  const key = handle.trim().toLowerCase();
+  const meta = productRegistry.get(key);
   if (!meta) return null;
-  return { handle, name: meta.name, priceUsd: meta.priceUsd, addedVia: via, accepted: false, rejected: false };
+  return { handle: key, name: meta.name, priceUsd: meta.priceUsd, addedVia: via, accepted: false, rejected: false };
 }
 
 function emptyMemory(): ActiveLookMemory {
@@ -148,7 +207,7 @@ export function updateFromLookCard(
   anchorHandle: string,
   pieceHandles: string[],
 ): ActiveLookMemory {
-  const allHandles = [anchorHandle, ...pieceHandles].filter((h) => ALL_HANDLES.has(h));
+  const allHandles = [anchorHandle, ...pieceHandles].map((h) => h.trim().toLowerCase()).filter(hasProduct);
   const pieces: LookPiece[] = allHandles.map((h, i) =>
     makePiece(h, i === 0 ? "look_card" : "look_card")!
   ).filter(Boolean);
@@ -172,7 +231,7 @@ export function updateFromVoice(
   voice: string,
   currentFocalHandle: string | null,
 ): ActiveLookMemory {
-  const mentioned = extractHandlesFromVoice(voice).filter((h) => ALL_HANDLES.has(h));
+  const mentioned = extractHandlesFromVoice(voice).filter(hasProduct);
   if (mentioned.length === 0) return mem;
 
   const existingPieces = mem.current?.pieces ?? [];
@@ -208,7 +267,7 @@ export function updateFromReco(
   recoHandle: string,
   focalHandle: string | null,
 ): ActiveLookMemory {
-  if (!ALL_HANDLES.has(recoHandle)) return mem;
+  if (!hasProduct(recoHandle)) return mem;
   const existingPieces = mem.current?.pieces ?? [];
   const alreadyHas = existingPieces.some((p) => p.handle === recoHandle);
   if (alreadyHas) return mem;

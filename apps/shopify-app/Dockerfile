@@ -25,6 +25,9 @@ FROM deps AS builder
 COPY apps/ apps/
 # Prisma client (schema lives in packages/db/prisma)
 RUN pnpm --filter @stylique/db exec prisma generate --schema=prisma/schema.prisma
+# Storefront Mira is a separate browser bundle served by this app at /widget.js.
+# Build and verify it before Remix so production images cannot ship stale Mira UI.
+RUN pnpm --filter @stylique/widget build && pnpm --filter @stylique/widget verify:bundle
 # Remix build → apps/shopify-app/build/{client,server}
 RUN pnpm --filter @stylique/shopify-app build
 

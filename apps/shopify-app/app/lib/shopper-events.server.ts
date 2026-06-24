@@ -9,6 +9,7 @@ import { EventNameSchema, safeParseEventPayload } from "@stylique/types";
 import { type ApiResponse } from "./shopper-types.server";
 import { shopIdFromDomain, rateOk, analytics } from "./shopper-helpers.server";
 import { getOrCreateShopperSession } from "./session.server";
+import { validateShopProductEvidence } from "./product-evidence.server";
 
 // ─── POST /api/events ─────────────────────────────────────────────────────────
 
@@ -27,8 +28,21 @@ const EventSchema = z.object({
 const CLIENT_POSTABLE_EVENTS: ReadonlySet<string> = new Set([
   "PDP_TRYON_CLICKED",
   "TRYON_ABANDONED",
+  "PRODUCT_VIEWED",
+  "PRODUCT_DWELL_LONG",
+  "CHAT_SIZE_CHART_VIEWED",
+  "SIZE_SELECTED",
+  "MIRA_PROACTIVE_TRIGGERED",
+  "MIRA_BEHAVIORAL_TRIGGER_FIRED",
+  "MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED",
   "CART_FROM_TRYON",
+  "CART_FROM_WIDGET_STYLE",
   "WIDGET_PLACEMENT_AUDIT",
+]);
+
+const CLIENT_CART_SUCCESS_EVENTS: ReadonlySet<string> = new Set([
+  "CART_FROM_TRYON",
+  "CART_FROM_WIDGET_STYLE",
 ]);
 
 export async function postEvent(args: { shopDomain: string; body: unknown; shopperCookieId?: string | null }): Promise<ApiResponse<{ accepted: true }>> {
@@ -43,6 +57,14 @@ export async function postEvent(args: { shopDomain: string; body: unknown; shopp
   if (!CLIENT_POSTABLE_EVENTS.has(parsed.data.name)) return { ok: false, error: "unauthorized" };
   const payload = safeParseEventPayload(parsed.data.name, parsed.data.payload);
   if (!payload.success) return { ok: false, error: "invalid_payload" };
+  const productEvidence = await validateShopProductEvidence({
+    shopId,
+    eventName: parsed.data.name,
+    productId: parsed.data.productId,
+    payload: payload.data,
+    cartSuccessEvents: CLIENT_CART_SUCCESS_EVENTS,
+  });
+  if (!productEvidence.ok) return { ok: false, error: "invalid_payload" };
 
   try {
     const session = args.shopperCookieId
@@ -55,8 +77,8 @@ export async function postEvent(args: { shopDomain: string; body: unknown; shopp
       shopId,
       shopperId: session?.row.id,
       name: parsed.data.name,
-      productId: parsed.data.productId,
-      payload: payload.data,
+      productId: productEvidence.productId,
+      payload: productEvidence.payload,
     });
   } catch {
     return { ok: false, error: "invalid_payload" };
@@ -232,14 +254,14 @@ export async function postComboAddAll(args: {
     console.error("[cartIntent] tracking insert failed (cart-add still proceeds):", (err as Error).message);
   }
 
-  // CART_FROM_WIDGET_STYLE — an "Add all to bag" from a complete-the-look combo
-  // is a cart originating on the style/look surface. The dashboard reads this
-  // tile; before this it was never emitted in production (permanent zero).
-  // Fire-and-forget — never block the cart-add.
+  // COMBO_ADD_ALL is the CTA/intent event: the browser still has to perform the
+  // real /cart/add.js mutation. CART_FROM_WIDGET_STYLE is accepted via
+  // /api/events only after that browser cart mutation succeeds, mirroring
+  // CART_FROM_TRYON. This keeps intent and confirmed cart-origin separate.
   void analytics.track({
-    shopId, shopperId: session.row.id, name: "CART_FROM_WIDGET_STYLE",
-    payload: { productIds: validIds, comboName: comboName || undefined },
-  }).catch((err) => console.error("[cartFromWidgetStyle] emit failed:", (err as Error).message));
+    shopId, shopperId: session.row.id, name: "COMBO_ADD_ALL",
+    payload: { productIds: validIds, comboName: comboName || "combo" },
+  }).catch((err) => console.error("[comboAddAll] emit failed:", (err as Error).message));
 
   return { ok: true, data: { intentId, shopifyVariantIds } };
 }

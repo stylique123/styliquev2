@@ -164,27 +164,28 @@ export async function action({ request }: ActionFunctionArgs) {
       await writeFile(zipPath, new Uint8Array(bytes));
 
       // Ensure a BrandSource row exists
-      await ensureBrandSource(shop.id, "INSTAGRAM");
-      await prisma.brandSource.updateMany({
-        where: { shopId: shop.id, kind: "INSTAGRAM" },
-        data: { status: "PENDING", error: null, updatedAt: new Date() },
-      });
+      await setBrandSourceStatus(shop.id, "INSTAGRAM", { status: "PENDING", error: null });
 
       // Enqueue the extraction job
       const campaignOverride = String(formData.get("campaign_override") ?? "").trim() || undefined;
-      await instagramQueue().add(
-        "process",
-        { shopId: shop.id, zipPath, campaignOverride },
-        {
-          jobId: `brand-instagram:${shop.id}:${Date.now()}`,
-          attempts: 2,
-          backoff: { type: "exponential", delay: 30_000 },
-          removeOnComplete: 5,
-          removeOnFail: 20,
-        },
-      ).catch((err) => {
+      try {
+        await instagramQueue().add(
+          "process",
+          { shopId: shop.id, zipPath, campaignOverride },
+          {
+            jobId: `brand-instagram:${shop.id}:${Date.now()}`,
+            attempts: 2,
+            backoff: { type: "exponential", delay: 30_000 },
+            removeOnComplete: 5,
+            removeOnFail: 20,
+          },
+        );
+      } catch (err) {
+        const message = (err as Error).message;
         console.error("[brand-settings] Failed to enqueue brand-instagram job", err);
-      });
+        await setBrandSourceStatus(shop.id, "INSTAGRAM", { status: "FAILED", error: message }).catch(() => undefined);
+        return json({ error: "Could not queue Instagram DNA processing. Check Redis/worker health and try again." }, { status: 503 });
+      }
 
       return redirect("/app/settings/brand?saved=1&toast=instagram_processing");
     }
@@ -240,18 +241,24 @@ export async function action({ request }: ActionFunctionArgs) {
       const bytes = await file.arrayBuffer();
       await writeFile(zipPath, new Uint8Array(bytes));
 
-      await instagramQueue().add(
-        "process-campaign",
-        { shopId: shop.id, zipPath, campaignOverride: campaignName },
-        {
-          jobId: `brand-instagram:campaign:${shop.id}:${campaignName}`,
-          attempts: 2,
-          removeOnComplete: 5,
-          removeOnFail: 20,
-        },
-      ).catch((err) => {
+      await setBrandSourceStatus(shop.id, "INSTAGRAM", { status: "PENDING", error: null });
+      try {
+        await instagramQueue().add(
+          "process-campaign",
+          { shopId: shop.id, zipPath, campaignOverride: campaignName },
+          {
+            jobId: `brand-instagram:campaign:${shop.id}:${campaignName}`,
+            attempts: 2,
+            removeOnComplete: 5,
+            removeOnFail: 20,
+          },
+        );
+      } catch (err) {
+        const message = (err as Error).message;
         console.error("[brand-settings] Failed to enqueue campaign override job", err);
-      });
+        await setBrandSourceStatus(shop.id, "INSTAGRAM", { status: "FAILED", error: message }).catch(() => undefined);
+        return json({ error: "Could not queue campaign DNA processing. Check Redis/worker health and try again." }, { status: 503 });
+      }
       return redirect(`/app/settings/brand?saved=1&toast=campaign_processing`);
     }
 
@@ -263,18 +270,24 @@ export async function action({ request }: ActionFunctionArgs) {
   const intent = String(formData.get("intent") ?? "");
 
   if (intent === "refresh_catalog") {
-    await dnaQueue().add(
-      "extract-from-catalog",
-      { shopId: shop.id },
-      {
-        jobId: `brand-dna-catalog:${shop.id}:manual:${Date.now()}`,
-        attempts: 2,
-        removeOnComplete: 10,
-        removeOnFail: 20,
-      },
-    ).catch((err) => {
+    await setBrandSourceStatus(shop.id, "SHOPIFY", { status: "PENDING", error: null });
+    try {
+      await dnaQueue().add(
+        "extract-from-catalog",
+        { shopId: shop.id },
+        {
+          jobId: `brand-dna-catalog:${shop.id}:manual:${Date.now()}`,
+          attempts: 2,
+          removeOnComplete: 10,
+          removeOnFail: 20,
+        },
+      );
+    } catch (err) {
+      const message = (err as Error).message;
       console.error("[brand-settings] Failed to enqueue brand-dna-catalog job", err);
-    });
+      await setBrandSourceStatus(shop.id, "SHOPIFY", { status: "FAILED", error: message }).catch(() => undefined);
+      return json({ error: "Could not queue catalog DNA refresh. Check Redis/worker health and try again." }, { status: 503 });
+    }
     return redirect("/app/settings/brand?saved=1&toast=refresh_queued");
   }
 
@@ -594,6 +607,36 @@ async function ensureBrandSource(shopId: string, kind: "INSTAGRAM" | "SHOPIFY"):
   const existing = await prisma.brandSource.findFirst({ where: { shopId, kind } });
   if (!existing) {
     await prisma.brandSource.create({ data: { shopId, kind, status: "PENDING" } });
+  }
+}
+
+async function setBrandSourceStatus(
+  shopId: string,
+  kind: "INSTAGRAM" | "SHOPIFY",
+  data: { status: "PENDING" | "FAILED"; error: string | null },
+): Promise<void> {
+  const existing = await prisma.brandSource.findFirst({
+    where: { shopId, kind },
+    select: { id: true },
+  });
+  if (existing) {
+    await prisma.brandSource.update({
+      where: { id: existing.id },
+      data: {
+        status: data.status,
+        error: data.error,
+        updatedAt: new Date(),
+      },
+    });
+  } else {
+    await prisma.brandSource.create({
+      data: {
+        shopId,
+        kind,
+        status: data.status,
+        error: data.error,
+      },
+    });
   }
 }
 

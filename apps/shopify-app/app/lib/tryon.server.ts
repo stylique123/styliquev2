@@ -26,6 +26,7 @@ import {
   createVertexNanaBananaProvider,
   createLiteLocalProvider,
   computeTryOnCacheKey,
+  resolveTryonImage,
   type TryOnService,
   type TryOnMode,
 } from "@stylique/core";
@@ -293,13 +294,15 @@ export async function renderTryOn(args: {
     where: { id: args.productId, shopId: args.shopId },
     select: {
       id: true, title: true, category: true, primaryColor: true, colorFamily: true,
-      images: { orderBy: { position: "asc" }, take: 1, select: { url: true, preppedUrl: true } },
+      primaryTryonImageId: true,
+      images: { orderBy: { position: "asc" }, select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true } },
     },
   });
   if (!product) return { ok: false, error: "product_not_found" };
   // Prefer the studio-composited image (background-stripped, consistent backdrop).
   // Falls back to raw CDN image when prep hasn't run yet.
-  const garmentUrl = product.images[0]?.preppedUrl ?? product.images[0]?.url;
+  const primaryImage = resolveTryonImage(product.images, product.primaryTryonImageId);
+  const garmentUrl = primaryImage?.preppedUrl ?? primaryImage?.url;
   if (!garmentUrl) return { ok: false, error: "no_garment_image" };
 
   // 2b. CROSS-SHOPPER CACHE HIT (per-brand, persistent). A BODY_MODEL render is

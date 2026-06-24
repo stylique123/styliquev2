@@ -10,7 +10,9 @@
   so the stylist knows what the widget recorded and vice versa.
 {% endcomment %}
 
-{% assign api_base = '/apps/' | append: block.settings.app_proxy_prefix | default: '/apps/stylique' %}
+{% assign proxy_prefix = block.settings.app_proxy_prefix | default: 'stylique' | strip %}
+{% assign api_base = '/apps/' | append: proxy_prefix %}
+{% assign free_shipping_threshold = block.settings.free_shipping_threshold | default: 0 | plus: 0 %}
 
 {%- comment -%} ── Fonts — preload so widgets render immediately in brand typefaces. {%- endcomment -%}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,16 +23,28 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-{%- comment -%} ── Stylique — THE ONE INTERFACE (the demo's Mira + try-on) ──────
-  tryon.js bundles the demo's REAL MiraWidget + TryOnPanel (the exact React
-  components, run on Preact) and self-mounts a fixed launcher site-wide. It calls
-  the deployed demo backend (Mira chat + try-on render) — so the storefront shows
-  EXACTLY the demo, identical behaviour. The old vanilla widget.js + stylist.js
-  surfaces are retired; there is now ONE implementation, shared with the demo.
+{%- comment -%} ── Stylique — one live storefront bundle ───────────────────────
+  tryon.js bundles MiraWidget + TryOnPanel and routes through this shop's App
+  Proxy, so the storefront uses the tenant-aware Shopify app, synced catalog,
+  entitlement, and worker pipeline. The old vanilla widget.js + stylist.js
+  surfaces are retired; there is now one implementation with merchant-configured
+  surfaces.
 {%- endcomment -%}
 {% if block.settings.enable_stylist or block.settings.enable_widget %}
   <script>
     window.__sqCurrency = {{ cart.currency.iso_code | default: shop.currency | json }};
+    window.__sqProxyBase = {{ api_base | json }};
+    window.__sqTheme = {
+      accentColor: {{ block.settings.accent_color | json }},
+      ctaLabel: {{ block.settings.cta_label | json }},
+      placement: {{ block.settings.placement | json }},
+      enableWidget: {{ block.settings.enable_widget | json }},
+      enableStylist: {{ block.settings.enable_stylist | json }},
+      enablePdpInline: {{ block.settings.enable_pdp_inline | json }},
+      showSize: {{ block.settings.show_size | json }},
+      showStyle: {{ block.settings.show_style | json }},
+      freeShippingThreshold: {{ free_shipping_threshold | json }}
+    };
   </script>
   <script src="{{ 'tryon.js' | asset_url }}" defer></script>
 {% endif %}
@@ -88,6 +102,13 @@
       "id": "accent_color",
       "label": "Accent color",
       "default": "#8B5CF6"
+    },
+    {
+      "type": "number",
+      "id": "free_shipping_threshold",
+      "label": "Free shipping threshold",
+      "default": 0,
+      "info": "Set this in the store currency. Leave 0 to disable Mira free-shipping nudges."
     },
     {
       "type": "checkbox",

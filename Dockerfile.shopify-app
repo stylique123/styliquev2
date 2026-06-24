@@ -1,5 +1,6 @@
 FROM node:20-slim AS base
 WORKDIR /app
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 
 FROM base AS deps
@@ -10,10 +11,11 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 RUN pnpm --filter @stylique/db exec prisma generate --schema=prisma/schema.prisma
+RUN pnpm --filter @stylique/widget build && pnpm --filter @stylique/widget verify:bundle
 RUN pnpm --filter @stylique/shopify-app build
 
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=build /app /app
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@stylique/shopify-app", "start"]
+CMD ["sh", "-lc", "cd apps/shopify-app && pnpm exec tsx server.ts"]

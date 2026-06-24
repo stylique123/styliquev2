@@ -29,6 +29,7 @@ import {
   sizingConfidenceLevel,
   type StyleProduct,
   type SizeChartEntry,
+  type SkuMeasurements,
   type ZoneFitResult,
 } from "@stylique/core";
 import { toShopperProduct, type ShopperProduct } from "./serialize";
@@ -73,6 +74,24 @@ function parseSkuMeasurements(
     }
     return Object.keys(out).length ? out : undefined;
   } catch { return undefined; }
+}
+
+function parseVariantSkuMeasurements(
+  variants: Array<{ size: string | null; measurementsJson: unknown }>,
+): Record<string, SkuMeasurements> | undefined {
+  const out: Record<string, SkuMeasurements> = {};
+  for (const variant of variants) {
+    if (!variant.size || !variant.measurementsJson || typeof variant.measurementsJson !== "object") continue;
+    const raw = variant.measurementsJson as Record<string, unknown>;
+    const parsed: SkuMeasurements = {};
+    for (const key of ["chest", "waist", "hip", "length", "sleeve"] as const) {
+      const value = raw[key];
+      const num = typeof value === "number" ? value : typeof value === "string" ? Number.parseFloat(value) : NaN;
+      if (Number.isFinite(num)) parsed[key] = num;
+    }
+    if (Object.keys(parsed).length) out[variant.size] = parsed;
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 function toStyleProduct(p: ShopperProduct): StyleProduct {
@@ -126,7 +145,10 @@ export async function getProduct(args: { shopDomain: string; handle: string; sho
       id: true, handle: true, title: true, category: true,
       primaryColor: true, colorFamily: true,
       primaryTryonImageId: true, tryonReady: true, widgetTier: true,
-      images: { select: { id: true, url: true }, orderBy: { position: "asc" } },
+      images: {
+        select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true },
+        orderBy: { position: "asc" },
+      },
       variants: { select: { size: true } },
     },
   });
@@ -189,7 +211,7 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
 
   const product = await prisma.product.findFirst({
     where: { id: parsed.data.productId, shopId },     // shop-scoped lookup
-    select: { category: true, sizeChartJson: true, variants: { select: { size: true } } },
+    select: { category: true, sizeChartJson: true, variants: { select: { size: true, measurementsJson: true } } },
   });
   if (!product) return { ok: false as const, error: "product_not_found" };
 
@@ -223,8 +245,10 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
   // P2). Return an honest error instead so the UI can degrade cleanly.
   if (sizes.length === 0) return { ok: false as const, error: "invalid_input" };
 
-  // Parse sizeChartJson into skuMeasurements for per-SKU fit accuracy (Fix 4).
-  const skuMeasurements = parseSkuMeasurements(product.sizeChartJson);
+  // Prefer the worker's per-variant bridge (ProductVariant.measurementsJson).
+  // Fall back to Product.sizeChartJson for older products that have not been
+  // bridged yet, so extracted charts always reach recommendFit.
+  const skuMeasurements = parseVariantSkuMeasurements(product.variants) ?? parseSkuMeasurements(product.sizeChartJson);
 
   // Past-purchase + brand-bias signals from analytics events (Fix 5/6).
   let purchaseCount = 0;
@@ -256,7 +280,7 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
   let fitZones: ZoneFitResult = {};
   try {
     if (
-      product.sizeChartJson &&
+      (product.sizeChartJson || skuMeasurements) &&
       (parsed.data.chestCm || parsed.data.waistCm || parsed.data.hipCm)
     ) {
       const rawChart = product.sizeChartJson as unknown;
@@ -277,21 +301,30 @@ export async function postFit(args: { shopDomain: string; body: unknown; shopper
         }));
       }
 
-      if (entries) {
-        const matched = entries.find(
-          (e) => e.size?.toUpperCase() === result.recommendedSize?.toUpperCase()
+      const matchedFromChart = entries?.find(
+        (e) => e.size?.toUpperCase() === result.recommendedSize?.toUpperCase()
+      );
+      const variantMeasurements = skuMeasurements?.[result.recommendedSize];
+      const matchedFromVariant = !matchedFromChart && variantMeasurements
+        ? {
+            size: result.recommendedSize,
+            chestCm: variantMeasurements.chest,
+            waistCm: variantMeasurements.waist,
+            hipCm: variantMeasurements.hip,
+            lengthCm: variantMeasurements.length,
+          } satisfies SizeChartEntry
+        : null;
+      const matched = matchedFromChart ?? matchedFromVariant;
+      if (matched) {
+        fitZones = calculateZoneFit(
+          {
+            chestCm: parsed.data.chestCm,
+            waistCm: parsed.data.waistCm,
+            hipCm:   parsed.data.hipCm,
+          },
+          matched,
+          parsed.data.fitPreference,
         );
-        if (matched) {
-          fitZones = calculateZoneFit(
-            {
-              chestCm: parsed.data.chestCm,
-              waistCm: parsed.data.waistCm,
-              hipCm:   parsed.data.hipCm,
-            },
-            matched,
-            parsed.data.fitPreference,
-          );
-        }
       }
     }
   } catch {
@@ -377,7 +410,14 @@ export async function postStyle(args: { shopDomain: string; body: unknown; shopp
 
   const product = await prisma.product.findFirst({
     where: { id: parsed.data.productId, shopId },
-    include: { images: { orderBy: { position: "asc" }, take: 1 }, variants: { select: { size: true } } },
+    include: {
+      images: {
+        orderBy: { position: "asc" },
+        select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true },
+        take: 8,
+      },
+      variants: { select: { size: true } },
+    },
   });
   if (!product) return { ok: false as const, error: "product_not_found" };
 
@@ -405,7 +445,14 @@ export async function postStyle(args: { shopDomain: string; body: unknown; shopp
   const catalogRows = await prisma.product.findMany({
     where: { shopId, id: { not: product.id } },
     take: 60,
-    include: { images: { orderBy: { position: "asc" }, take: 1 }, variants: { select: { size: true } } },
+    include: {
+      images: {
+        orderBy: { position: "asc" },
+        select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true },
+        take: 8,
+      },
+      variants: { select: { size: true } },
+    },
   });
   const catalog = catalogRows.map(toShopperProduct);
   const taste = await readTasteVector(session.row.id).catch(() => null);
@@ -474,6 +521,8 @@ const TryOnRenderSchema = z.object({
   personImageDataUrl: z.string().max(8_500_000).optional(),
 }).refine((d) => Boolean(d.productId) || (Array.isArray(d.productIds) && d.productIds.length > 0), {
   message: "Either productId or productIds[] is required",
+}).refine((d) => !(Array.isArray(d.productIds) && d.productIds.length > 1 && d.mode === "PERSONAL_PHOTO"), {
+  message: "Combo try-on only supports BODY_MODEL mode",
 });
 
 export async function postTryOnRender(args: {
@@ -505,6 +554,14 @@ export async function postTryOnRender(args: {
   // Single-garment path stays unchanged when only productId is provided.
   const ids = parsed.data.productIds ?? (parsed.data.productId ? [parsed.data.productId] : []);
   if (ids.length > 1) {
+    const comboGate = await canConsume({ shopId, metric: "TRYON_BODY" });
+    if (!comboGate.allowed || (comboGate.remaining != null && comboGate.remaining < ids.length)) {
+      return {
+        ok: false,
+        error: comboGate.reason === "QUOTA_EXHAUSTED" || comboGate.remaining === 0 ? "quota_reached" : "feature_disabled",
+        ...(session.setCookie ? { setCookie: session.setCookie } : {}),
+      };
+    }
     const comboResult = await renderComboTryOn({
       shopId,
       shopperRowId: session.row.id,

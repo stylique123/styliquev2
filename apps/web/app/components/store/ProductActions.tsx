@@ -3,6 +3,7 @@
 import { useState } from "react";
 import TryOnPanel from "../surfaces/TryOnPanel";
 import type { Product } from "../../lib/catalog";
+import { addToCart } from "../../lib/storefront-cart";
 
 export default function ProductActions({
   sizes,
@@ -16,8 +17,10 @@ export default function ProductActions({
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [tryOnOpen, setTryOnOpen] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [cartError, setCartError] = useState<string | null>(null);
 
-  const handleAddToBag = () => {
+  const handleAddToBag = async () => {
     if (!selectedSize && sizes.length > 1) {
       // flash sizes section to prompt selection
       const sizeSection = document.querySelector("[data-pdp-sizes]") as HTMLElement | null;
@@ -26,6 +29,22 @@ export default function ProductActions({
         sizeSection.style.outlineOffset = "8px";
         setTimeout(() => { sizeSection.style.outline = ""; }, 1200);
       }
+      return;
+    }
+    if (adding) return;
+    setCartError(null);
+    setAdding(true);
+    const size = selectedSize ?? (sizes.length === 1 ? sizes[0] : null);
+    const result = product ? await addToCart(product.handle, size) : { ok: true, real: false };
+    setAdding(false);
+    if (!result.ok) {
+      setCartError(
+        result.error === "requested_size_unavailable"
+          ? "That size just sold out. Pick another size."
+          : result.error === "variant_not_found"
+            ? "I could not match this product to a Shopify variant."
+            : "Shopify could not add this item. Try again.",
+      );
       return;
     }
     setAddedToast(true);
@@ -108,6 +127,7 @@ export default function ProductActions({
       <div style={{ position: "relative" }}>
         <button
           onClick={handleAddToBag}
+          disabled={adding}
           style={{
             padding: "18px 24px",
             background: "var(--grad)",
@@ -120,11 +140,25 @@ export default function ProductActions({
             cursor: "pointer",
             width: "100%",
             transition: "opacity 180ms",
+            opacity: adding ? 0.7 : 1,
           }}
         >
-          {addedToast ? "Added ✓" : "Add to bag"}
+          {adding ? "Adding…" : addedToast ? "Added ✓" : "Add to bag"}
         </button>
-        {!selectedSize && sizes.length > 1 && (
+        {cartError ? (
+          <p
+            role="alert"
+            style={{
+              fontFamily: "var(--sans)",
+              fontSize: 12,
+              color: "#E8A44C",
+              marginTop: 8,
+              lineHeight: 1.4,
+            }}
+          >
+            {cartError}
+          </p>
+        ) : !selectedSize && sizes.length > 1 && (
           <p
             style={{
               fontFamily: "var(--mono)",

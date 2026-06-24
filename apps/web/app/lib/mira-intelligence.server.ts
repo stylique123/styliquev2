@@ -94,6 +94,7 @@ const OCCASIONS = [
 
 // ─── Output types ────────────────────────────────────────────────────────────
 export type Trend = "up" | "down" | "flat";
+export type InsightSource = "measured" | "mixed" | "modelled" | "insufficient_data";
 
 export type ColorRow = {
   color: string;
@@ -127,8 +128,12 @@ export type ConversionIntel = {
   tryOnPurchaseRate: number; // with try-on
   baselinePurchaseRate: number; // without try-on
   tryOnLiftX: number; // multiple
-  bundlePurchaseRate: number; // bought a recommended bundle
-  aiSuggestedAddRate: number; // added an AI-suggested item
+  bundleIntentRate: number; // asked for a recommended bundle
+  aiSuggestedCartRate: number; // added an AI-suggested item
+  /** @deprecated Use bundleIntentRate. */
+  bundlePurchaseRate: number;
+  /** @deprecated Use aiSuggestedCartRate. */
+  aiSuggestedAddRate: number;
   confidenceScore: number; // 0..100 composite
   confidenceDrivers: { label: string; weight: number }[];
   dropOff: DropOffStage[];
@@ -167,6 +172,8 @@ export type ExecCard = {
   label: string;
   value: string;
   sub: string;
+  source?: InsightSource;
+  sourceDetail?: string;
   trend?: Trend;
   deltaPct?: number;
   tone: "loved" | "growing" | "converting" | "watch";
@@ -340,6 +347,8 @@ export async function buildFashionIntelligence(): Promise<FashionIntelligence> {
     tryOnPurchaseRate,
     baselinePurchaseRate,
     tryOnLiftX: Math.round((tryOnPurchaseRate / baselinePurchaseRate) * 10) / 10,
+    bundleIntentRate: 0.42,
+    aiSuggestedCartRate: 0.31,
     bundlePurchaseRate: 0.42,
     aiSuggestedAddRate: 0.31,
     confidenceScore: 74,
@@ -439,12 +448,16 @@ export async function buildFashionIntelligence(): Promise<FashionIntelligence> {
       label: "Most loved shade",
       value: topShade?.color ?? "Ivory",
       sub: `${pct(topShade?.convertRate ?? 0.3)}% try → buy · the reliable converter`,
+      source: realSignalCount > 0 ? "mixed" : "modelled",
+      sourceDetail: realSignalCount > 0 ? "Demo blends local learning-loop signals with modelled catalog context." : "Directional model until demo signals exist.",
       tone: "loved",
     },
     {
       label: "Fastest-growing colour",
       value: growingColor ? "Natural tones" : "Earth tones",
       sub: `+${growingColor?.deltaPct ?? 18}% try-ons this period`,
+      source: "modelled",
+      sourceDetail: "Directional trend model; not a measured period-over-period lift.",
       trend: "up",
       deltaPct: growingColor?.deltaPct ?? 18,
       tone: "growing",
@@ -453,12 +466,16 @@ export async function buildFashionIntelligence(): Promise<FashionIntelligence> {
       label: "Highest-converting fit",
       value: topFit?.pref.split(" / ")[0] ?? "Relaxed",
       sub: `${pct(topFit?.share ?? 0.48)}% of shoppers · drives the size logic`,
+      source: realSignalCount > 0 ? "mixed" : "modelled",
+      sourceDetail: realSignalCount > 0 ? "Demo blends fit signals with modelled preference distribution." : "Directional fit model until enough fit signals exist.",
       tone: "converting",
     },
     {
       label: "Try-on lift",
       value: `${conversion.tryOnLiftX}×`,
       sub: `${pct(conversion.tryOnPurchaseRate)}% with try-on vs ${pct(conversion.baselinePurchaseRate)}% without`,
+      source: realSignalCount > 0 ? "mixed" : "modelled",
+      sourceDetail: "Demo estimate, not a controlled measured lift.",
       trend: "up",
       tone: "converting",
     },
@@ -466,12 +483,16 @@ export async function buildFashionIntelligence(): Promise<FashionIntelligence> {
       label: "Curiosity, not conversion",
       value: curiosity?.color ?? "Cardinal",
       sub: `High try-ons, low buy — merchandise as accent, not hero`,
+      source: realSignalCount > 0 ? "mixed" : "modelled",
+      sourceDetail: realSignalCount > 0 ? "Demo blends colour curiosity signals with modelled conversion context." : "Directional model until enough colour signals exist.",
       tone: "watch",
     },
     {
       label: "Return risk",
       value: `${fit.returnRiskScore}`,
       sub: `${fit.returnRiskLevel} · ${fit.sizeConfidence}% accept the size rec`,
+      source: "modelled",
+      sourceDetail: "Directional return-risk model; production should use cart confirmations and cancellations.",
       trend: fit.returnRiskLevel === "low" ? "down" : "flat",
       tone: "watch",
     },

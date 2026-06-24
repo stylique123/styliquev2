@@ -40,13 +40,18 @@ export async function action({ request }: ActionFunctionArgs) {
   const url = new URL(request.url);
   const productId = url.searchParams.get("productId");
 
-  await getQueue().add(
+  const backfillRunId = Date.now().toString(36);
+  const job = await getQueue().add(
     "score",
     { shopId: shop.id, productId: productId ?? null },
     {
-      // Dedupe — only one full-shop backfill in-flight at a time, and one
-      // per-product job per product. Re-running is harmless if not deduped.
-      jobId: productId ? `img-q:${shop.id}:${productId}` : `img-q:${shop.id}:all`,
+      // Manual backfills must be rerunnable after image-selection fixes or
+      // merchant gallery changes. Scope dedupe to this request, not forever,
+      // or BullMQ can dedupe against a retained completed job and the UI will
+      // claim a re-score that never actually runs.
+      jobId: productId
+        ? `img-q:${shop.id}:${productId}:manual:${backfillRunId}`
+        : `img-q:${shop.id}:all:manual:${backfillRunId}`,
       removeOnComplete: 50,
       removeOnFail: 100,
     },
@@ -54,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   return json({
     ok: true,
-    data: { enqueued: true, scope: productId ? "product" : "shop" },
+    data: { enqueued: true, scope: productId ? "product" : "shop", jobId: job.id },
   });
 }
 

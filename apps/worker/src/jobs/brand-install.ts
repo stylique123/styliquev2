@@ -13,7 +13,7 @@
 // provider; failed steps land in NotificationKind for the brand to retry.
 
 import { prisma } from "@stylique/db";
-import { computeTryOnCacheKey } from "@stylique/core";
+import { computeTryOnCacheKey, resolveTryonImage } from "@stylique/core";
 import type { Queue } from "bullmq";
 
 export type BrandInstallJobData = {
@@ -118,7 +118,8 @@ export async function processBrandInstall(
             category: true,
             primaryColor: true,
             colorFamily: true,
-            images: { orderBy: { position: "asc" }, take: 1, select: { url: true } },
+            primaryTryonImageId: true,
+            images: { orderBy: { position: "asc" }, select: { id: true, url: true, preppedUrl: true, position: true, qualityScore: true, garmentRole: true, altText: true } },
           },
         });
         // Resolve the shop's configured provider (default: gemini-image for prewarm).
@@ -126,7 +127,8 @@ export async function processBrandInstall(
         // changes (see processTryOnRender cache design comment in tryon-render.ts).
         const prewarmProvider = "gemini-image";
         for (const p of products) {
-          const garmentUrl = p.images[0]?.url;
+          const primaryImage = resolveTryonImage(p.images, p.primaryTryonImageId);
+          const garmentUrl = primaryImage?.preppedUrl ?? primaryImage?.url;
           if (!garmentUrl) continue;
 
           // Prewarm the no-profile fallback. Personalized size/body contexts

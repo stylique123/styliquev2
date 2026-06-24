@@ -314,7 +314,17 @@ export const EventPayloadSchemas = {
   }),
   CHAT_NAV_REQUESTED: z.object({ productHandle: z.string() }),
   CHAT_CART_REQUESTED: z.object({ productId: z.string(), suggestedSize: z.string().optional() }),
-  CART_CONFIRMED: z.object({ productId: z.string(), size: z.string().optional(), qty: z.number().int() }),
+  CART_CONFIRMED: z.object({
+    productId: z.string().optional(),
+    size: z.string().optional(),
+    qty: z.number().int().optional(),
+    quantity: z.number().int().optional(),
+    orderId: z.string().optional(),
+    source: z.string().optional(),
+    lineValue: z.number().int().optional(),
+    linkMethod: z.enum(["customer_id", "email"]).optional(),
+    linkConfidence: z.enum(["high", "medium"]).optional(),
+  }),
   CART_CANCELLED: z.object({ productId: z.string() }),
   CART_FAILED: z.object({ productId: z.string(), reason: z.string().optional() }),
   SIGNUP_OFFERED: z.object({ reason: z.string().optional() }),
@@ -439,7 +449,10 @@ export const EventPayloadSchemas = {
     orderId: z.string(),
     assistedProductIds: z.array(z.string()),
     assistedRevenueCents: z.number().int(),
+    assistedUnits: z.number().int().optional(),
     totalLineItems: z.number().int(),
+    linkMethod: z.enum(["customer_id", "email"]).optional(),
+    linkConfidence: z.enum(["high", "medium"]).optional(),
   }).optional(),
   // Request B — live availability check via check_stock tool.
   CHAT_STOCK_CHECKED: z.object({
@@ -488,8 +501,10 @@ export const EventPayloadSchemas = {
   }),
   CART_FROM_TRYON: z.object({
     productId: z.string().optional(),
+    productIds: z.array(z.string()).optional(),
     renderId: z.string().optional(),
     comboName: z.string().optional(),
+    size: z.string().optional(),
   }),
   CART_FROM_WIDGET_STYLE: z.object({
     productIds: z.array(z.string()).optional(),
@@ -637,6 +652,7 @@ export const EventPayloadSchemas = {
     shopperState: z.string().optional(),
     confidence: z.number().optional(),
     reasons: z.array(z.string()).optional(),
+    triggerType: z.string().optional(),
     suggestedMiraMode: z.string().optional(),
     suppressionReason: z.string().optional(),
     productId: z.string().optional(),

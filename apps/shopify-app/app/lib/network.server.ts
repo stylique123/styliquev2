@@ -16,6 +16,8 @@
 //   • Per-shop snapshots stay tenant-scoped (queried only via shopId).
 
 import { prisma } from "../db.server";
+import { Prisma } from "@stylique/db";
+import { distinctOrderCountFromEvents } from "@stylique/core";
 
 const DAY = 86_400_000;
 const WINDOW_DAYS = 30;
@@ -37,7 +39,7 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
   const sessions = await prisma.shopperSession.findMany({
     where: {
       shopifyDomain: shop.shopifyDomain,
-      tasteVectorJson: { not: undefined },
+      tasteVectorJson: { not: Prisma.AnyNull },
       signalCount: { gte: 3 },
     },
     select: { tasteVectorJson: true },
@@ -86,17 +88,28 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
   }
 
   // Funnel counts.
-  const grouped = await prisma.analyticsEvent.groupBy({
-    by: ["name"],
-    where: { shopId, createdAt: { gte: since } },
-    _count: { _all: true },
-  });
+  const [grouped, confirmedCartRows] = await Promise.all([
+    prisma.analyticsEvent.groupBy({
+      by: ["name"],
+      where: { shopId, createdAt: { gte: since } },
+      _count: { _all: true },
+    }),
+    prisma.analyticsEvent.findMany({
+      where: { shopId, name: "CART_CONFIRMED", createdAt: { gte: since } },
+      select: { id: true, payload: true },
+      take: 5000,
+    }),
+  ]);
   const n = (key: string) => grouped.find((g) => g.name === key)?._count._all ?? 0;
   const chatSessions    = n("CHAT_OPENED");
   const combosProposed  = n("CHAT_COMBO_PROPOSED");
-  const cartConfirmed   = n("CART_CONFIRMED");
+  // CART_CONFIRMED is emitted once per line item by the orders webhook; network
+  // conversion benchmarks need order-level counts, not line counts.
+  const cartConfirmed   = distinctOrderCountFromEvents(confirmedCartRows);
   const signupsClaimed  = n("SIGNUP_CLAIMED");
-  const tryOnSessions   = n("WIDGET_OPENED");
+  const tryOnSessions = await prisma.tryOnSession.count({
+    where: { shopId, createdAt: { gte: since } },
+  });
   const fitSubmitted    = n("WIDGET_FIT_SUBMITTED");
 
   const comboCtr      = combosProposed > 0 ? cartConfirmed / combosProposed : 0;

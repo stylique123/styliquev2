@@ -4,6 +4,7 @@
 // "size only" mode (tier 3) or gives VTO a bad anchor image.
 
 import { describe, it, expect } from "vitest";
+import { resolveTryonImage, scoreProductImages } from "../imagery/service.js";
 import { computeWidgetTier, USABLE_THRESHOLD } from "../imagery/types.js";
 
 // ─── computeWidgetTier ────────────────────────────────────────────────────────
@@ -37,6 +38,28 @@ describe("computeWidgetTier", () => {
   it("USABLE_THRESHOLD is 5.5 (Phase 1 §2.5 invariant)", () => {
     // Hard-coded in the spec. If this changes, VTO anchor selection changes.
     expect(USABLE_THRESHOLD).toBe(5.5);
+  });
+});
+
+describe("resolveTryonImage", () => {
+  it("uses the scored primary try-on image when present", () => {
+    const image = resolveTryonImage([
+      { id: "img-front", url: "front.jpg", position: 1, garmentRole: "FRONT", qualityScore: 9 },
+      { id: "img-primary", url: "back.jpg", preppedUrl: "studio-back.png", position: 2, garmentRole: "BACK", qualityScore: 7 },
+    ], "img-primary");
+
+    expect(image?.id).toBe("img-primary");
+    expect(image?.preppedUrl).toBe("studio-back.png");
+  });
+
+  it("does not fall back to a first-position size guide when a front product image exists", () => {
+    const image = resolveTryonImage([
+      { id: "img-size", url: "size-guide.jpg", position: 1, garmentRole: "DETAIL", qualityScore: 8, altText: "size guide measurements" },
+      { id: "img-front", url: "front.jpg", position: 2, garmentRole: "FRONT", qualityScore: 6, altText: "front product photo" },
+      { id: "img-swatch", url: "swatch.jpg", position: 3, garmentRole: "SWATCH", qualityScore: 9, altText: "fabric swatch" },
+    ], null);
+
+    expect(image?.id).toBe("img-front");
   });
 });
 
@@ -78,5 +101,47 @@ describe("filename heuristics — expected garmentRole assignments", () => {
     expect(RX.detail.test(name)).toBe(false);
     expect(RX.lifestyle.test(name)).toBe(false);
     expect(RX.swatch.test(name)).toBe(false);
+  });
+});
+
+describe("scoreProductImages primary selection", () => {
+  it("picks a usable FRONT image over the first Shopify image when position 1 is lifestyle/detail", async () => {
+    const result = await scoreProductImages({
+      productId: "prod-shirt",
+      images: [
+        { id: "img-lifestyle", url: "https://cdn.example/shirt_lifestyle.jpg", position: 1, shopifyFilename: "shirt_lifestyle.jpg" },
+        { id: "img-front", url: "https://cdn.example/shirt_front.jpg", position: 2, shopifyFilename: "shirt_front.jpg" },
+        { id: "img-detail", url: "https://cdn.example/shirt_detail.jpg", position: 3, shopifyFilename: "shirt_detail.jpg" },
+      ],
+      stage1: {
+        key: "test-stage1",
+        async score() {
+          return [
+            { id: "img-lifestyle", score: 7.4, reasons: ["filename_lifestyle_hint"], garmentRole: "LIFESTYLE" },
+            { id: "img-front", score: 6.1, reasons: ["filename_front_hint"], garmentRole: "FRONT" },
+            { id: "img-detail", score: 6.8, reasons: ["suspected_detail_crop"], garmentRole: "DETAIL" },
+          ];
+        },
+      },
+      stage2: { key: "aws_rekognition_disabled", async score() { return []; } },
+    });
+
+    expect(result.primaryTryonImageId).toBe("img-front");
+    expect(result.tryonReady).toBe(true);
+  });
+
+  it("uses Shopify alt text to reject size-guide/detail images before picking the front product image", async () => {
+    const result = await scoreProductImages({
+      productId: "prod-alt-shirt",
+      images: [
+        { id: "img-size-guide", url: "https://cdn.example/asset-one.jpg", position: 1, altText: "Oxford shirt size guide and measurements" },
+        { id: "img-front", url: "https://cdn.example/asset-two.jpg", position: 2, altText: "Oxford shirt front product photo" },
+      ],
+      stage2: { key: "aws_rekognition_disabled", async score() { return []; } },
+    });
+
+    expect(result.primaryTryonImageId).toBe("img-front");
+    expect(result.perImage.find((img) => img.imageId === "img-size-guide")?.garmentRole).toBe("DETAIL");
+    expect(result.perImage.find((img) => img.imageId === "img-front")?.garmentRole).toBe("FRONT");
   });
 });

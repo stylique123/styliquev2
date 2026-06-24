@@ -196,6 +196,7 @@ model ProductImage {
   productId        String
   shopifyId        String?
   url              String
+  altText          String?
   position         Int          @default(0)
   role             ImageRole    @default(CATALOG)
   qualityScore     Float?
@@ -274,6 +275,8 @@ model ShopperSession {
   emailVerifyAttempts    Int              @default(0)
   emailVerifyLockedAt    DateTime?
   chatHistoryJson        Json?
+  miraObjectiveJson      Json?
+  miraObjectiveUpdatedAt DateTime?
   signupOfferedAt        DateTime?
   sentimentLabel         String?
   sentimentThemes        String[]

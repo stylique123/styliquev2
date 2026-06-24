@@ -3,6 +3,14 @@
 // All reads are cross-shop (intentional — this is an internal ops tool).
 
 import { prisma } from "../db.server";
+import {
+  REQUIRED_SHOPIFY_SCOPES,
+  extraGrantedShopifyScopes,
+  fetchLiveShopifyScopeCheck,
+  missingRequiredShopifyScopes,
+  type LiveShopifyScopeCheck,
+} from "./shopify-scopes.server";
+import { decryptField } from "@stylique/core";
 
 const DAY = 86_400_000;
 
@@ -45,6 +53,11 @@ export type BrandSummary = {
 };
 
 export type BrandDetail = BrandSummary & {
+  shopifyScopes: string;
+  requiredShopifyScopes: string[];
+  missingShopifyScopes: string[];
+  extraShopifyScopes: string[];
+  liveShopifyScopeCheck: LiveShopifyScopeCheck;
   recentEvents: Array<{
     id: string;
     name: string;
@@ -91,10 +104,20 @@ function buildIssues(
   tryOnSuccessRate: number,
   sessionsLast7Days: number,
   lastActiveAt: Date | null,
+  missingShopifyScopes: string[] = [],
+  extraShopifyScopes: string[] = [],
 ): { issues: string[]; suggestions: string[] } {
   const issues: string[] = [];
   const suggestions: string[] = [];
 
+  if (missingShopifyScopes.length > 0) {
+    issues.push(`Missing Shopify scopes: ${missingShopifyScopes.join(", ")}`);
+    suggestions.push("Ask merchant to re-consent/reinstall so catalog sync, order attribution, and ScriptTag injection work.");
+  }
+  if (extraShopifyScopes.length > 0) {
+    issues.push(`Stored token has extra Shopify scopes: ${extraShopifyScopes.join(", ")}`);
+    suggestions.push("Ask merchant to re-consent/reinstall so the access token matches the current least-privilege scope contract.");
+  }
   if (!hasBrandDNA) {
     issues.push("No brand DNA computed");
     suggestions.push("Schedule a brand DNA refresh run");
@@ -116,6 +139,14 @@ function buildIssues(
   return { issues, suggestions };
 }
 
+export function internalDemandCatalogGapWhere(shopId: string) {
+  return {
+    shopId,
+    source: { not: "size_chart_extract" },
+    NOT: { rawQuery: { startsWith: "no_size_chart" } },
+  };
+}
+
 export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
   const since7d = new Date(Date.now() - 7 * DAY);
   const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -124,7 +155,10 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
     select: {
       id: true,
       shopifyDomain: true,
+      accessToken: true,
+      scopes: true,
       installedAt: true,
+      uninstalledAt: true,
       plan: {
         select: {
           tier: true,
@@ -232,12 +266,14 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
     const quotaUsagePercent = Math.min(1, creditsBurned / monthlyCap);
 
     const hasBrandDNA = !!shop.brandProfile?.paletteJson;
+    const missingScopes = missingRequiredShopifyScopes(shop.scopes);
+    const extraScopes = extraGrantedShopifyScopes(shop.scopes);
     const brandDNAAge = shop.brandProfile?.trainedAt
       ? Math.round((Date.now() - shop.brandProfile.trainedAt.getTime()) / DAY)
       : null;
 
     const status = computeHealthStatus(shop.installedAt, s7, lastActiveAt);
-    const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, s7, lastActiveAt);
+    const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, s7, lastActiveAt, missingScopes, extraScopes);
 
     return {
       shopId: shop.id,
@@ -269,7 +305,10 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     select: {
       id: true,
       shopifyDomain: true,
+      accessToken: true,
+      scopes: true,
       installedAt: true,
+      uninstalledAt: true,
       plan: {
         select: {
           tier: true,
@@ -314,7 +353,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     }),
     prisma.catalogGap.groupBy({
       by: ["normalizedQuery"],
-      where: { shopId },
+      where: internalDemandCatalogGapWhere(shopId),
       _count: { _all: true },
       orderBy: { _count: { normalizedQuery: "desc" } },
       take: 10,
@@ -350,10 +389,38 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
 
   const status = computeHealthStatus(shop.installedAt, sessions7d, lastActiveEvt);
   const hasBrandDNA = !!shop.brandProfile?.paletteJson;
+  const missingScopes = missingRequiredShopifyScopes(shop.scopes);
+  const extraScopes = extraGrantedShopifyScopes(shop.scopes);
+  const liveScopeCheck = shop.uninstalledAt
+    ? {
+        status: "skipped" as const,
+        reason: "shop_uninstalled_or_pending",
+        scopes: [],
+        missing: [...REQUIRED_SHOPIFY_SCOPES],
+        extra: [],
+      }
+    : await fetchLiveShopifyScopeCheck({
+        shopifyDomain: shop.shopifyDomain,
+        accessToken: decryptField(shop.accessToken),
+      });
   const brandDNAAge = shop.brandProfile?.trainedAt
     ? Math.round((Date.now() - shop.brandProfile.trainedAt.getTime()) / DAY)
     : null;
-  const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, sessions7d, lastActiveEvt);
+  const { issues, suggestions } = buildIssues(hasBrandDNA, vtoRate, sessions7d, lastActiveEvt, missingScopes, extraScopes);
+  const openIssues = [...issues];
+  const issueSuggestions = [...suggestions];
+  if (liveScopeCheck.status === "checked" && liveScopeCheck.missing.length > 0) {
+    openIssues.push(`Live Shopify token missing scopes: ${liveScopeCheck.missing.join(", ")}`);
+    issueSuggestions.push("Trigger merchant re-consent; stored scopes alone are not enough if Shopify's live token is under-scoped.");
+  }
+  if (liveScopeCheck.status === "checked" && liveScopeCheck.extra.length > 0) {
+    openIssues.push(`Live Shopify token has extra scopes: ${liveScopeCheck.extra.join(", ")}`);
+    issueSuggestions.push("Trigger merchant re-consent so the live token returns to the least-privilege scope contract.");
+  }
+  if (liveScopeCheck.status === "failed") {
+    openIssues.push(`Live Shopify scope check failed: ${liveScopeCheck.reason}`);
+    issueSuggestions.push("Verify the stored access token and Shopify app installation before treating the install as healthy.");
+  }
 
   const shopCounters = await prisma.usageCounter.findMany({
     where: {
@@ -376,6 +443,11 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
   return {
     shopId: shop.id,
     shopifyDomain: shop.shopifyDomain,
+    shopifyScopes: shop.scopes,
+    requiredShopifyScopes: [...REQUIRED_SHOPIFY_SCOPES],
+    missingShopifyScopes: missingScopes,
+    extraShopifyScopes: extraScopes,
+    liveShopifyScopeCheck: liveScopeCheck,
     installedAt: shop.installedAt,
     planTier: plan?.tier ?? "STARTER",
     brandHealthStatus: status,
@@ -391,8 +463,8 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     quotaUsagePercent: Math.min(1, creditsBurned / monthlyCap),
     hasBrandDNA,
     brandDNAAge,
-    openIssues: issues,
-    suggestions,
+    openIssues,
+    suggestions: issueSuggestions,
     recentEvents: recentEvents.map((e) => ({
       id: e.id,
       name: e.name,

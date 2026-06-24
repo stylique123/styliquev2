@@ -47,11 +47,14 @@ function sqApi(): string {
   const api = (window as unknown as Record<string, unknown>).__sqApi;
   return typeof api === "string" ? api : ASSET_BASE;
 }
-function money(amount: number): string {
+function storefrontCurrency(): string {
   const currency = typeof window !== "undefined"
     ? (window as unknown as Record<string, unknown>).__sqCurrency
     : "USD";
-  const code = typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+  return typeof currency === "string" && /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+}
+function money(amount: number): string {
+  const code = storefrontCurrency();
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
@@ -98,7 +101,7 @@ const CARD_PRICE_ROUTES = new Set([
 import TryOnPanel from "../surfaces/TryOnPanel";
 import {
   emptyMemory, updateFromLookCard, updateFromVoice, updateFromReco,
-  markAccepted, resolveBundle, buildLookContextBlock,
+  markAccepted, resolveBundle, buildLookContextBlock, registerActiveLookProducts,
   type ActiveLookMemory,
 } from "../../lib/active-look-memory";
 import {
@@ -225,11 +228,29 @@ const TRYON_TRIGGER      = "__try_on__:";   // followed by a product handle, ope
 
 // Payments-panel finding: free-shipping nudge was firing on every store
 // regardless of currency, telling a PKR shopper they're "Rs 250 from free
-// shipping" when the threshold was actually 500 USD. Gate the nudge to
-// USD-only stores for now; international free-shipping thresholds require
-// per-shop config.
-const FREE_SHIPPING_THRESHOLD = 500;
-const FREE_SHIPPING_CURRENCY = "USD";
+// shipping" when the threshold was actually 500 USD. Storefront mode now requires
+// the merchant's own theme setting; the demo keeps its local 500 USD threshold.
+const DEMO_FREE_SHIPPING_THRESHOLD = 500;
+
+function freeShippingThreshold(): number | null {
+  if (typeof window !== "undefined") {
+    const theme = (window as unknown as Record<string, unknown>).__sqTheme;
+    if (theme && typeof theme === "object") {
+      const raw = (theme as Record<string, unknown>).freeShippingThreshold;
+      const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : 0;
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+  }
+  return ASSET_BASE ? null : DEMO_FREE_SHIPPING_THRESHOLD;
+}
+
+function themeFlag(name: string, fallback: boolean): boolean {
+  if (typeof window === "undefined") return fallback;
+  const theme = (window as unknown as Record<string, unknown>).__sqTheme;
+  if (!theme || typeof theme !== "object") return fallback;
+  const value = (theme as Record<string, unknown>)[name];
+  return typeof value === "boolean" ? value : fallback;
+}
 
 // ── Per-product size memory ─────────────────────────────────────────────────
 // Every piece here is cut differently, so a size is remembered PER PRODUCT,
@@ -452,6 +473,10 @@ const RATIONALE: Record<string, string> = {
 };
 
 function whyFor(p: Product): string {
+  const runtimeHandle = p.handle.toLowerCase();
+  if (ASSET_BASE && (runtimeCatalog.has(runtimeHandle) || p.productId)) {
+    return p.hesitationHint || p.fitNotes || p.description || "";
+  }
   return RATIONALE[p.handle] ?? p.hesitationHint ?? p.fitNotes ?? "";
 }
 
@@ -590,13 +615,14 @@ function recommendSize(
 
 // ── Keyword product search ────────────────────────────────────────────────────
 function findProducts(query: string): Product[] {
+  const products = activeProducts();
   const cleaned = query.toLowerCase()
     .replace(/^(show me|show me the|i want|i want the|i'd like|give me|get me|find me|do you have|what about|how about|the)\s+/g, "")
     .trim();
-  const exact = catalog.filter((p) => p.name.toLowerCase().includes(cleaned) || cleaned.includes(p.name.toLowerCase()));
+  const exact = products.filter((p) => p.name.toLowerCase().includes(cleaned) || cleaned.includes(p.name.toLowerCase()));
   if (exact.length) return exact.slice(0, 3);
   const q = cleaned;
-  const byCat = catalog.filter((p) => {
+  const byCat = products.filter((p) => {
     if (/dress|gown|slip/.test(q)) return p.category === "dress";
     if (/coat|trench|outerwear|jacket/.test(q)) return p.category === "outerwear";
     if (/knit|cashmere|sweater|merino|turtleneck/.test(q)) return p.category === "knitwear";
@@ -606,7 +632,7 @@ function findProducts(query: string): Product[] {
   });
   if (byCat.length) return byCat.slice(0, 3);
   const keywords = cleaned.split(/\s+/).filter((w) => w.length > 3);
-  return catalog.filter((p) => keywords.some((kw) => p.name.toLowerCase().includes(kw) || p.description.toLowerCase().includes(kw))).slice(0, 3);
+  return products.filter((p) => keywords.some((kw) => p.name.toLowerCase().includes(kw) || p.description.toLowerCase().includes(kw))).slice(0, 3);
 }
 
 // ── Context-aware helpers ─────────────────────────────────────────────────────
@@ -616,6 +642,9 @@ function fresh(products: Product[], ctx: MiraContext): Product[] {
 }
 function hero(products: Product[], ctx: MiraContext): Product {
   return fresh(products, ctx)[0] ?? products[0];
+}
+function safeHero(products: Product[], ctx: MiraContext): Product | null {
+  return fresh(products, ctx)[0] ?? products[0] ?? null;
 }
 
 // ── Scorecard builders ────────────────────────────────────────────────────────
@@ -706,6 +735,21 @@ function lookMsg(anchor: Product, ctx: MiraContext, why?: string): ChatMsg {
   return { from: "mira", kind: "look", look: { title: editName(anchor), anchor, pieces, why: reasoning, total, score: { harmonyPct, harmonyLabel, pieces: pieces.length } } };
 }
 
+function compareInsight(products: Product[]): string {
+  if (products.length < 2) return "I can compare them once I can verify both pieces in the catalog.";
+  const parts = products.map((p) => {
+    const slot = p.category !== "unknown" ? p.category : "piece";
+    const fabric = p.fabricComposition ? `, ${p.fabricComposition}` : "";
+    return `${p.name}: ${money(p.priceUsd)}, ${slot}${fabric}`;
+  });
+  const cheapest = [...products].sort((a, b) => a.priceUsd - b.priceUsd)[0];
+  const priciest = [...products].sort((a, b) => b.priceUsd - a.priceUsd)[0];
+  const priceLine = cheapest && priciest && cheapest.handle !== priciest.handle
+    ? ` ${cheapest.name} is the lower-price option; ${priciest.name} is the higher-price one.`
+    : "";
+  return `${parts.join(" · ")}.${priceLine}`;
+}
+
 // ── Main response engine ──────────────────────────────────────────────────────
 function getMiraResponse(userText: string, currentProduct: Product | null, ctx: MiraContext): ChatMsg[] {
   void userText;
@@ -716,339 +760,6 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
     kind: "say",
     text: "I had trouble loading the stylist brain. Try once more and I'll pick this back up.",
   }];
-
-  /*
-   * Legacy regex fallback disabled. It used to produce product recs, look builds,
-   * size advice, navigation and cart-success copy without the server contract.
-   * Keep the source here briefly for review context, but keep it outside the
-   * compiled control flow until it is deleted or rebuilt on shared contract tables.
-   *
-  const t = userText.toLowerCase().trim();
-  // ONE-BRAIN: on a real storefront the regex fallback MUST operate on the
-  // merchant's real (hydrated) catalog, never the bundled demo products — else it
-  // leaks phantom demo pieces (e.g. "Onyx Silk Slip") onto a live store. On the
-  // demo page (ASSET_BASE === "") activeProducts() returns the demo catalog, so
-  // behaviour there is unchanged. If a real store hasn't hydrated yet, answer with
-  // a generic non-product line rather than inventing demo inventory. Shadows the
-  // imported `catalog` for the whole function.
-  const catalog = activeProducts();
-  if (ASSET_BASE && !catalog.length) {
-    return [{ from: "mira", kind: "say", text: "Tell me what you're after — a vibe, an occasion, a colour — and I'll pull the right piece.", quickReplies: ["A vibe in mind", "For an occasion", "Just browsing"] }];
-  }
-
-  // When Mira commits to a single confident pick on a different page, she takes the
-  // shopper there, never just "here it is". Mirrors applyDecision's navigate contract.
-  const navIfAway = (p: Product): ChatMsg | null =>
-    currentProduct?.handle !== p.handle ? { from: "mira", kind: "say", text: `${NAV_TRIGGER}${p.handle}` } : null;
-  const withNav = (msgs: ChatMsg[], p: Product): ChatMsg[] => {
-    const nav = navIfAway(p);
-    if (!nav) return msgs;
-    // slot the navigation right after the first reco card so the page turns as she names it
-    const i = msgs.findIndex((m) => m.kind === "reco");
-    if (i === -1) return [...msgs, nav];
-    return [...msgs.slice(0, i + 1), nav, ...msgs.slice(i + 1)];
-  };
-
-
-  // Explicit "just browsing", go quiet
-  if (/just browsing|only browsing|just looking|only looking|no thanks|not now|leave me|not interested|i'll keep looking/.test(t)) {
-    return [{ from: "mira", kind: "say", text: "No pressure at all. I'll be right here, say the word when something catches your eye." }];
-  }
-
-  // Discovery: generic occasion, not yet named → ASK, don't dump
-  if (/(for an occasion|something for an occasion|special occasion|an event|dress up|dressing up)/.test(t)
-      && !/wedding|party|dinner|\bdate\b|gala|cocktail|interview|work|funeral|graduation|birthday/.test(t)) {
-    return [{
-      from: "mira", kind: "say",
-      text: "Love that, the occasion sets everything. What is it? I'll pull the one piece, not a wall of options.",
-      quickReplies: ["A wedding", "Dinner / date", "Work event", "Night out"],
-    }];
-  }
-
-  // Discovery: "is it right for me / would it suit me" → candid suitability → fit
-  if (/(right for me|suit me|does it suit|would it suit|look good on me|work for my|for my body|my shape|my frame|flatter)/.test(t)) {
-    const anchor = currentProduct;
-    if (anchor) {
-      const out: ChatMsg[] = [];
-      out.push({ from: "mira", kind: "insight", label: "My honest read", text: candidTake(anchor) });
-      out.push({
-        from: "mira", kind: "say",
-        text: "What makes or breaks it is the size. Give me your height and weight and I'll tell you the exact one for your frame, no guessing.",
-        quickReplies: ["Find my size", "What's it made of?", "Show the full look"],
-      });
-      return out;
-    }
-    return [{ from: "mira", kind: "say", text: "Tell me which piece you're eyeing and I'll be straight about whether it'll work for you." }];
-  }
-
-  // Discovery: "just exploring" → one guiding question
-  if (/just exploring|still exploring|feeling it out|having a look|seeing what|not sure yet/.test(t)) {
-    const anchor = currentProduct;
-    return [{
-      from: "mira", kind: "say",
-      text: anchor
-        ? `No rush. The ${anchor.name} is a good place to start, tell me one piece you've felt great in before and I'll work from your taste.`
-        : "No rush. Tell me one piece you've felt great in before, and I'll work backwards from your taste.",
-      quickReplies: ["A good coat", "A silk dress", "Show me something", "I'll keep looking"],
-    }];
-  }
-
-  // Size form trigger
-  if (/^size me$/.test(t) || /^(size me for|size me up)/.test(t)) {
-    return [{ from: "mira", kind: "say", text: SIZE_FORM_TRIGGER }];
-  }
-
-  // Sizing / fit
-  if (/\bsize\b|sizing|\bfit\b|fits me|measure|what size|plus size|petite|tall|how does it fit|runs small|runs large|what.*size.*am i|height|weight|measurements/.test(t)) {
-    const anchor = currentProduct;
-    if (anchor) {
-      return [
-        { from: "mira", kind: "insight", label: "Fit", text: anchor.fitNotes },
-        {
-          from: "mira", kind: "say",
-          text: "Give me your height and weight, I'll give you a single size, not a range.",
-          quickReplies: ["Find my size", "It usually runs true?", "I'm usually a medium"],
-        },
-      ];
-    }
-    return [{ from: "mira", kind: "say", text: "Tell me what you're sizing for and I'll do the math, or I can show you something first." }];
-  }
-
-  // Fabric / material / care
-  if (/what.*made of|fabric|material|composition|wash|care|machine.*wash|dry clean|hand.*wash|itchy|scratch|breathe|heavy|light weight|feels like|quality/.test(t)) {
-    const anchor = currentProduct;
-    if (anchor?.fabricComposition) {
-      const fab = anchor.fabricComposition;
-      const frame = fab.includes("silk") ? "Silk this weight drapes rather than clings, the weight is the feature, not a flaw."
-        : fab.includes("cashmere") ? "This gauge is substantial enough to wear alone, fine enough to layer, it won't pill the way cheaper knits do."
-        : fab.includes("linen") ? "Linen wrinkles, that's intentional. It's the texture that reads expensive rather than stiff."
-        : fab.includes("wool") ? "The wool weight holds its shape through a full day without looking tired."
-        : (fab.includes("nappa") || fab.includes("leather")) ? "Italian nappa softens with wear, a little stiff the first few times, then exactly what you want."
-        : "The construction is what justifies the price, this isn't fast-fashion quality.";
-      const care = anchor.careInstructions ? ` ${anchor.careInstructions}.` : "";
-      return [
-        { from: "mira", kind: "insight", label: "Fabric & care", text: `${fab}. ${frame}${care}`, quickReplies: ["Will it fit me?", "Style a full look", "Add to bag"] },
-      ];
-    }
-    return [{ from: "mira", kind: "say", text: "Tap a piece and I'll give you the full fabric and care story, or tell me which one you mean." }];
-  }
-
-  // Returns / policy
-  if (/return|exchange|refund|policy|send back|wrong size/.test(t)) {
-    return [
-      { from: "mira", kind: "insight", label: "Returns", text: "14-day window, unworn, original packaging, handled directly through the Stylique Maison team." },
-      { from: "mira", kind: "say", text: "If size was the worry, let me fix that before you order. What's your usual size in something like this?", quickReplies: ["Find my size", "It's about fit", "Got it, thanks"] },
-    ];
-  }
-
-  // Greetings
-  if (/^(hi|hey|hello|hiya|yo|sup|heya|helo)[\s!.?]*$/.test(t)) {
-    const anchor = currentProduct;
-    return anchor
-      ? [
-          { from: "mira", kind: "say", text: `Hey, good eye. ${contextualOpener(anchor)}` },
-          { from: "mira", kind: "say", text: "What's drawing you to it, something specific, or still feeling it out?", quickReplies: ["It's for an occasion", "Is it right for me?", "Build the look"] },
-        ]
-      : [{ from: "mira", kind: "say", text: "Hey. What are you shopping for today?", quickReplies: ["Something for an occasion", "Everyday pieces", "Just browsing"] }];
-  }
-
-  // Wedding
-  if (/wedding|bridal|ceremony|reception/.test(t)) {
-    const evening = catalog.filter((p) => p.collection === "evening");
-    const pick = hero(evening, ctx);
-    return withNav([
-      { from: "mira", kind: "say", text: "A wedding. I have one answer." },
-      recoMsg(pick, { lead: `${pick.name}, ${money(pick.priceUsd)}.${pick.lowStock ? " Only a few left in most sizes." : ""}`, relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Want me to build the full look around it, or size you first?", quickReplies: ["Build the full look", "Find my size", "Show more options"] },
-    ], pick);
-  }
-
-  // Evening / formal / occasion
-  if (/evening|night out|formal|gown|dinner|black.?tie|red carpet|cocktail|occasion|date night|\bdate\b|anniversary|gala|party|celebrate|celebration/.test(t)) {
-    const evening = catalog.filter((p) => p.collection === "evening");
-    const pick = hero(evening, ctx);
-    return withNav([
-      recoMsg(pick, { lead: "For the evening, this is where I'd start.", relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Build the look around it, or see another direction?", quickReplies: ["Build the full look", "See more options", "Find my size"] },
-    ], pick);
-  }
-
-  // Complete the look / outfit
-  if (/build.*look|show.*look|complete.*look|outfit|what.*go.*with|what.*wear.*with|pair|style.*me|put.*together|full look|whole look|entire look/.test(t)) {
-    const anchor = currentProduct ?? hero(catalog, ctx);
-    return [lookMsg(anchor, ctx)];
-  }
-
-  // See it on / try it on, fitting room is the closing zone.
-  if (/see it on|on me|on you|try (it |this )?on|try.?on|fitting room|how does it look on|put it on/.test(t)) {
-    const anchor = currentProduct ?? hero(catalog, ctx);
-    return [
-      { from: "mira", kind: "say", text: "Let's put it in the fitting room." },
-      { from: "mira", kind: "say", text: `${TRYON_TRIGGER}${anchor.handle}` },
-    ];
-  }
-
-  // Add to bag (in-chat)
-  if (/add to bag|add to cart|buy this|buy it|i'll take it|i want this|order this|checkout|purchase|let's do it|let's go|bag it|ship it|i'm sold|\bsold\b|\bdone\b|i'll buy it|i'll get it/.test(t)) {
-    const anchor = currentProduct;
-    if (anchor) {
-      return [
-        { from: "mira", kind: "cart", productName: anchor.name, productHandle: anchor.handle },
-        { from: "mira", kind: "say", text: `I'll add the ${anchor.name} now. If Shopify can't add it, I'll tell you plainly.`, quickReplies: ["Complete the look", "See checkout", "Keep shopping"] },
-      ];
-    }
-    return [{ from: "mira", kind: "say", text: "Which piece? Tap it first and I'll add it for you." }];
-  }
-
-  // Category browse, curate to ONE hero + offer, never a wall
-  const catMap: { re: RegExp; cat: Product["category"]; line: string }[] = [
-    { re: /\bcoat\b|\bcoats\b|outerwear|jacket|trench|wrap|overcoat|topcoat/, cat: "outerwear", line: "Of the coats, this is the one I'm putting you in." },
-    { re: /knit|knitwear|cashmere|merino|sweater|jumper|turtleneck|pullover|cardigan|wool/, cat: "knitwear", line: "The knit I reach for first." },
-    { re: /denim|jean|jeans|trouser|trousers|pant|pants|bottom|skirt/, cat: "bottom", line: "Start here for bottoms." },
-    { re: /\btop\b|tops|blouse|shirt|cami|camisole|tee|t-shirt/, cat: "top", line: "The top I build around." },
-  ];
-  for (const { re, cat, line } of catMap) {
-    if (re.test(t)) {
-      const pick = hero(catalog.filter((p) => p.category === cat), ctx);
-      return withNav([
-        recoMsg(pick, { lead: line, relativeTo: currentProduct }),
-        { from: "mira", kind: "say", text: "Want the full look around it, or another option?", quickReplies: ["Build the look", "Another option", "Find my size"] },
-      ], pick);
-    }
-  }
-
-  // Everyday / work
-  if (/every.?day|casual|daily|work|office|errands|weekend|daytime|simple|easy|low.?key/.test(t)) {
-    const pick = hero(catalog.filter((p) => ["the-atelier", "knitwear"].includes(p.collection)), ctx);
-    return withNav([recoMsg(pick, { lead: "The piece I reach for every morning, atelier quality that actually lives in a wardrobe.", relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Build a full everyday look?", quickReplies: ["Build the look", "Another option"] }], pick);
-  }
-
-  // Winter / summer
-  if (/winter|cold|freezing|cozy|layer|layering|autumn|fall/.test(t)) {
-    const pick = hero(catalog.filter((p) => ["knitwear", "outerwear"].includes(p.category)), ctx);
-    return withNav([recoMsg(pick, { lead: "Cashmere to layer, a coat to carry you through.", relativeTo: currentProduct })], pick);
-  }
-  if (/summer|beach|holiday|vacation|warm weather|linen|light|breezy|resort/.test(t)) {
-    const pick = hero(catalog.filter((p) => ["the-atelier", "evening"].includes(p.collection)), ctx);
-    return withNav([recoMsg(pick, { lead: "Light for warm days, linen that breathes, silk that floats.", relativeTo: currentProduct })], pick);
-  }
-
-  // New arrivals
-  if (/new arrival|what.?s new|just dropped|latest|trending|what.?s in|fresh|new in|new pieces/.test(t)) {
-    const newer = ["midnight-silk-gown", "leather-trench", "pleated-midi-skirt"].map((h) => catalog.find((p) => p.handle === h)).filter((p): p is Product => !!p);
-    const pick = hero(newer, ctx);
-    return withNav([recoMsg(pick, { lead: "The piece I keep coming back to this season.", relativeTo: currentProduct })], pick);
-  }
-
-  // Gift
-  if (/gift|present|birthday|for my|for her|for him|for them|mother|mom|sister|friend|anniversary gift/.test(t)) {
-    const picks = ["cashmere-v-neck", "ivory-silk-camisole"].map((h) => catalog.find((p) => p.handle === h)).filter((p): p is Product => !!p);
-    const pick = hero(picks, ctx);
-    return withNav([
-      { from: "mira", kind: "say", text: "For gifting I go personal but not bold, cashmere and silk, things that work on everyone." },
-      recoMsg(pick, { relativeTo: currentProduct }),
-    ], pick);
-  }
-
-  // Price, budget / luxury / objection
-  if (/too expensive|can't afford|out of my budget|too much|pricey/.test(t)) {
-    const pick = hero([...catalog].sort((a, b) => a.priceUsd - b.priceUsd), ctx);
-    return withNav([
-      { from: "mira", kind: "say", text: "Fair. Here's the entry point, same quality standards, different number." },
-      recoMsg(pick, { relativeTo: currentProduct }),
-    ], pick);
-  }
-  if (/cheap|budget|afford|under \$?\d+|less than|price|how much|most affordable|value/.test(t)) {
-    const pick = hero([...catalog].sort((a, b) => a.priceUsd - b.priceUsd), ctx);
-    return withNav([recoMsg(pick, { lead: "The most accessible piece, same construction, easier entry.", relativeTo: currentProduct })], pick);
-  }
-  if (/expensive|luxury|investment|splurge|best|finest|premium|high.?end|most.*cost/.test(t)) {
-    const pick = hero([...catalog].sort((a, b) => b.priceUsd - a.priceUsd), ctx);
-    return withNav([recoMsg(pick, { lead: "The investment piece, the one still in your wardrobe in ten years.", relativeTo: currentProduct })], pick);
-  }
-
-  // Style direction
-  if (/edgy|bold|statement|dramatic|avant.?garde|fashion.?forward|structured/.test(t)) {
-    const pick = hero(catalog.filter((p) => ["tailored-blazer-double", "leather-trench", "onyx-silk-slip"].includes(p.handle)), ctx);
-    return withNav([recoMsg(pick, { lead: "Strong and structured, not trying too hard, the piece people notice.", relativeTo: currentProduct })], pick);
-  }
-  if (/minimal|minimalist|simple|clean|pared.?back|quiet|effortless/.test(t)) {
-    const pick = hero(catalog.filter((p) => ["linen-relaxed-shirt", "cashmere-v-neck", "atelier-wide-leg-trouser"].includes(p.handle)), ctx);
-    return withNav([recoMsg(pick, { lead: "No noise, no excess. The right material, cut right.", relativeTo: currentProduct })], pick);
-  }
-
-  // Colour preferences
-  if (/\bblack\b/.test(t) && /nothing in|not in|no |avoid|without/.test(t)) {
-    const pick = hero(catalog.filter((p) => !p.colors.some((c) => /black|onyx|ink|midnight/i.test(c))), ctx);
-    return withNav([recoMsg(pick, { lead: "Off the dark register, camel, ivory, champagne.", relativeTo: currentProduct })], pick);
-  }
-  if (/\b(black|all black|monochrome|dark|only black)\b/.test(t) && !/nothing in|not in|avoid/.test(t)) {
-    const pick = hero(catalog.filter((p) => p.colors.some((c) => /black|onyx|ink|midnight|charcoal/i.test(c))), ctx);
-    return withNav([recoMsg(pick, { lead: "The dark register, anchors a whole look.", relativeTo: currentProduct })], pick);
-  }
-
-  // Show alternatives
-  if (/different|something else|other options|don't like|not those|not that|show.*more|more options|alternatives|another option/.test(t)) {
-    const pick = hero(catalog, ctx);
-    return withNav([
-      { from: "mira", kind: "say", text: "Different direction, here's what I'd try instead." },
-      recoMsg(pick, { relativeTo: currentProduct }),
-    ], pick);
-  }
-
-  // Browse / explore
-  if (/show me.*everything|see.*everything|browse|explore|just.*show|idk|i don.?t know|not sure|no idea|whatever you|something nice|show.*anything|surprise|anything|no preference|whatever|you choose|pick for me/.test(t)) {
-    const pick = hero(catalog, ctx);
-    return withNav([
-      { from: "mira", kind: "say", text: "One piece worth your time right now." },
-      recoMsg(pick, { relativeTo: currentProduct }),
-      { from: "mira", kind: "say", text: "Tell me what feels right or wrong about it.", quickReplies: ["Love this", "Too formal", "Too casual", "Build the look"] },
-    ], pick);
-  }
-
-  // Emotional
-  if (/hate shopping|dread|nothing.*fits|never.*fits|look terrible|look bad|hate my body|don't.*know.*style|no style|bad at fashion/.test(t)) {
-    return [{
-      from: "mira", kind: "say",
-      text: "That's exactly why I'm here. Tell me one thing you've felt good in before, even years ago, and I'll work backwards from it.",
-      quickReplies: ["A good coat", "A silk dress", "Honestly nothing", "Just show me something"],
-    }];
-  }
-
-  // Self-awareness
-  if (/real person|human|ai|robot|bot|are you real|who are you|what are you|your name/.test(t)) {
-    return [{
-      from: "mira", kind: "say",
-      text: "I'm Mira, an AI stylist. Not a real person, but I do have opinions about what you should wear.",
-      quickReplies: ["Build a look", "Evening wear", "Surprise me"],
-    }];
-  }
-
-  // Off-topic
-  if (/weather|restaurant|book a|reservation|\btable\b|uber|taxi|food|recipe|travel|flight|hotel/.test(t)) {
-    return [{ from: "mira", kind: "say", text: "Strictly clothes over here. Speaking of which, ", quickReplies: ["Build a look", "New arrivals", "Surprise me"] }];
-  }
-
-  // Closer
-  if (/\b(no|nope|nah|not yet|not right now|later|bye|goodbye|thanks|thank you|all good|i'm good)\b/.test(t)) {
-    return [{ from: "mira", kind: "say", text: "Of course. I'm here when you're ready." }];
-  }
-
-  // Generic keyword search → single hero
-  const found = findProducts(userText);
-  if (found.length) {
-    const pick = hero(found, ctx);
-    return withNav([recoMsg(pick, { relativeTo: currentProduct })], pick);
-  }
-
-  // Last resort, one hero + occasion prompt
-  const lastPick = hero(catalog, ctx);
-  return withNav([
-    recoMsg(lastPick, { lead: "Let me show you what I've been pulling lately.", relativeTo: currentProduct }),
-    { from: "mira", kind: "say", text: "Or tell me the occasion, I'll be more specific.", quickReplies: ["Build a look", "Evening", "Surprise me"] },
-  ], lastPick);
-  */
 }
 
 // ── Hybrid layer ──────────────────────────────────────────────────────────────
@@ -1056,18 +767,20 @@ function getMiraResponse(userText: string, currentProduct: Product | null, ctx: 
 // voice line + a route into our deterministic catalog engine. The LLM never
 // invents products/prices, applyDecision builds every card from real catalog
 // data. If the endpoint returns no decision (no key / failure), the caller
-// falls back to the pure-regex getMiraResponse. Same builders either way.
+// falls back to one honest retry line; product/cart routes only come from
+// verified server decisions.
 type MiraDecision = {
   voice: string;
   route:
     | "reco_category" | "reco_handle" | "reco_filter" | "navigate" | "look" | "fit" | "fabric"
     | "suitability" | "size_form" | "try_on" | "returns" | "add_to_cart"
-    | "search" | "talk_only";
+    | "search" | "compare" | "talk_only";
   category?: "top" | "bottom" | "knitwear" | "outerwear" | "evening" | "dress";
   filter?:
     | "cheapest" | "premium" | "new" | "dark" | "no_dark" | "edgy" | "minimal"
     | "winter" | "summer" | "everyday" | "gift" | "evening" | "wedding";
   productHandle?: string;
+  compareHandles?: string[];
   searchQuery?: string;
   disagree?: boolean;
   quickReplies?: string[];
@@ -1088,6 +801,7 @@ type RealProduct = {
   id?: string;
   handle: string;
   name: string;
+  title?: string;
   productType?: string | null;
   category?: string | null;
   normalizedSlot?: Product["category"];
@@ -1095,6 +809,8 @@ type RealProduct = {
   sourceConfidence?: SlotConfidence;
   priceUsd?: number | null;
   image?: string | null;
+  imageUrl?: string | null;
+  tryonImageUrl?: string | null;
   variants?: Array<{ id?: number | string; title?: string; available?: boolean; price?: string | number; options?: string[] }>;
   sizes?: string[];
   colors?: string[];
@@ -1105,6 +821,14 @@ type RealProduct = {
   careNotes?: string;
   tryonReady?: boolean;
 };
+type ClientEventName =
+  | "PRODUCT_VIEWED"
+  | "PRODUCT_DWELL_LONG"
+  | "CHAT_SIZE_CHART_VIEWED"
+  | "MIRA_PROACTIVE_TRIGGERED"
+  | "MIRA_BEHAVIORAL_TRIGGER_FIRED"
+  | "MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED";
+
 const runtimeCatalog = new Map<string, Product>();
 const KNOWN_CAT_SET = new Set<Product["category"]>(["outerwear", "dress", "top", "bottom", "knitwear", "accessory"]);
 function normalizeSlot(raw: { title?: string; productType?: string | null; category?: string | null; tags?: string[] }): { slot: Product["category"]; confidence: SlotConfidence } {
@@ -1170,6 +894,8 @@ function normalizeShopifyProduct(raw: {
     sourceConfidence: slot.confidence,
     priceUsd: typeof firstPrice === "number" ? Math.round(firstPrice > 1000 ? firstPrice / 100 : firstPrice) : firstPrice ? Math.round(parseFloat(firstPrice)) : 0,
     image,
+    imageUrl: image,
+    tryonImageUrl: image,
     variants: raw.variants ?? [],
     sizes,
     colors,
@@ -1181,8 +907,41 @@ function normalizeShopifyProduct(raw: {
     tryonReady: Boolean(image),
   };
 }
+function normalizeShopperProductPayload(raw: {
+  id?: string;
+  handle: string;
+  title: string;
+  category?: string | null;
+  primaryColor?: string | null;
+  colorFamily?: string | null;
+  imageUrl?: string | null;
+  tryonImageUrl?: string | null;
+  sizes?: string[];
+  tryonReady?: boolean;
+  widgetTier?: number;
+}): RealProduct {
+  const slot = normalizeSlot({ title: raw.title, category: raw.category });
+  return {
+    id: raw.id,
+    handle: raw.handle,
+    name: raw.title,
+    title: raw.title,
+    category: raw.category ?? null,
+    normalizedSlot: slot.slot,
+    slotConfidence: slot.confidence,
+    sourceConfidence: slot.confidence,
+    image: raw.imageUrl ?? raw.tryonImageUrl ?? null,
+    imageUrl: raw.imageUrl ?? null,
+    tryonImageUrl: raw.tryonImageUrl ?? null,
+    sizes: raw.sizes ?? [],
+    colors: [raw.primaryColor, raw.colorFamily].filter((c): c is string => Boolean(c)),
+    tryonReady: Boolean(raw.tryonReady && raw.tryonImageUrl),
+  };
+}
 function realToProduct(a: RealProduct): Product {
   const category = a.normalizedSlot ?? normalizeSlot({ title: a.name, productType: a.productType, category: a.category, tags: a.tags }).slot;
+  const cardImage = a.imageUrl ?? a.image ?? null;
+  const tryonImage = a.tryonImageUrl ?? (a.tryonReady ? cardImage : null);
   return {
     productId: a.id,
     handle: a.handle,
@@ -1191,7 +950,9 @@ function realToProduct(a: RealProduct): Product {
     category,
     priceUsd: a.priceUsd ?? 0,
     description: a.description ?? "",
-    images: a.image ? [a.image] : [],
+    images: [cardImage, tryonImage].filter((img, index, arr): img is string => Boolean(img) && arr.indexOf(img) === index),
+    cardImageUrl: cardImage,
+    tryonImageUrl: tryonImage,
     colors: a.colors ?? [],
     sizes: a.sizes ?? [],
     fitNotes: a.fitNotes ?? "",
@@ -1202,7 +963,14 @@ function realToProduct(a: RealProduct): Product {
 }
 function registerRealProducts(products?: RealProduct[]): void {
   if (!products?.length) return;
-  for (const p of products) if (p?.handle) runtimeCatalog.set(p.handle, realToProduct(p));
+  const registered: Product[] = [];
+  for (const p of products) {
+    if (!p?.handle) continue;
+    const normalized = realToProduct(p);
+    runtimeCatalog.set(p.handle.toLowerCase(), normalized);
+    registered.push(normalized);
+  }
+  registerActiveLookProducts(registered.map((p) => ({ handle: p.handle, name: p.name, priceUsd: p.priceUsd })));
 }
 
 // STOREFRONT CATALOG HYDRATION (founder: "Mira doesn't understand the product").
@@ -1216,17 +984,20 @@ function registerRealProducts(products?: RealProduct[]): void {
 // Demo (ASSET_BASE === "") keeps its bundled catalog and skips this.
 async function hydrateMerchantCatalog(): Promise<number> {
   if (typeof window === "undefined" || !ASSET_BASE) return 0;
+  const currentHandle = (window.location.pathname.replace(/^\/[a-z]{2}(-[a-z]{2})?(?=\/)/i, "").match(/\/products?\/([^/?#]+)/i) ?? [])[1];
   try {
     const res = await fetch("/products.json?limit=250", { headers: { Accept: "application/json" } });
     if (!res.ok) throw new Error(String(res.status));
     const data = (await res.json()) as { products?: Parameters<typeof normalizeShopifyProduct>[0][] };
     const reals = (data.products ?? []).filter((p) => p?.handle).map(normalizeShopifyProduct);
     registerRealProducts(reals);
+    if (currentHandle) await hydrateResolvedStorefrontProduct(currentHandle);
     return reals.length;
   } catch {
     // Fallback: at least hydrate the CURRENT product so the PDP opener works.
-    const h = (window.location.pathname.replace(/^\/[a-z]{2}(-[a-z]{2})?(?=\/)/i, "").match(/\/products?\/([^/?#]+)/i) ?? [])[1];
+    const h = currentHandle;
     if (!h) return 0;
+    if (await hydrateResolvedStorefrontProduct(h)) return 1;
     try {
       const r = await fetch(`/products/${h}.js`, { headers: { Accept: "application/json" } });
       if (!r.ok) return 0;
@@ -1236,6 +1007,20 @@ async function hydrateMerchantCatalog(): Promise<number> {
       registerRealProducts([normalized]);
       return 1;
     } catch { return 0; }
+  }
+}
+async function hydrateResolvedStorefrontProduct(handle: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${sqApi()}/api/product?handle=${encodeURIComponent(handle)}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return false;
+    const payload = (await res.json()) as { ok?: boolean; data?: Parameters<typeof normalizeShopperProductPayload>[0] };
+    if (!payload.ok || !payload.data?.handle) return false;
+    registerRealProducts([normalizeShopperProductPayload(payload.data)]);
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -1250,6 +1035,12 @@ function byHandle(h?: string): Product | null {
   // same-origin demo (ASSET_BASE === "") keeps the 14-product catalog.
   if (ASSET_BASE) return null;
   return catalog.find((p) => p.handle === k) ?? catalog.find((p) => p.handle.toLowerCase() === k) ?? null;
+}
+function productCardImage(product: Product): string | null {
+  return product.cardImageUrl ?? product.tryonImageUrl ?? product.images[0] ?? null;
+}
+function productTryonImage(product: Product): string | null {
+  return product.tryonImageUrl ?? product.cardImageUrl ?? product.images[0] ?? null;
 }
 
 // Robust PDP handle detection (panel rank 7): real storefronts serve product
@@ -1280,27 +1071,140 @@ function activeProducts(): Product[] {
   return ASSET_BASE ? [] : catalog;
 }
 
+function postClientEvent(name: ClientEventName, product: Product | null, payload: Record<string, unknown>): void {
+  if (!ASSET_BASE) return;
+  const productId = product?.productId;
+  if ((name === "PRODUCT_VIEWED" || name === "PRODUCT_DWELL_LONG" || name === "CHAT_SIZE_CHART_VIEWED") && !productId) return;
+  void fetch(`${sqApi()}/api/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name,
+      productId,
+      payload: {
+        ...(productId ? { productId } : {}),
+        ...(product?.handle ? { productHandle: product.handle } : {}),
+        ...(product?.category ? { category: product.category } : {}),
+        ...payload,
+      },
+    }),
+  }).catch(() => {});
+}
+
+const MIRA_NUDGE_STATE_KEY = "mira_nudge_state";
+const MIRA_NUDGE_MIN_INTERVAL_MS = 30_000;
+const MIRA_NUDGE_STRONGER_DELTA = 0.06;
+
+type MiraNudgeState = {
+  triggerType: string;
+  confidence: number;
+  productHandle?: string;
+  createdAt: number;
+};
+
+function knownComparisonCategory(category: Product["category"]): Product["category"] | null {
+  return category !== "unknown" ? category : null;
+}
+
+function readNudgeState(): MiraNudgeState | null {
+  try {
+    const parsed = JSON.parse(sessionStorage.getItem(MIRA_NUDGE_STATE_KEY) ?? "null") as Partial<MiraNudgeState> | null;
+    if (!parsed || typeof parsed.triggerType !== "string" || typeof parsed.confidence !== "number" || typeof parsed.createdAt !== "number") return null;
+    return {
+      triggerType: parsed.triggerType,
+      confidence: parsed.confidence,
+      productHandle: typeof parsed.productHandle === "string" ? parsed.productHandle : undefined,
+      createdAt: parsed.createdAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function proactiveSuppressionReason(product: Product | null, confidence: number): string | null {
+  try {
+    if (sessionStorage.getItem("mira_opened")) return "chat_already_opened";
+    const previous = readNudgeState();
+    if (!previous) return null;
+    const age = Date.now() - previous.createdAt;
+    if (age < MIRA_NUDGE_MIN_INTERVAL_MS) return "recent_nudge_cooldown";
+    if (previous.productHandle && product?.handle === previous.productHandle && confidence <= previous.confidence + MIRA_NUDGE_STRONGER_DELTA) {
+      return "same_product_already_nudged";
+    }
+    if (confidence <= previous.confidence + MIRA_NUDGE_STRONGER_DELTA) return "weaker_or_equal_previous_trigger";
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function rememberProactiveNudge(triggerType: string, product: Product | null, confidence: number): void {
+  try {
+    sessionStorage.setItem("mira_nudged", "1");
+    sessionStorage.setItem(MIRA_NUDGE_STATE_KEY, JSON.stringify({
+      triggerType,
+      confidence,
+      productHandle: product?.handle,
+      createdAt: Date.now(),
+    } satisfies MiraNudgeState));
+  } catch { /* ignore */ }
+}
+
+function productSearchText(p: Product): string {
+  return [
+    p.name,
+    p.description,
+    p.collection,
+    p.category,
+    p.fabricComposition,
+    p.fitNotes,
+    p.careInstructions,
+    ...p.colors,
+  ].join(" ").toLowerCase();
+}
+
+function rankedByFilter(base: Product[], score: (product: Product, index: number) => number): Product[] {
+  return base
+    .map((product, index) => ({ product, score: score(product, index) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || b.product.priceUsd - a.product.priceUsd)
+    .map((entry) => entry.product);
+}
+
 function filterSet(filter: NonNullable<MiraDecision["filter"]>): Product[] {
   const base = activeProducts();
-  // Demo-curated handle picks; on a real store they won't match, so fall back to
-  // the real set rather than showing demo products or an empty card list.
-  const pick = (handles: string[]) => {
-    const got = handles.map(byHandle).filter((p): p is Product => !!p && (runtimeCatalog.size === 0 || runtimeCatalog.has(p.handle)));
-    return got.length ? got : base.slice(0, 3);
-  };
   let out: Product[];
   switch (filter) {
     case "cheapest": out = [...base].sort((a, b) => a.priceUsd - b.priceUsd); break;
     case "premium":  out = [...base].sort((a, b) => b.priceUsd - a.priceUsd); break;
-    case "new":      out = pick(["midnight-silk-gown", "leather-trench", "pleated-midi-skirt"]); break;
+    case "new":      out = [...base].sort((a, b) => Number(!!b.lowStock) - Number(!!a.lowStock) || (b.keepRate ?? 0) - (a.keepRate ?? 0)); break;
     case "dark":     out = base.filter((p) => p.colors.some(isDark)); break;
     case "no_dark":  out = base.filter((p) => !p.colors.some(isDark)); break;
-    case "edgy":     out = base.filter((p) => ["tailored-blazer-double", "leather-trench", "onyx-silk-slip"].includes(p.handle)); break;
-    case "minimal":  out = base.filter((p) => ["linen-relaxed-shirt", "cashmere-v-neck", "atelier-wide-leg-trouser"].includes(p.handle)); break;
+    case "edgy":     out = rankedByFilter(base, (p) => {
+      const t = productSearchText(p);
+      return (p.colors.some(isDark) ? 2 : 0)
+        + (/leather|nappa|black|onyx|charcoal|ink|mesh|sheer|slip|asymmetric|structured|tailored|sharp|hardware|moto|corset|cut[- ]?out/.test(t) ? 3 : 0)
+        + (["outerwear", "dress", "bottom"].includes(p.category) ? 1 : 0);
+    }); break;
+    case "minimal":  out = rankedByFilter(base, (p) => {
+      const t = productSearchText(p);
+      return (p.colors.some((c) => ["neutral", "dark"].includes(colorFamily(c))) ? 2 : 0)
+        + (/linen|cashmere|wool|silk|cotton|rib|clean|simple|relaxed|tailored|quiet|essential|classic|plain|solid/.test(t) ? 3 : 0)
+        + (p.lowStock ? 0 : 0.5);
+    }); break;
     case "winter":   out = base.filter((p) => ["knitwear", "outerwear"].includes(p.category)); break;
     case "summer":   out = base.filter((p) => ["the-atelier", "evening"].includes(p.collection)); break;
     case "everyday": out = base.filter((p) => ["the-atelier", "knitwear"].includes(p.collection)); break;
-    case "gift":     out = pick(["cashmere-v-neck", "ivory-silk-camisole"]); break;
+    case "gift":     out = rankedByFilter(base, (p) => {
+      const t = productSearchText(p);
+      const maxPrice = Math.max(...base.map((x) => x.priceUsd), 1);
+      const priceEase = 1 - Math.min(p.priceUsd / maxPrice, 1);
+      return (["accessory", "knitwear", "top"].includes(p.category) ? 2 : 0)
+        + ((p.keepRate ?? 0) >= 0.85 ? 2 : 0)
+        + (p.sizes.length <= 1 ? 1.5 : 0)
+        + (/gift|scarf|belt|bag|cashmere|silk|candle|jewellery|jewelry|one size|one-size|os/.test(t) ? 2 : 0)
+        + priceEase;
+    }); break;
     case "evening":  out = base.filter((p) => p.collection === "evening"); break;
     case "wedding":  out = base.filter((p) => p.collection === "evening"); break;
   }
@@ -1375,7 +1279,11 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
 
     case "try_on": {
       // Fitting room = the closing zone. Open the try-on for the exact piece.
-      const anchor = byHandle(d.productHandle) ?? currentProduct ?? hero(catalog, ctx);
+      const anchor = byHandle(d.productHandle) ?? currentProduct ?? safeHero(catalog, ctx);
+      if (!anchor) {
+        out[0] = { ...voice, text: voice.text || "I am still loading this store's catalog. Try again in a moment.", quickReplies: ["Try again", "Show me one", "Just browsing"] };
+        return out;
+      }
       out.push({ from: "mira", kind: "say", text: `${TRYON_TRIGGER}${anchor.handle}` });
       return out;
     }
@@ -1453,8 +1361,42 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
     }
 
     case "look": {
-      const anchor = byHandle(d.productHandle) ?? currentProduct ?? hero(catalog, ctx);
+      const anchor = byHandle(d.productHandle) ?? currentProduct ?? safeHero(catalog, ctx);
+      if (!anchor) {
+        out[0] = { ...voice, text: voice.text || "I am still loading this store's catalog, so I will not invent a look yet.", quickReplies: ["Try again", "Tell me the occasion", "Just browsing"] };
+        return out;
+      }
       out.push(lookMsg(anchor, ctx));
+      return out;
+    }
+
+    case "compare": {
+      const handles = (d.compareHandles ?? []).filter(Boolean).slice(0, 3);
+      const compared = handles
+        .map((h) => byHandle(h))
+        .filter((p): p is Product => !!p);
+      if (compared.length >= 2) {
+        out[0] = {
+          ...voice,
+          quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Pick one", "Show the cheaper one", "Build a look"],
+        };
+        out.push({
+          from: "mira",
+          kind: "insight",
+          label: "Side by side",
+          text: compareInsight(compared),
+        });
+        compared.forEach((p) => out.push(recoMsg(p, { relativeTo: currentProduct })));
+        return out;
+      }
+      const fallback = byHandle(d.productHandle) ?? currentProduct;
+      if (fallback) out.push(recoMsg(fallback, { relativeTo: currentProduct }));
+      else out.push({
+        from: "mira",
+        kind: "insight",
+        label: "Compare",
+        text: "I could not verify two real pieces to compare yet. Tell me the two product names and I will line them up.",
+      });
       return out;
     }
 
@@ -1466,7 +1408,8 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
         out.push(recoMsg(p, { escalate: false, relativeTo: currentProduct }));
         if (!onIt) out.push({ from: "mira", kind: "say", text: `${NAV_TRIGGER}${p.handle}` });
       } else {
-        out.push(recoMsg(hero(catalog, ctx), { relativeTo: currentProduct }));
+        const fallback = safeHero(catalog, ctx);
+        if (fallback) out.push(recoMsg(fallback, { relativeTo: currentProduct }));
       }
       return out;
     }
@@ -1481,7 +1424,8 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
         out.push(recoMsg(p, { escalate: d.disagree === false, relativeTo: currentProduct }));
         if (!onIt) out.push({ from: "mira", kind: "say", text: `${NAV_TRIGGER}${p.handle}` });
       } else {
-        out.push(recoMsg(hero(catalog, ctx), { relativeTo: currentProduct }));
+        const fallback = safeHero(catalog, ctx);
+        if (fallback) out.push(recoMsg(fallback, { relativeTo: currentProduct }));
       }
       return out;
     }
@@ -1493,21 +1437,26 @@ function applyDecision(d: MiraDecision, currentProduct: Product | null, ctx: Mir
       const picks = [...primary, ...fill].slice(0, 3);
       // Put quickReplies on the voice bubble so there's only 1 text bubble + N card bubbles
       out[0] = { ...voice, quickReplies: voice.quickReplies?.length ? voice.quickReplies : ["Build the look", "Another option", "Find my size"] };
-      (picks.length ? picks : [hero(set.length ? set : catalog, ctx)]).forEach((p) =>
-        out.push(recoMsg(p, { relativeTo: currentProduct }))
-      );
+      picks.forEach((p) => out.push(recoMsg(p, { relativeTo: currentProduct })));
+      if (!picks.length) {
+        out[0] = { ...out[0], text: out[0].text || "I am still loading this store's catalog. Try again in a moment." };
+      }
       return out;
     }
 
     case "reco_filter": {
       const set = d.filter ? filterSet(d.filter) : catalog;
-      out.push(recoMsg(hero(set.length ? set : catalog, ctx), { relativeTo: currentProduct }));
+      const pick = safeHero(set.length ? set : catalog, ctx);
+      if (pick) out.push(recoMsg(pick, { relativeTo: currentProduct }));
+      else out[0] = { ...voice, text: voice.text || "I am still loading this store's catalog. Try again in a moment.", quickReplies: ["Try again", "Tell me the occasion", "Just browsing"] };
       return out;
     }
 
     case "search": {
       const found = findProducts(d.searchQuery ?? d.voice);
-      out.push(recoMsg(hero(found.length ? found : catalog, ctx), { relativeTo: currentProduct }));
+      const pick = safeHero(found.length ? found : catalog, ctx);
+      if (pick) out.push(recoMsg(pick, { relativeTo: currentProduct }));
+      else out[0] = { ...voice, text: voice.text || "I am still loading this store's catalog. Try again in a moment.", quickReplies: ["Try again", "Tell me what you need", "Just browsing"] };
       return out;
     }
   }
@@ -1528,13 +1477,16 @@ function candidTake(p: Product): string {
 
 // Free shipping nudge, one specific piece to close the gap.
 function freeShippingNudge(cartValue: number, ctx: MiraContext): ChatMsg[] | null {
-  const gap = FREE_SHIPPING_THRESHOLD - cartValue;
-  if (gap <= 0 || gap > 250) return null;
+  const threshold = freeShippingThreshold();
+  if (!threshold) return null;
+  const gap = threshold - cartValue;
+  const maxHelpfulGap = Math.max(threshold * 0.35, 1);
+  if (gap <= 0 || gap > maxHelpfulGap) return null;
   const cand = fresh([...activeProducts()].sort((a, b) => a.priceUsd - b.priceUsd), ctx)
-    .filter((p) => p.priceUsd >= gap && p.priceUsd <= gap + 200)[0];
+    .filter((p) => p.priceUsd >= gap && p.priceUsd <= gap + Math.max(threshold * 0.4, 1))[0];
   if (!cand) return null;
   return [
-    { from: "mira", kind: "say", text: `You're $${Math.round(gap)} from free shipping, and the ${cand.name} pairs perfectly with what you're looking at.` },
+    { from: "mira", kind: "say", text: `You're ${money(Math.round(gap))} from free shipping, and the ${cand.name} pairs perfectly with what you're looking at.` },
     recoMsg(cand),
   ];
 }
@@ -1731,6 +1683,7 @@ function sizeInputStyle(): React.CSSProperties {
 // Add to bag primary. Try-on is a secondary escalation, shown only on intent.
 function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Product) => void; onAddToBag: (p: Product) => void }) {
   const { product: p, why, escalateTryOn, score } = reco;
+  const cardImage = productCardImage(p);
   // Navigate to the product page. On the demo this is /product/<handle>; the card
   // image + title are the natural "take me there" affordance a shopper expects.
   const goToProduct = () => { if (typeof window !== "undefined") window.location.href = productUrl(p.handle); };
@@ -1777,6 +1730,7 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
   return (
     <div
       className="sq-reco-card"
+      data-stylique-reco-card="1"
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={{
@@ -1793,7 +1747,14 @@ function RecoCard({ reco, onTryOn, onAddToBag }: { reco: Reco; onTryOn: (p: Prod
       }}
     >
       <div onClick={goToProduct} role="link" tabIndex={0} aria-label={`View ${p.name}`} className="sq-mira-field sq-reco-card__img" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToProduct(); } }} style={{ position: "relative", width: "100%", height: 160, background: "var(--surface)", cursor: "pointer", overflow: "hidden" }}>
-        <Image src={p.images[0]} alt={p.name} fill sizes="380px" style={{ objectFit: "cover", objectPosition: "center 28%" }} />
+        {cardImage ? (
+          <Image data-stylique-card-image="resolved" src={cardImage} alt={p.name} fill sizes="380px" style={{ objectFit: "cover", objectPosition: "center 28%" }} />
+        ) : (
+          <div aria-label={`No product image for ${p.name}`} data-stylique-card-image-fallback="1" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, padding: 16, background: "linear-gradient(150deg, rgba(139,92,246,0.16), rgba(255,255,255,0.035))" }}>
+            <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 18, lineHeight: 1.2, textAlign: "center", color: "rgba(244,242,238,0.94)" }}>{p.name}</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--electric)" }}>{p.category !== "unknown" ? p.category : "piece"}</div>
+          </div>
+        )}
         {p.lowStock && (
           <div style={{ position: "absolute", top: 10, left: 10, background: "rgba(14,10,20,0.82)", border: "1px solid rgba(248,113,113,0.5)", borderRadius: 999, padding: "3px 10px", fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F8A0A0" }}>Low stock</div>
         )}
@@ -1956,7 +1917,7 @@ function Stat({ label, tone }: { label: string; tone: "accent" | "mute" }) {
 function LookCard({ look, onTryOn, onAddLook, onView }: { look: LookBoard; onTryOn: (p: Product) => void; onAddLook: (anchor: Product, pieces: Product[]) => void; onView?: (p: Product) => void }) {
   const all = [look.anchor, ...look.pieces];
   return (
-    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(139,92,246,0.22)", borderRadius: 16, overflow: "hidden" }}>
+    <div data-stylique-look-card="1" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(139,92,246,0.22)", borderRadius: 16, overflow: "hidden" }}>
       <div style={{ padding: "12px 15px 8px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
           <div style={{ fontFamily: "var(--mono)", fontSize: 8.5, letterSpacing: "0.22em", textTransform: "uppercase", color: "var(--electric)", marginBottom: 3 }}>The edit{look.score?.harmonyLabel ? ` · ${look.score.harmonyLabel}` : ""}</div>
@@ -1970,13 +1931,13 @@ function LookCard({ look, onTryOn, onAddLook, onView }: { look: LookBoard; onTry
           // products"). The try-on button below opens the ANCHOR piece only, so it
           // is labelled per-piece ("Try the trouser"), never "Try the look" (#6).
           <button key={p.handle} onClick={() => { if (onView) onView(p); else if (typeof window !== "undefined") window.location.href = productUrl(p.handle); }} title={`${p.name} · ${money(p.priceUsd)} — view`} aria-label={`View ${p.name}`} style={{ flex: 1, position: "relative", aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", background: "var(--surface)", cursor: "pointer", padding: 0 }}>
-            {p.images[0] ? (
-              <Image src={p.images[0]} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
+            {productCardImage(p) ? (
+              <Image data-stylique-card-image="resolved" src={productCardImage(p)!} alt={p.name} fill sizes="90px" style={{ objectFit: "cover" }} />
             ) : (
               // No photo yet — render a tasteful name tile instead of a broken
               // image so the card never looks empty (the "cards don't work"
               // failure). The brain already avoids heroing photo:NO pieces.
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 6, background: "linear-gradient(150deg, rgba(139,92,246,0.14), rgba(255,255,255,0.03))" }}>
+              <div aria-label={`No product image for ${p.name}`} data-stylique-card-image-fallback="1" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 6, background: "linear-gradient(150deg, rgba(139,92,246,0.14), rgba(255,255,255,0.03))" }}>
                 <div style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 12, lineHeight: 1.2, textAlign: "center", color: "rgba(244,242,238,0.92)" }}>{p.name}</div>
                 <div style={{ fontFamily: "var(--mono)", fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--electric)" }}>{p.category ?? "piece"}</div>
               </div>
@@ -2013,13 +1974,14 @@ function InsightCard({ label, text }: { label: string; text: string }) {
 // prominence comes from the full-width rule + serif name + whitespace, so a
 // product switch reads like turning a page in a lookbook.
 function ContextCard({ product }: { product: Product }) {
+  const image = productCardImage(product);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "14px 0", animation: "miraFadeUp 320ms var(--ease-spring) both" }}>
       <div style={{ flex: 1, height: 1, background: "rgba(139,92,246,0.18)" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
         <div style={{ position: "relative", width: 28, height: 28, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: "var(--surface)" }}>
-          {product.images[0]
-            ? <Image src={product.images[0]} alt={product.name} fill sizes="28px" style={{ objectFit: "cover" }} />
+          {image
+            ? <Image src={image} alt={product.name} fill sizes="28px" style={{ objectFit: "cover" }} />
             : null}
         </div>
         <span style={{ fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 14.5, color: "#F4F2EE", whiteSpace: "nowrap" }}>{product.name}</span>
@@ -2039,6 +2001,8 @@ function secondaryBtn(): React.CSSProperties {
 
 // ── Main widget ───────────────────────────────────────────────────────────────
 export default function MiraWidget() {
+  const stylistEnabled = !ASSET_BASE || themeFlag("enableStylist", true);
+  const tryOnEnabled = !ASSET_BASE || themeFlag("enableWidget", true);
   const [open, setOpen]           = useState(false);
   // Forward-ref holders so the whitelisted action executor (defined before
   // these callbacks) can call them without a circular dependency. Populated by
@@ -2066,6 +2030,21 @@ export default function MiraWidget() {
   useEffect(() => {
     let alive = true;
     hydrateMerchantCatalog().then((n) => { if (alive && n > 0) setHydrated((x) => x + 1); });
+    return () => { alive = false; };
+  }, []);
+  const [proactiveAllowed, setProactiveAllowed] = useState(!ASSET_BASE);
+  useEffect(() => {
+    if (!ASSET_BASE) {
+      setProactiveAllowed(true);
+      return;
+    }
+    let alive = true;
+    fetch(`${sqApi()}/api/entitlement`, { headers: { Accept: "application/json" } })
+      .then((res) => res.json())
+      .then((payload: { ok?: boolean; data?: { proactiveTriggers?: boolean } }) => {
+        if (alive) setProactiveAllowed(Boolean(payload.ok && payload.data?.proactiveTriggers));
+      })
+      .catch(() => { if (alive) setProactiveAllowed(false); });
     return () => { alive = false; };
   }, []);
   const [messages, setMessages]   = useState<ChatMsg[]>([]);
@@ -2141,7 +2120,7 @@ export default function MiraWidget() {
     // silently treating the new PDP as a fresh first approach.
     if (snap.lastProductHandle) approachedHandle.current = snap.lastProductHandle;
     lastLookPieces.current = (snap.lastLookHandles ?? [])
-      .map((h) => catalog.find((p) => p.handle === h))
+      .map((h) => byHandle(h))
       .filter((p): p is Product => Boolean(p));
     if (snap.messages.length) {
       // PRODUCT-SWITCH NOTICE across a full reload (founder #3 "Mira doesn't notice
@@ -2171,9 +2150,9 @@ export default function MiraWidget() {
       try { sessionStorage.setItem("mira_opened", "1"); } catch { /* ignore */ }
       // Open when the panel was open OR when she just noticed a product switch
       // (so the notice is actually seen, not buried behind the launcher).
-      if (snap.open || switched) setOpen(true);
+      if (stylistEnabled && (snap.open || switched)) setOpen(true);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stylistEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Persist the conversation whenever it changes ──
   useEffect(() => {
@@ -2270,6 +2249,7 @@ export default function MiraWidget() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onOpen = () => {
+      if (!tryOnEnabled) return;
       const real = currentProduct();
       if (real) { setTryOn(real); return; }
       // On a REAL storefront (ASSET_BASE set) NEVER fall back to the demo
@@ -2278,13 +2258,16 @@ export default function MiraWidget() {
       // isn't registered yet, open Mira instead — her opener fetches the real
       // product and registers it, so the next try-on click works on the right
       // piece. The demo (ASSET_BASE === "") keeps its hero fallback.
-      if (ASSET_BASE) { setOpen(true); return; }
+      if (ASSET_BASE) {
+        if (stylistEnabled) setOpen(true);
+        return;
+      }
       const p = catalog.find((x) => x.handle === "onyx-silk-slip") ?? catalog[0];
       if (p) setTryOn(p);
     };
     document.addEventListener("stylique:open-tryon", onOpen as EventListener);
     return () => document.removeEventListener("stylique:open-tryon", onOpen as EventListener);
-  }, [currentProduct]);
+  }, [currentProduct, stylistEnabled, tryOnEnabled]);
 
   // PROACTIVE — size-chart behavior (founder #7: "observe ... size-chart
   // behavior"). When the shopper opens the PDP SIZE GUIDE, that's a fit-doubt
@@ -2299,10 +2282,45 @@ export default function MiraWidget() {
       if (!/size\s*(guide|chart)/i.test(el.querySelector("summary")?.textContent ?? "")) return;
       const cp = currentProduct();
       if (!cp) return;
+      const hasChart = Boolean((cp as Product & { sizeChart?: unknown }).sizeChart);
+      postClientEvent("CHAT_SIZE_CHART_VIEWED", cp, { hasChart, source: hasChart ? "product_payload" : "theme_details" });
       if (recalledSize(cp.handle)) return; // already sized this piece
       const key = `mira_sizenudge_${cp.handle}`;
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, "1");
+      if (!proactiveAllowed) {
+        postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", cp, {
+          shopperState: "size_chart_opened",
+          confidence: 0.82,
+          reasons: ["shopper_opened_size_chart"],
+          triggerType: "size_chart_opened",
+          suggestedMiraMode: "Find my size",
+          productId: cp.productId,
+          cartItemCount: cartCount,
+          pageType: "pdp",
+          urgency: 0.82,
+          suppressionReason: "tier_not_enabled",
+        });
+        return;
+      }
+      postClientEvent("MIRA_BEHAVIORAL_TRIGGER_FIRED", cp, {
+        shopperState: "size_chart_opened",
+        confidence: 0.82,
+        reasons: ["shopper_opened_size_chart"],
+        triggerType: "size_chart_opened",
+        suggestedMiraMode: "Find my size",
+        productId: cp.productId,
+        cartItemCount: cartCount,
+        pageType: "pdp",
+        urgency: 0.82,
+      });
+      postClientEvent("MIRA_PROACTIVE_TRIGGERED", cp, {
+        triggerId: "size_chart_opened",
+        reason: "shopper_opened_size_chart",
+        productId: cp.productId,
+        intentState: "fit_doubt",
+        confidence: 0.82,
+      });
       activeProductHandle.current = cp.handle;
       if (open) {
         setMessages((prev) => [...prev, {
@@ -2318,7 +2336,7 @@ export default function MiraWidget() {
     };
     document.addEventListener("toggle", onToggle, true);
     return () => document.removeEventListener("toggle", onToggle, true);
-  }, [open, currentProduct]);
+  }, [open, currentProduct, proactiveAllowed, cartCount]);
 
   // INTENT-DRIVEN PROACTIVITY (founder: "it's not a chatbot — it should appear at
   // INTENT, not as soon as we enter the store"). Mira NEVER pops on store entry or
@@ -2332,11 +2350,48 @@ export default function MiraWidget() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     let fired = false;
-    const fire = (text: string, product: Product | null, chips: string[]) => {
+    const suppressedTriggers = new Set<string>();
+    const fire = (triggerType: string, text: string, product: Product | null, chips: string[], confidence: number, reasons: string[]) => {
       if (fired) return;
-      if (sessionStorage.getItem("mira_opened") || sessionStorage.getItem("mira_nudged")) return;
+      const payload = {
+        shopperState: triggerType,
+        confidence,
+        reasons,
+        triggerType,
+        suggestedMiraMode: chips[0] ?? "open_mira",
+        productId: product?.productId,
+        cartItemCount: cartCount,
+        pageType: /\/products?\//.test(window.location.pathname) ? "pdp" : "other",
+        urgency: confidence,
+      };
+      if (!proactiveAllowed) {
+        fired = true;
+        postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", product, { ...payload, suppressionReason: "tier_not_enabled" });
+        return;
+      }
+      const suppressionReason = proactiveSuppressionReason(product, confidence);
+      if (open || suppressionReason) {
+        if (open) {
+          fired = true;
+          postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", product, { ...payload, suppressionReason: "chat_already_open" });
+          return;
+        }
+        if (!suppressedTriggers.has(triggerType)) {
+          suppressedTriggers.add(triggerType);
+          postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", product, { ...payload, suppressionReason });
+        }
+        return;
+      }
       fired = true;
-      try { sessionStorage.setItem("mira_nudged", "1"); } catch { /* ignore */ }
+      rememberProactiveNudge(triggerType, product, confidence);
+      postClientEvent("MIRA_BEHAVIORAL_TRIGGER_FIRED", product, payload);
+      postClientEvent("MIRA_PROACTIVE_TRIGGERED", product, {
+        triggerId: triggerType,
+        reason: reasons.join(", "),
+        productId: product?.productId,
+        intentState: triggerType,
+        confidence,
+      });
       setNudgeProduct(product);
       setNudgeText(text);
       nudgeChips.current = chips;   // stage-specific next moves once Mira opens
@@ -2346,25 +2401,86 @@ export default function MiraWidget() {
 
     const onPdp = /\/products?\//.test(window.location.pathname);
 
-    // ── Signal 1: multi-article browsing without checkout ──────────────────
-    // Record each distinct PDP this session; on the 3rd, approach with help to
-    // narrow it down (strong discovery intent — they're hunting, not buying).
+    // ── Signal 1: same-category outlier browsing without checkout ──────────
+    // Record each distinct PDP this session. The strongest intent is not "third
+    // page viewed"; it is "third piece in the SAME category" — they are comparing
+    // options and need a stylist to narrow the set.
     if (onPdp) {
       const cur = currentProduct();
       if (cur) {
+        postClientEvent("PRODUCT_VIEWED", cur, {});
         let viewed: string[] = [];
+        let viewedProducts: Array<{ handle: string; category: Product["category"]; ts: number }> = [];
         try { viewed = JSON.parse(sessionStorage.getItem("mira_viewed") ?? "[]"); } catch { /* ignore */ }
+        try { viewedProducts = JSON.parse(sessionStorage.getItem("mira_viewed_products") ?? "[]"); } catch { /* ignore */ }
         if (!viewed.includes(cur.handle)) {
           viewed.push(cur.handle);
           try { sessionStorage.setItem("mira_viewed", JSON.stringify(viewed.slice(-12))); } catch { /* ignore */ }
         }
-        if (viewed.length >= 3) {
-          fire("You've viewed a few pieces. Want me to pull the strongest options?", cur, ["Pick the best one", "Compare options", "Build a look"]);
+        if (!viewedProducts.some((p) => p.handle === cur.handle)) {
+          viewedProducts.push({ handle: cur.handle, category: cur.category, ts: Date.now() });
+          try { sessionStorage.setItem("mira_viewed_products", JSON.stringify(viewedProducts.slice(-16))); } catch { /* ignore */ }
+        }
+        const comparisonCategory = knownComparisonCategory(cur.category);
+        const sameCategoryCount = comparisonCategory
+          ? new Set(viewedProducts.filter((p) => p.category === comparisonCategory).map((p) => p.handle)).size
+          : 0;
+        if (sameCategoryCount >= 3) {
+          fire(
+            "same_category_browse",
+            `You've compared a few ${CATEGORY_NOUN[cur.category] ?? "pieces"}. Want me to pick the strongest one?`,
+            cur,
+            ["Pick the best one", "Compare options", "Build a look"],
+            0.82,
+            ["viewed_3_same_category_products"],
+          );
+        } else if (viewed.length >= 4) {
+          fire("multi_product_browse", "You've viewed a few pieces. Want me to narrow them down?", cur, ["Pick the best one", "Compare options", "Build a look"], 0.72, ["viewed_4_distinct_products"]);
         }
       }
     }
 
-    // ── Signal 2: color / size interaction (comparing variants) ────────────
+    // ── Signal 2: product media focus / zoom behavior ──────────────────────
+    // A shopper opening/zooming product media is inspecting fabric, crop, and
+    // confidence details. Two deliberate media interactions are stronger than a
+    // timer and map to the user's "zooming in / confused" intent concern.
+    let mediaFocusClicks = 0;
+    const looksLikeProductMedia = (el: HTMLElement): boolean => {
+      if (el.closest("#sq-mira-root")) return false;
+      const media = el.closest([
+        "media-gallery",
+        "[data-product-media]",
+        "[data-product-featured-media]",
+        "[id^='ProductMedia']",
+        ".product__media",
+        ".product-single__media",
+        ".product-gallery",
+        ".product__main-photos",
+        ".product-media",
+      ].join(","));
+      if (media) return true;
+      const button = el.closest("button,[role=button],a") as HTMLElement | null;
+      const label = (button?.getAttribute("aria-label") || button?.textContent || "").trim();
+      return /\b(zoom|enlarge|view larger|open image|gallery|next image|previous image)\b/i.test(label);
+    };
+    const onMediaFocus = (e: MouseEvent) => {
+      if (!onPdp) return;
+      if (!looksLikeProductMedia(e.target as HTMLElement)) return;
+      mediaFocusClicks += 1;
+      if (mediaFocusClicks >= 2) {
+        fire(
+          "product_media_focus",
+          "Looking closely at the details? I can call out fit, fabric, and whether this is the right piece.",
+          currentProduct(),
+          ["Check the fit", "Explain the fabric", "Show alternatives"],
+          0.79,
+          ["clicked_or_zoomed_product_media_twice"],
+        );
+      }
+    };
+    document.addEventListener("click", onMediaFocus, true);
+
+    // ── Signal 3: color / size interaction (comparing variants) ────────────
     // A shopper toggling colours or sizes is deep in the fit/look decision. After
     // the SECOND variant click, offer to size or show it on them.
     let variantClicks = 0;
@@ -2382,12 +2498,12 @@ export default function MiraWidget() {
       if (!onPdp) return;
       if (looksLikeVariant(e.target as HTMLElement)) {
         variantClicks += 1;
-        if (variantClicks >= 2) fire("Comparing sizes or colours? I can narrow this down.", currentProduct(), ["Find my size", "Compare colours", "See it on me"]);
+        if (variantClicks >= 2) fire("variant_comparison", "Comparing sizes or colours? I can narrow this down.", currentProduct(), ["Find my size", "Compare colours", "See it on me"], 0.8, ["clicked_size_or_color_twice"]);
       }
     };
     document.addEventListener("click", onVariantClick, true);
 
-    // ── Signal 3: TRUE exit-intent ─────────────────────────────────────────
+    // ── Signal 4: TRUE exit-intent ─────────────────────────────────────────
     // Must NOT fire on arrival, normal scroll, or ordinary browsing (founder #1).
     // So it requires: the cursor genuinely left the window past the top
     // edge (no relatedTarget) and real dwell (≥20s on page). One honest beat.
@@ -2397,28 +2513,31 @@ export default function MiraWidget() {
       if (e.relatedTarget || (e.relatedTarget == null && e.clientY > 0)) return; // still inside window
       if (Date.now() - mountedAt < 20000) return;  // newly-arrived → never
       const cur = onPdp ? currentProduct() : null;
-      fire(cur ? "Before you go, want the closest alternatives or the best look?"
+      fire("exit_intent", cur ? "Before you go, want the closest alternatives or the best look?"
                : "Before you go, want the closest alternatives or the best look?",
-           cur, ["Find my size", "Build a look", "See it on me"]);
+           cur, ["Find my size", "Build a look", "See it on me"], 0.68, ["cursor_left_after_20s"]);
     };
     document.addEventListener("mouseout", onExit);
 
-    // ── Signal 4: stranded (long PDP dwell, no scroll, no add-to-cart) ──────
+    // ── Signal 5: stranded (long PDP dwell, no scroll, no add-to-cart) ──────
     // Only on a PDP, only if they HAVEN'T scrolled (genuinely stuck, not reading)
     // and haven't added to bag — a real "need a hand?" moment, not an entry greet.
     const onScroll = () => { scrolled = true; };
     window.addEventListener("scroll", onScroll, { passive: true });
     const strandTimer = onPdp ? window.setTimeout(() => {
-      if (!scrolled) fire("Still deciding? I can help with fit, styling, or alternatives.", currentProduct(), ["Find my size", "Build a look", "Show alternatives"]);
+      const product = currentProduct();
+      if (product) postClientEvent("PRODUCT_DWELL_LONG", product, { dwellMs: Date.now() - mountedAt });
+      if (!scrolled) fire("stranded_pdp_dwell", "Still deciding? I can help with fit, styling, or alternatives.", product, ["Find my size", "Build a look", "Show alternatives"], 0.74, ["45s_pdp_dwell_no_scroll"]);
     }, 45000) : undefined;
 
     return () => {
+      document.removeEventListener("click", onMediaFocus, true);
       document.removeEventListener("click", onVariantClick, true);
       document.removeEventListener("mouseout", onExit);
       window.removeEventListener("scroll", onScroll);
       if (strandTimer) window.clearTimeout(strandTimer);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, open, proactiveAllowed, cartCount, currentProduct]);
 
   // RE-APPROACH ON NAVIGATION (founder: "when I go to another product it still
   // thinks I'm on the old one / doesn't pop up"). The one-time nudge above only
@@ -2455,12 +2574,47 @@ export default function MiraWidget() {
           { from: "mira", kind: "say", text: "Want this styled, or sized?", quickReplies: ["Build a look", "Find my size", "See it on me"] },
         ]);
       }
-    } else if (!sessionStorage.getItem("mira_opened")) {
-      setNudgeProduct(p);
-      setNudge(true);
-      window.setTimeout(() => setNudge(false), 9000);
+    } else {
+      let viewedProducts: Array<{ handle: string; category: Product["category"]; ts: number }> = [];
+      try { viewedProducts = JSON.parse(sessionStorage.getItem("mira_viewed_products") ?? "[]"); } catch { /* ignore */ }
+      const comparisonCategory = knownComparisonCategory(p.category);
+      const sameCategoryCount = comparisonCategory
+        ? new Set(viewedProducts.filter((x) => x.category === comparisonCategory).map((x) => x.handle)).size
+        : 0;
+      const payload = {
+        shopperState: "same_category_revisit",
+        confidence: 0.78,
+        reasons: ["navigated_between_same_category_products"],
+        triggerType: "same_category_revisit",
+        suggestedMiraMode: "Compare options",
+        productId: p.productId,
+        cartItemCount: cartCount,
+        pageType: "pdp",
+        urgency: 0.78,
+      };
+      const suppressionReason = proactiveSuppressionReason(p, payload.confidence);
+      if (!proactiveAllowed) {
+        postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", p, { ...payload, suppressionReason: "tier_not_enabled" });
+      } else if (suppressionReason) {
+        postClientEvent("MIRA_BEHAVIORAL_TRIGGER_SUPPRESSED", p, { ...payload, suppressionReason });
+      } else if (sameCategoryCount >= 3) {
+        rememberProactiveNudge("same_category_revisit", p, payload.confidence);
+        postClientEvent("MIRA_BEHAVIORAL_TRIGGER_FIRED", p, payload);
+        postClientEvent("MIRA_PROACTIVE_TRIGGERED", p, {
+          triggerId: "same_category_revisit",
+          reason: "navigated_between_same_category_products",
+          productId: p.productId,
+          intentState: "same_category_revisit",
+          confidence: 0.78,
+        });
+        setNudgeProduct(p);
+        setNudgeText(`Still comparing ${CATEGORY_NOUN[p.category] ?? "pieces"}? I can rank them for fit, colour, and outfit value.`);
+        nudgeChips.current = ["Compare options", "Pick the best one", "Build a look"];
+        setNudge(true);
+        window.setTimeout(() => setNudge(false), 9000);
+      }
     }
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname, open, proactiveAllowed, cartCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll that SURVIVES async layout shifts. A product card's image loads
   // AFTER the message mounts, growing the card's height, a single scroll fires
@@ -2490,6 +2644,7 @@ export default function MiraWidget() {
   // Track shown products for memory + freshness.
   const remember = useCallback((msg: ChatMsg) => {
     if (msg.from === "mira" && msg.kind === "reco") {
+      registerActiveLookProducts([{ handle: msg.reco.product.handle, name: msg.reco.product.name, priceUsd: msg.reco.product.priceUsd }]);
       shownHandles.current.add(msg.reco.product.handle);
       // This is now the conversation's subject — "it" resolves here.
       activeProductHandle.current = msg.reco.product.handle;
@@ -2497,6 +2652,7 @@ export default function MiraWidget() {
       activeLook.current = updateFromReco(activeLook.current, msg.reco.product.handle, null);
     }
     if (msg.from === "mira" && msg.kind === "look") {
+      registerActiveLookProducts([msg.look.anchor, ...msg.look.pieces].map((p) => ({ handle: p.handle, name: p.name, priceUsd: p.priceUsd })));
       shownHandles.current.add(msg.look.anchor.handle);
       // The look's anchor becomes the active subject for "add it" / "size it".
       activeProductHandle.current = msg.look.anchor.handle;
@@ -2527,7 +2683,7 @@ export default function MiraWidget() {
     if (shownHandles.current.size < 3) return null;
     const counts: Record<ColorFamily, number> = { dark: 0, neutral: 0, warm: 0, cool: 0 };
     shownHandles.current.forEach((h) => {
-      const p = catalog.find((x) => x.handle === h);
+      const p = byHandle(h);
       if (p?.colors[0]) counts[colorFamily(p.colors[0])]++;
     });
     const top = (Object.entries(counts) as [ColorFamily, number][]).sort((a, b) => b[1] - a[1])[0];
@@ -2537,6 +2693,7 @@ export default function MiraWidget() {
   }, []);
 
   const openMira = useCallback((_trigger?: string, pdpProduct?: Product) => {
+    if (!stylistEnabled) return;
     setOpen(true);
     sessionStorage.setItem("mira_opened", "1");
     if (messages.length > 0) return;
@@ -2598,19 +2755,17 @@ export default function MiraWidget() {
         setCartCount((n) => n + 1);
         setCartValue((v) => v + p.priceUsd);
         setCartToast(p.name);
+        const size = recalledSize(p.handle);
         void fetch(`${sqApi()}/api/mira/conversion`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ productHandle: p.handle }),
+          body: JSON.stringify({ productHandle: p.handle, size: size ?? undefined }),
         }).catch(() => {});
         const newValue = cartValue + p.priceUsd;
-        const gap = FREE_SHIPPING_THRESHOLD - newValue;
-        const size = recalledSize(p.handle);
-        const currency = typeof window !== "undefined"
-          ? (window as unknown as Record<string, unknown>).__sqCurrency
-          : FREE_SHIPPING_CURRENCY;
+        const threshold = freeShippingThreshold();
+        const gap = threshold ? threshold - newValue : 0;
         const shipNudged = (() => { try { return !!sessionStorage.getItem("mira_ship_nudged"); } catch { return false; } })();
-        if (currency === FREE_SHIPPING_CURRENCY && gap > 0 && gap <= 250 && cartCount < 3 && !shipNudged) {
+        if (threshold && gap > 0 && gap <= Math.max(threshold * 0.35, 1) && cartCount < 3 && !shipNudged) {
           try { sessionStorage.setItem("mira_ship_nudged", "1"); } catch { /* ignore */ }
           const ctx: MiraContext = { shownHandles: shownHandles.current, lastTopic: lastTopic.current, turnCount, sizeAsked: sizeAsked.current, cartValue: newValue, lastLookPieces: lastLookPieces.current };
           const nudgeMsgs = freeShippingNudge(newValue, ctx);
@@ -2649,11 +2804,22 @@ export default function MiraWidget() {
         // Record only after the complete bundle succeeds. Previously each item
         // was counted before Shopify confirmed the mutation, inflating assisted
         // conversion and hiding partial/failed adds.
+        const productIds = all.map((p) => p.productId).filter((id): id is string => typeof id === "string" && id.length > 0);
+        if (productIds.length > 0) {
+          void fetch(`${sqApi()}/api/events`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: "CART_FROM_WIDGET_STYLE",
+              payload: { productIds, comboName: `${anchor.name} look` },
+            }),
+          }).catch(() => {});
+        }
         all.forEach((p) =>
           void fetch(`${sqApi()}/api/mira/conversion`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productHandle: p.handle }),
+            body: JSON.stringify({ productHandle: p.handle, size: recalledSize(p.handle) ?? undefined }),
           }).catch(() => {}),
         );
       })
@@ -2771,7 +2937,7 @@ export default function MiraWidget() {
           }
           const cartProduct = r.productHandle
             ? byHandle(r.productHandle)
-            : [...runtimeCatalog.values(), ...catalog].find((p) => p.name === r.productName);
+            : activeProducts().find((p) => p.name === r.productName);
           if (cartProduct) executeAction("add_to_bag", { product: cartProduct });
           else setMessages((prev) => [...prev, { from: "mira", kind: "say", text: "I couldn't resolve that product, so I won't pretend it was added.", quickReplies: ["View item", "Keep shopping"] }]);
           return;
@@ -2871,7 +3037,7 @@ export default function MiraWidget() {
     };
 
     // Hybrid: stronger Gemini understands; our catalog engine grounds. On any
-    // failure or missing key, fall through to the deterministic regex engine.
+    // failure or missing key, fall back to an honest retry line.
     // SESSION MEMORY (founder: "it asks me measurements again"). Once the shopper
     // has given a body this session, Mira NEVER re-asks. If she sized this exact
     // piece before, recall it; otherwise compute the size from the saved body
@@ -2916,10 +3082,8 @@ export default function MiraWidget() {
           method: "POST", headers: { "Content-Type": "application/json" }, body: miraBody,
         });
         // Consolidation P1.3: the storefront hits ONLY its own brain (the App Proxy
-        // via sqApi()). On failure we go straight to the LOCAL regex engine, which is
-        // grounded on the merchant's runtimeCatalog, we do NOT retry the demo brain
-        // on ASSET_BASE, which would surface wrong/phantom DEMO products on a real
-        // store (the dangerous fallback the journey trace flagged).
+        // via sqApi()). On failure we do not retry the demo brain on ASSET_BASE,
+        // which would surface wrong/phantom DEMO products on a real store.
         const res = await postMira(sqApi());
         if (!res.ok) return runFallback();
         const data = (await res.json()) as { source: string; decision: MiraDecision | null; objective?: unknown; products?: RealProduct[]; look?: { pieces?: RealProduct[] } };
@@ -2941,10 +3105,10 @@ export default function MiraWidget() {
         runFallback();
       }
     })();
-  }, [turnCount, cartValue, currentProduct, emitResponses]);
+  }, [turnCount, cartValue, currentProduct, emitResponses, stylistEnabled]);
 
   return (
-    <>
+    <div data-stylique-widget="1" data-stylique-state={open ? "open" : "closed"}>
       {/* Floating cart badge */}
       {cartCount > 0 && (
         <div style={{ position: "fixed", top: 24, right: 24, zIndex: 91, background: "var(--grad)", borderRadius: 999, padding: "6px 14px", display: "flex", alignItems: "center", gap: 8, fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", color: "#0E0A14", boxShadow: "0 4px 16px rgba(139,92,246,0.4)", animation: "miraFadeUp 300ms ease both" }}>
@@ -2977,6 +3141,7 @@ export default function MiraWidget() {
       )}
 
       {/* Floating dock */}
+      {stylistEnabled && (
       <div style={{ position: "fixed", bottom: 28, right: 28, zIndex: 90, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
         {nudge && !open && (
           <button onClick={() => {
@@ -2992,7 +3157,7 @@ export default function MiraWidget() {
             } else {
               openMira("pdp-dwell", nudgeProduct ?? undefined);
             }
-          }} style={{ background: "#12101A", border: "1px solid rgba(139,92,246,0.4)", borderRadius: 14, padding: "11px 16px", fontFamily: "var(--sans)", fontSize: 13, color: "#F4F2EE", maxWidth: 240, lineHeight: 1.5, textAlign: "left", cursor: "pointer", animation: "miraFadeUp 400ms var(--ease-spring) both", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
+          }} data-stylique-nudge="1" style={{ background: "#12101A", border: "1px solid rgba(139,92,246,0.4)", borderRadius: 14, padding: "11px 16px", fontFamily: "var(--sans)", fontSize: 13, color: "#F4F2EE", maxWidth: 240, lineHeight: 1.5, textAlign: "left", cursor: "pointer", animation: "miraFadeUp 400ms var(--ease-spring) both", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}>
             <em style={{ fontFamily: "var(--serif)", fontSize: 15 }}>Hi,</em>{" "}
             {nudgeText
               ? nudgeText
@@ -3009,9 +3174,10 @@ export default function MiraWidget() {
           <MiraLauncher nudging={nudge} onOpen={() => openMira()} />
         )}
       </div>
+      )}
 
       {/* Stylist sidebar, a side panel, never full-screen. The store stays visible. */}
-      {open && (
+      {stylistEnabled && open && (
         <div style={{ position: "fixed", bottom: 96, right: 28, zIndex: 89, width: "min(400px, calc(100vw - 40px))", maxHeight: "88dvh", background: "#12101A", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 64px rgba(0,0,0,0.7)", animation: "miraPanelIn 320ms var(--ease-spring) both" }}>
           {/* Header */}
           <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.02)" }}>
@@ -3334,7 +3500,7 @@ export default function MiraWidget() {
           *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
         }
       `}</style>
-    </>
+    </div>
   );
 }
 

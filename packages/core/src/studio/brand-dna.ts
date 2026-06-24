@@ -126,9 +126,52 @@ async function geminiVisionJsonBase64<T>(
 type CatalogProduct = {
   title: string;
   category: string | null;
+  productType?: string | null;
   primaryColor: string | null;
-  imageUrls: string[];
+  tags?: string[];
+  descriptionText?: string | null;
+  imageUrls: Array<string | { url: string; altText?: string | null }>;
 };
+
+export type BrandDnaImageCandidate = {
+  id: string;
+  position?: number | null;
+  qualityScore?: number | null;
+  garmentRole?: "FRONT" | "BACK" | "DETAIL" | "LIFESTYLE" | "SWATCH" | string | null;
+  altText?: string | null;
+};
+
+export function orderBrandDnaImages<T extends BrandDnaImageCandidate>(
+  images: T[],
+  primaryTryonImageId: string | null,
+): T[] {
+  const roleRank = (role: BrandDnaImageCandidate["garmentRole"]) => {
+    switch (role) {
+      case "FRONT": return 0;
+      case "BACK": return 1;
+      case "LIFESTYLE": return 3;
+      case "DETAIL": return 4;
+      case "SWATCH": return 5;
+      default: return 2;
+    }
+  };
+  const altPenalty = (altText: string | null | undefined) =>
+    /\b(size\s*(chart|guide)|measurement|measurements|sizing|swatch|fabric|detail|zoom|close)\b/i.test(altText ?? "") ? 1 : 0;
+
+  return [...images].sort((a, b) => {
+    if (primaryTryonImageId) {
+      if (a.id === primaryTryonImageId) return -1;
+      if (b.id === primaryTryonImageId) return 1;
+    }
+    const roleDelta = roleRank(a.garmentRole) - roleRank(b.garmentRole);
+    if (roleDelta !== 0) return roleDelta;
+    const altDelta = altPenalty(a.altText) - altPenalty(b.altText);
+    if (altDelta !== 0) return altDelta;
+    const scoreDelta = (b.qualityScore ?? -1) - (a.qualityScore ?? -1);
+    if (scoreDelta !== 0) return scoreDelta;
+    return (a.position ?? 9999) - (b.position ?? 9999);
+  });
+}
 
 type GeminiCatalogAnalysis = {
   moodAdjectives?: string[];
@@ -171,6 +214,9 @@ export async function extractDNAFromCatalogProducts(
   }
 
   const signals: BrandDNASignal[] = [];
+  const fabricFreq: Record<string, number> = {};
+  const seasonalityFreq: Record<string, number> = {};
+  const pricePositioningFreq: Record<string, number> = {};
 
   for (const batch of batches) {
     const imageUrls: string[] = [];
@@ -178,10 +224,24 @@ export async function extractDNAFromCatalogProducts(
 
     for (const p of batch) {
       // Take up to 2 images per product to stay within limits
-      const imgs = p.imageUrls.filter(Boolean).slice(0, 2);
-      imageUrls.push(...imgs);
+      const imgs = p.imageUrls
+        .map((img) => typeof img === "string" ? { url: img, altText: null } : img)
+        .filter((img) => Boolean(img.url))
+        .slice(0, 2);
+      imageUrls.push(...imgs.map((img) => img.url));
+      const tags = (p.tags ?? []).filter(Boolean).slice(0, 8).join(", ");
+      const imageAlt = imgs.map((img) => img.altText).filter(Boolean).slice(0, 3).join(" | ");
+      const description = sanitizeText(p.descriptionText).slice(0, 240);
       metadataLines.push(
-        `- "${p.title}" (${p.category ?? "unknown category"}, ${p.primaryColor ?? "unknown color"})`,
+        [
+          `- "${p.title}"`,
+          `category=${p.category ?? "unknown"}`,
+          `productType=${p.productType ?? "unknown"}`,
+          `primaryColor=${p.primaryColor ?? "unknown"}`,
+          tags ? `tags=${tags}` : null,
+          imageAlt ? `imageAlt=${imageAlt}` : null,
+          description ? `description=${description}` : null,
+        ].filter(Boolean).join("; "),
       );
     }
 
@@ -195,6 +255,17 @@ export async function extractDNAFromCatalogProducts(
     );
 
     if (!result) continue;
+
+    for (const fabric of result.dominantFabrics ?? []) {
+      const key = fabric.trim().toLowerCase();
+      if (key) fabricFreq[key] = (fabricFreq[key] ?? 0) + 1;
+    }
+    if (result.seasonality) {
+      seasonalityFreq[result.seasonality] = (seasonalityFreq[result.seasonality] ?? 0) + 1;
+    }
+    if (result.pricePositioning) {
+      pricePositioningFreq[result.pricePositioning] = (pricePositioningFreq[result.pricePositioning] ?? 0) + 1;
+    }
 
     signals.push({
       source: "shopify_catalog",
@@ -210,24 +281,40 @@ export async function extractDNAFromCatalogProducts(
   if (signals.length === 0) return defaultBrandDNA();
 
   const merged = mergeBrandDNA(signals);
+  const pricePositioning = topKey(pricePositioningFreq);
+  const validPricePositioning = (
+    pricePositioning === "luxury"
+    || pricePositioning === "premium"
+    || pricePositioning === "contemporary"
+    || pricePositioning === "accessible"
+  ) ? pricePositioning : merged.toneJson.pricePositioning;
 
-  // Also extract fabric/seasonality/positioning from the signals' raw data
-  // These come from the first successful batch analysis
-  const catalogSignal = signals[0] ?? null;
-
-  // Attempt to get the full tone from the first signal
   return {
     paletteJson: merged.paletteJson,
     toneJson: {
       ...merged.toneJson,
-      // If we got structured data back, use it; otherwise keep defaults
-      dominantFabrics: merged.toneJson.dominantFabrics,
-      seasonality: merged.toneJson.seasonality,
-      pricePositioning: merged.toneJson.pricePositioning,
+      dominantFabrics: Object.entries(fabricFreq)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([fabric]) => fabric),
+      seasonality: topKey(seasonalityFreq) ?? merged.toneJson.seasonality,
+      pricePositioning: validPricePositioning,
     },
   };
+}
 
-  void catalogSignal; // used indirectly
+function sanitizeText(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // ─── extractDNAFromInstagramPosts ─────────────────────────────────────────────

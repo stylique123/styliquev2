@@ -25,8 +25,10 @@ export {
 
 export {
   scoreProductImages,
+  resolveTryonImage,
   toImageInput,
   type ScoreProductImagesInput,
   type ProductUpdate,
   type PerImageUpdate,
+  type TryonImageCandidate,
 } from "./service.js";

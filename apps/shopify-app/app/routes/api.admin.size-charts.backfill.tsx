@@ -9,6 +9,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Queue } from "bullmq";
 import { Redis as IORedis } from "ioredis";
+import { Prisma } from "@stylique/db";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 
@@ -39,24 +40,49 @@ export async function action({ request }: ActionFunctionArgs) {
   });
 
   const queue = getQueue();
+  const backfillRunId = Date.now().toString(36);
+  let queued = 0;
+  const failures: Array<{ productId: string; error: string }> = [];
   for (const product of products) {
-    await queue
-      .add(
+    try {
+      await queue.add(
         "extract",
         { shopId: shop.id, productId: product.id },
         {
-          // Idempotent — a product already queued won't be duplicated.
-          jobId: `size-chart:${shop.id}:${product.id}`,
+          // Manual backfills must be rerunnable after a fix or API retry. Scope
+          // dedupe to this request, not forever, or the admin button silently
+          // stops repairing stale/missing size-chart facts.
+          jobId: `size-chart:${shop.id}:${product.id}:manual:${backfillRunId}`,
           attempts: 2,
           backoff: { type: "exponential", delay: 10_000 },
           removeOnComplete: 5,
           removeOnFail: 50,
         },
-      )
-      .catch(() => undefined);
+      );
+      queued++;
+    } catch (err) {
+      failures.push({
+        productId: product.id,
+        error: (err as Error).message,
+      });
+    }
   }
 
-  return json({ ok: true, queued: products.length });
+  if (failures.length > 0) {
+    return json(
+      {
+        ok: false,
+        error: "size_chart_backfill_partial_enqueue_failure",
+        queued,
+        failed: failures.length,
+        total: products.length,
+        failures: failures.slice(0, 10),
+      },
+      { status: queued > 0 ? 207 : 503 },
+    );
+  }
+
+  return json({ ok: true, queued, failed: 0, total: products.length });
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -70,7 +96,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const [total, withSizeChart] = await Promise.all([
     prisma.product.count({ where: { shopId: shop.id } }),
     prisma.product.count({
-      where: { shopId: shop.id, sizeChartJson: { not: undefined } },
+      where: { shopId: shop.id, sizeChartJson: { not: Prisma.AnyNull } },
     }),
   ]);
   const withoutSizeChart = total - withSizeChart;

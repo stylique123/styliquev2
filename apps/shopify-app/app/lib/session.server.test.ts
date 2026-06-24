@@ -6,11 +6,13 @@ const db = vi.hoisted(() => ({
     update: vi.fn(),
     create: vi.fn(),
   },
+  $queryRaw: vi.fn(),
+  $executeRaw: vi.fn(),
 }));
 
 vi.mock("../db.server", () => ({ prisma: db }));
 
-import { getOrCreateShopperSession } from "./session.server";
+import { getOrCreateShopperSession, persistMiraObjective, readMiraObjective } from "./session.server";
 
 describe("getOrCreateShopperSession", () => {
   beforeEach(() => {
@@ -57,5 +59,38 @@ describe("getOrCreateShopperSession", () => {
     expect(created.shopifyDomain).toBe("two.myshopify.com");
     expect(created.sessionId).not.toBe("cookie-session");
     expect(result.setCookie).toContain(`sq_shopper_id=${created.sessionId}`);
+  });
+});
+
+describe("Mira objective persistence", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reads the server-canonical objective from ShopperSession", async () => {
+    db.$queryRaw.mockResolvedValue([{ miraObjectiveJson: { mission: "wedding guest", rejectedHandles: ["red-dress"] } }]);
+
+    await expect(readMiraObjective("shopper-1")).resolves.toEqual({
+      mission: "wedding guest",
+      rejectedHandles: ["red-dress"],
+    });
+  });
+
+  it("ignores missing or non-object objective rows", async () => {
+    db.$queryRaw.mockResolvedValue([{ miraObjectiveJson: null }]);
+    await expect(readMiraObjective("shopper-1")).resolves.toBeNull();
+
+    db.$queryRaw.mockResolvedValue([{ miraObjectiveJson: ["not", "an", "objective"] }]);
+    await expect(readMiraObjective("shopper-1")).resolves.toBeNull();
+  });
+
+  it("persists object objectives and skips invalid payloads", async () => {
+    db.$executeRaw.mockResolvedValue(1);
+
+    await persistMiraObjective("shopper-1", { mission: "workwear", lastRecommendedHandle: "linen-shirt" });
+    await persistMiraObjective("shopper-1", null);
+    await persistMiraObjective("shopper-1", "not-json-object");
+
+    expect(db.$executeRaw).toHaveBeenCalledTimes(1);
   });
 });

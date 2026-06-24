@@ -4,7 +4,7 @@
 // following are true:
 //   1. DB is reachable (SELECT 1 within 2 s)
 //   2. Redis is reachable (PING within 2 s)
-//   3. Required env vars are present (SHOPIFY_API_KEY, DATABASE_URL, REDIS_URL)
+//   3. Required env vars are present (same contract as startup validation)
 //
 // Returns HTTP 200 + JSON when fully ready.
 // Returns HTTP 503 + JSON (with detail) when not ready.
@@ -15,15 +15,7 @@
 import { json } from "@remix-run/node";
 import IORedis from "ioredis";
 import { prisma } from "../db.server";
-
-const REQUIRED_ENV_VARS = [
-  "SHOPIFY_API_KEY",
-  "SHOPIFY_API_SECRET",
-  "SHOPIFY_APP_URL",
-  "SESSION_SECRET",
-  "DATABASE_URL",
-  "REDIS_URL",
-] as const;
+import { missingRequiredEnvVars } from "../lib/startup-validation.server";
 
 interface ReadinessPayload {
   ready: boolean;
@@ -72,7 +64,7 @@ export async function loader() {
   const timestamp = new Date().toISOString();
 
   // Check env vars synchronously — no I/O needed.
-  const missingEnv = REQUIRED_ENV_VARS.filter((k) => !process.env[k]);
+  const missingEnv = missingRequiredEnvVars();
   const envOk = missingEnv.length === 0;
 
   // Check DB + Redis in parallel.
