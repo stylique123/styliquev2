@@ -77,6 +77,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       "STYLE_RECOMMENDATION",
       "FIT_RECOMMENDATION",
       "VISION_TURN",
+      "STYLIST_TURN",
     ] as UsageMetric[];
 
     const totals: Record<string, number> = {};

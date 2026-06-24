@@ -23,8 +23,7 @@
 // Closes the learning loop the reality panel called out: signals are captured
 // AND now read back to adjust future ranking, autonomously, every night.
 
-import { prisma } from "@stylique/db";
-import { Prisma } from "@prisma/client";
+import { Prisma, prisma } from "@stylique/db";
 import { distinctOrderCountFromEvents, MIRA_CART_ASSIST_EVENT_NAMES } from "@stylique/core";
 
 const LOOKBACK_DAYS = 30;

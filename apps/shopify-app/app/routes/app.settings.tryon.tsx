@@ -15,6 +15,7 @@ import { Form, useLoaderData, useActionData, useNavigation } from "@remix-run/re
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 import { getEffectivePlan } from "../lib/entitlement.server";
+import { currentPeriodStart } from "@stylique/core";
 
 const REPLICATE_AVAILABLE = Boolean(process.env.REPLICATE_API_TOKEN);
 
@@ -68,8 +69,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const personalCap = plan?.features.widget.monthlyTryOnPersonal ?? null;
   const personalAllowed = plan?.features.widget.personalPhotoTryOn ?? false;
   const usedThisMonthRow = await prisma.usageCounter.findFirst({
-    where: { shopId: shop.id, metric: "TRYON_PERSONAL" },
-    orderBy: { periodStart: "desc" },
+    where: { shopId: shop.id, metric: "TRYON_PERSONAL", periodStart: currentPeriodStart() },
     select: { count: true },
   });
   const usedThisMonth = usedThisMonthRow?.count ?? 0;

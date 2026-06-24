@@ -7,6 +7,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const file = "apps/shopify-app/app/routes/app.dashboard.tsx";
 const source = readFileSync(resolve(root, file), "utf8");
 const intelligence = readFileSync(resolve(root, "apps/shopify-app/app/lib/fashion-intelligence.server.ts"), "utf8");
+const internalDashboard = readFileSync(resolve(root, "apps/shopify-app/app/lib/internal-dashboard.server.ts"), "utf8");
+const internalDashboardTests = readFileSync(resolve(root, "apps/shopify-app/app/lib/internal-dashboard.server.test.ts"), "utf8");
 
 const failures = [];
 
@@ -52,6 +54,24 @@ if (!/label:\s*"Try-on cart assist"/.test(intelligence) || !/interest → cart/.
 
 if (!/Not a controlled causal lift/.test(intelligence) || !/not a returns-rate claim/.test(intelligence)) {
   failures.push("Fashion Intelligence source details must disclose proxy metrics");
+}
+
+if (!/export function internalQuotaUsagePercent/.test(internalDashboard)) {
+  failures.push("internal dashboard must centralize quota percentage math in an exported helper");
+}
+
+for (const metric of ["TRYON_PERSONAL", "TRYON_BODY", "STYLE_RECOMMENDATION", "FIT_RECOMMENDATION", "STYLIST_TURN"]) {
+  if (!new RegExp(`"${metric}"`).test(internalDashboard)) {
+    failures.push(`internal dashboard quota percent must include ${metric}`);
+  }
+}
+
+if (/monthlyCap\s*=\s*plan[\s\S]{0,160}monthlyTryOnPersonal[\s\S]{0,160}monthlyTryOnBody/.test(internalDashboard)) {
+  failures.push("internal dashboard quota percent must not divide all usage by try-on-only caps");
+}
+
+if (!/CREATIVE_GENERATED/.test(internalDashboardTests) || !/180 \/ 300/.test(internalDashboardTests) || !/75 \/ 300/.test(internalDashboardTests)) {
+  failures.push("internal dashboard tests must prove quota percent ignores ungated/archival counters and handles unlimited meters");
 }
 
 if (failures.length > 0) {

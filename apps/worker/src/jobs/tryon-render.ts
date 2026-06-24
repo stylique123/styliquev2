@@ -268,16 +268,16 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
         out = await fallbackSvc.render(renderInput);
         usedProviderKey = `${fallbackKey}:fallback`;
         // Update the audit trail to reflect which provider actually rendered.
-        await prisma.tryOnSession.update({
-          where: { id: renderId },
+        await prisma.tryOnSession.updateMany({
+          where: { id: renderId, status: { not: "SUCCEEDED" } },
           data: { providerKey: usedProviderKey },
         }).catch(() => undefined);
       } catch (fallbackErr) {
         console.error("[tryon-render] fallback provider also failed", { renderId, fallbackKey, fallbackErr });
         const failLatencyMs = Date.now() - t0;
         // Both providers failed — mark FAILED and bail.
-        await prisma.tryOnSession.update({
-          where: { id: renderId },
+        await prisma.tryOnSession.updateMany({
+          where: { id: renderId, status: { not: "SUCCEEDED" } },
           data: {
             status: "FAILED",
             error: String((fallbackErr as Error)?.message ?? "unknown").slice(0, 240),
@@ -304,8 +304,8 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
     } else {
       // Fallback is same as primary (or no different fallback available) — fail immediately.
       const failLatencyMs = Date.now() - t0;
-      await prisma.tryOnSession.update({
-        where: { id: renderId },
+      await prisma.tryOnSession.updateMany({
+        where: { id: renderId, status: { not: "SUCCEEDED" } },
         data: {
           status: "FAILED",
           error: String((primaryErr as Error)?.message ?? "unknown").slice(0, 240),
@@ -376,8 +376,8 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
   //    column (providerKey) so ops can see which engine actually ran.
   const finalCacheKey = cacheKey; // already computed from original providerKey above
 
-  await prisma.tryOnSession.update({
-    where: { id: renderId },
+  const finalUpdate = await prisma.tryOnSession.updateMany({
+    where: { id: renderId, status: { not: "SUCCEEDED" } },
     data: {
       status: "SUCCEEDED",
       outputImageUrl,
@@ -386,6 +386,11 @@ export async function processTryOnRender(data: TryOnRenderJobData): Promise<void
       completedAt: new Date(),
     },
   });
+
+  if (finalUpdate.count === 0) {
+    console.log(`[tryon-render] stale duplicate completion ignored renderId=${renderId}`);
+    return;
+  }
 
   // Count this NEW render against the monthly cap — mirrors the sync path's
   // recordConsume. A cache hit returned early above and is NOT counted, so this

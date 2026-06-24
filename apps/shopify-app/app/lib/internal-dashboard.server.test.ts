@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { internalDemandCatalogGapWhere } from "./internal-dashboard.server";
+import { internalDemandCatalogGapWhere, internalQuotaUsagePercent } from "./internal-dashboard.server";
 import {
   REQUIRED_SHOPIFY_SCOPES_STRING,
   extraGrantedShopifyScopes,
@@ -18,6 +18,50 @@ describe("internal dashboard catalog-gap filters", () => {
       source: { not: "size_chart_extract" },
       NOT: { rawQuery: { startsWith: "no_size_chart" } },
     });
+  });
+});
+
+describe("internal dashboard quota usage truth", () => {
+  it("calculates visible quota percent from all known finite meters, not only try-on caps", () => {
+    expect(
+      internalQuotaUsagePercent(
+        {
+          monthlyTryOnPersonal: 10,
+          monthlyTryOnBody: 90,
+          monthlyStylistTurns: 100,
+          monthlyStyleRecs: 50,
+          monthlyFitRecs: 50,
+        },
+        [
+          { metric: "TRYON_PERSONAL", count: 10 },
+          { metric: "TRYON_BODY", count: 20 },
+          { metric: "STYLIST_TURN", count: 100 },
+          { metric: "STYLE_RECOMMENDATION", count: 25 },
+          { metric: "FIT_RECOMMENDATION", count: 25 },
+          { metric: "CREATIVE_GENERATED", count: 10_000 },
+        ],
+      ),
+    ).toBeCloseTo(180 / 300);
+  });
+
+  it("ignores unlimited meters instead of turning them into false over-quota signals", () => {
+    expect(
+      internalQuotaUsagePercent(
+        {
+          monthlyTryOnPersonal: null,
+          monthlyTryOnBody: 200,
+          monthlyStylistTurns: null,
+          monthlyStyleRecs: null,
+          monthlyFitRecs: 100,
+        },
+        [
+          { metric: "TRYON_PERSONAL", count: 50_000 },
+          { metric: "TRYON_BODY", count: 50 },
+          { metric: "STYLIST_TURN", count: 50_000 },
+          { metric: "FIT_RECOMMENDATION", count: 25 },
+        ],
+      ),
+    ).toBeCloseTo(75 / 300);
   });
 });
 

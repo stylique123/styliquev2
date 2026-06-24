@@ -18,7 +18,8 @@
 // it ONCE at provider construction; never log it; never include in error
 // messages.
 
-import { createSign } from "node:crypto";
+import nodeCrypto from "node:crypto";
+const { createSign } = nodeCrypto;
 import type {
   TryOnProvider,
   TryOnRenderInput,

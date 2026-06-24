@@ -23,7 +23,7 @@
 // it testable + cron-callable from the worker AND on-demand callable from
 // the admin route without forking the logic.
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@stylique/db";
 import { MIRA_CART_ASSIST_EVENT_NAMES, MIRA_CART_SUCCESS_EVENT_NAMES } from "../analytics/cart-events.js";
 
 const DAY = 86_400_000;

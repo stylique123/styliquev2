@@ -9,7 +9,7 @@
 // good enough until we add a ChatTurn table (1-line migration, do later).
 
 import { prisma } from "../db.server";
-import { Prisma } from "@stylique/db";
+import { PrismaRuntime } from "@stylique/db";
 import type { ChatMessage } from "@stylique/ai";
 
 // ─── Cookie helpers ─────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ export async function appendChatTurns(shopperRowId: string, turns: ChatMessage[]
       where: { id: shopperRowId },
       data: { chatHistoryJson: next as unknown as object },
     });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted });
+  }, { isolationLevel: PrismaRuntime.TransactionIsolationLevel.ReadCommitted });
 }
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {

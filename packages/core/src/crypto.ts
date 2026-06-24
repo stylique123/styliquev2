@@ -3,7 +3,10 @@
 // Falls back to plaintext when key absent (dev / not yet migrated).
 // Safe to deploy against existing plaintext rows — isEncrypted() guard.
 // OI-25: used by shopify-app and worker to encrypt/decrypt Shop.accessToken.
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+// Default import (not named) so a client bundle pulling the @stylique/core
+// barrel doesn't break the browser build (vite browser-external has no named exports).
+import nodeCrypto from "node:crypto";
+const { createCipheriv, createDecipheriv, randomBytes } = nodeCrypto;
 
 const ALG = "aes-256-gcm";
 

@@ -3082,6 +3082,118 @@ Required fix:
 - Keep productless telemetry allowed only when the event truly does not need a product.
 - Extend future event-ingestion tests whenever a new client/bridge event can carry product evidence.
 
+## Finding 136: Internal Quota UI Divided All Usage By Try-On-Only Caps
+
+Severity: P1 for quota trust, tier support, and "backend fixed but dashboard wrong" regressions. Runtime entitlement gates each metered feature by its own metric, but internal ops collapsed all current-month `UsageCounter` rows into `creditsBurnedThisMonth` and then calculated `quotaUsagePercent` using only `monthlyTryOnPersonal + monthlyTryOnBody`. As soon as a shop had stylist turns, style recommendations, fit recommendations, or old archival creative counters, the internal UI could show a high or maxed quota gauge even when every enforced meter still had room.
+
+Evidence:
+- Pre-patch, `apps/shopify-app/app/lib/internal-dashboard.server.ts` selected only `monthlyTryOnPersonal` and `monthlyTryOnBody` for the internal summary/detail quota percent.
+- Pre-patch, the numerator summed every usage counter for the month, including `STYLIST_TURN`, `STYLE_RECOMMENDATION`, `FIT_RECOMMENDATION`, and residual removed creative metrics.
+- Runtime enforcement in `entitlement.server.ts` still checked per-metric caps, so this was a UI/ops-truth drift rather than the main quota gate.
+- This branch adds exported `internalQuotaUsagePercent()`, which includes finite caps for `TRYON_PERSONAL`, `TRYON_BODY`, `STYLE_RECOMMENDATION`, `FIT_RECOMMENDATION`, and `STYLIST_TURN`, and ignores unlimited or archival/ungated counters for the percentage.
+- Internal summary/detail queries now select `monthlyStylistTurns`, `monthlyStyleRecs`, and `monthlyFitRecs` alongside try-on caps.
+- `internal-dashboard.server.test.ts` proves the helper does not let large `CREATIVE_GENERATED` archival counters distort the gauge and does not treat unlimited meters as over-quota.
+- `scripts/verify-dashboard-fashion-intelligence-truth.mjs` now guards the helper, all quota metrics, and the absence of try-on-only monthly-cap math.
+
+Impact:
+- Ops could incorrectly tell a merchant they were near quota or over quota even when the real enforcement path would allow the action.
+- Support could chase billing/tier bugs that were actually dashboard math bugs.
+- This is another concrete example of why repeated fixes felt ineffective: backend enforcement and visible UI truth were not using the same metric boundaries.
+
+Required fix:
+- Keep quota enforcement, billing reports, merchant dashboard usage cards, and internal ops quota summaries metric-specific.
+- Add a browser-level internal dashboard fixture later that renders mixed usage counters and verifies the visible quota gauge/copy.
+- Decide whether `creditsBurnedThisMonth` should remain a raw activity count or become a cost-weighted value; do not use it as a quota percentage numerator unless the denominator is equally weighted.
+
+## Finding 137: Prisma Runtime Boundary Drift Made Typecheck Failures Look Like Product Bugs
+
+Severity: P1 for engineering trust and regression detection. The full Shopify app typecheck was failing with dozens of `unknown`, `{}`, and implicit-any errors across billing, dashboards, Fashion Intelligence, insights, Mira adapter, network, product evidence, routes, and scripts. Those files did not all suddenly lose their contracts. The root cause was lower in the stack: the workspace had Prisma client resolution drift, so downstream packages could lose generated model types or hit a broken direct `@prisma/client` runtime shell while the shared `@stylique/db` facade still worked in its own package context.
+
+Evidence:
+- Pre-patch verification showed `pnpm --filter @stylique/shopify-app typecheck` failing broadly across unrelated files with Prisma result shapes inferred as `{}`/`unknown`.
+- `pnpm install` repaired the workspace install/type resolution enough for `pnpm typecheck` to pass across all 9 packages, proving the earlier broad failure was dependency/generated-client drift rather than each listed module being logically broken.
+- Direct `@prisma/client` imports still bypassed the runtime-safe `@stylique/db` facade in `apps/worker/src/jobs/fit-tuner.ts`, `packages/core/src/reports/monthly.ts`, and `apps/web/scripts/pilot-measure.mjs`.
+- This branch routes those imports through `@stylique/db`, leaving direct Prisma import ownership centralized in `packages/db/src/index.ts`.
+- This branch adds `scripts/verify-prisma-runtime-contract.mjs`, which checks the Prisma package runtime in the DB package context, checks the `@stylique/db` facade from the Shopify app context, and blocks known drift files from importing `@prisma/client` directly.
+- `pnpm check:agentic-contracts` now includes `pnpm check:prisma-runtime`.
+
+Impact:
+- Engineers could waste time fixing phantom type errors in business modules while the real issue was generated-client/install state.
+- A script or worker path that imported `@prisma/client` directly could fail differently from the app path that used `@stylique/db`, creating another "half works, half doesn't" situation.
+- Product audits become less reliable when the type system is noisy; real regressions hide among infrastructure-generated errors.
+
+Required fix:
+- Keep all app/worker/web/core code importing Prisma through `@stylique/db`; only the DB package may own direct `@prisma/client` runtime behavior.
+- Run `pnpm db:generate`, `pnpm typecheck`, and `pnpm check:prisma-runtime` after dependency install changes.
+- Consider adding a CI bootstrap step that fails fast if generated Prisma client artifacts are missing before running product-level tests.
+
+## Finding 138: Async Try-On Worker Could Double-Count Quota On Late Duplicate Completions
+
+Severity: P1 for billing trust, quota accuracy, and intermittent try-on bugs. The storefront/app path now preflights body/personal try-on quota before rendering, but async rendering happens in the worker. The worker is wrapped by a 90-second `Promise.race` timeout, and the underlying provider call is not cancelled when that timeout rejects. A timed-out attempt can therefore keep running while BullMQ marks the job failed or another attempt/path works on the same `renderId`. Before this pass, every successful worker completion unconditionally updated the render row and incremented `UsageCounter`, so a late duplicate success could double-count quota/provider work for one shopper-visible render.
+
+Evidence:
+- `apps/worker/src/index.ts` wraps `processTryOnRender(job.data)` in `Promise.race(... tryon_render_timeout_90s ...)`, but `processTryOnRender()` continues in the background if the timeout wins.
+- Pre-patch, `apps/worker/src/jobs/tryon-render.ts` used `tryOnSession.update({ where: { id: renderId }, data: { status: "SUCCEEDED" ... } })` followed by unconditional `usageCounter.upsert(... increment: 1 ...)`.
+- Pre-patch, worker failure paths also used plain `update`, so a failed late attempt could overwrite a row that another attempt had already completed.
+- This branch changes the worker success write to `updateMany({ where: { id: renderId, status: { not: "SUCCEEDED" } } ... })` and returns before quota increment when `finalUpdate.count === 0`.
+- Worker failure and fallback-provider audit writes now also guard with `status: { not: "SUCCEEDED" }`, so failed/late attempts cannot downgrade a completed render.
+- `scripts/verify-tryon-quota-contract.mjs` now checks the worker timeout shape, idempotent success transition, no usage-counter write after a lost duplicate completion, and no failure overwrite of a succeeded render.
+
+Impact:
+- A merchant could see quota usage increase twice for one actual shopper render, especially under slow provider responses.
+- Ops could chase quota/billing complaints even though the app-side preflight looked correct.
+- Shopper UI could show confusing render status if a failed late attempt overwrote a successful result.
+- This is another app/worker split: one path was fixed, but the async backend still had its own final-state semantics.
+
+Required fix:
+- Keep try-on worker finalization idempotent by `renderId` and successful status.
+- Add a future integration test with two concurrent `processTryOnRender()` calls for the same `renderId`, proving only one usage increment and one successful finalization.
+- Prefer cancellable provider calls or BullMQ job-level timeout semantics that do not leave orphaned work running after a timeout.
+
+## Finding 139: Merchant Usage Surfaces Hid Mira Turn Meters And Could Read Stale Try-On Quota
+
+Severity: P1 for tier trust, billing clarity, and merchant UI/UX. Entitlement enforcement meters six active usage families: personal try-on, body-model try-on, style recommendations, fit recommendations, Mira vision turns, and Mira stylist turns. The billing-status API already exposed all six, but two visible/support surfaces drifted: the embedded merchant dashboard overview only returned the four widget meters, and internal `/api/usage` totals omitted `STYLIST_TURN`. Separately, try-on settings labelled the latest personal-photo counter row as "this month" instead of filtering to the current billing period.
+
+Evidence:
+- `apps/shopify-app/app/lib/entitlement.server.ts` enforces `VISION_TURN` and `STYLIST_TURN` alongside try-on/style/fit meters.
+- Pre-patch, `apps/shopify-app/app/lib/dashboard.server.ts` built `plan.usage` with only `TRYON_PERSONAL`, `TRYON_BODY`, `STYLE_RECOMMENDATION`, and `FIT_RECOMMENDATION`, so Mira turn usage could be enforced but absent from merchant overview data.
+- Pre-patch, `apps/shopify-app/app/routes/api.usage.tsx` totalled `VISION_TURN` but not `STYLIST_TURN`, so internal ops could miss the main chat meter in aggregate quota monitoring.
+- Pre-patch, `apps/shopify-app/app/routes/app.settings.tryon.tsx` selected the latest `TRYON_PERSONAL` counter by `periodStart desc` while rendering "this month"; a stale or future row could be shown as current usage.
+- This branch adds `VISION_TURN` and `STYLIST_TURN` to merchant dashboard `plan.usage`, adds `STYLIST_TURN` to internal usage totals, and filters try-on settings quota by `currentPeriodStart()`.
+- This branch adds `scripts/verify-billing-usage-contract.mjs`, which checks billing status, merchant dashboard usage, internal usage totals, and try-on settings period semantics against the enforced meter set.
+- `pnpm check:agentic-contracts` now includes `pnpm check:billing-usage`.
+
+Impact:
+- A merchant could hit a Mira stylist-turn limit while the dashboard usage shape never showed that meter.
+- Internal operators could underestimate total chat-meter burn when investigating tier or support issues.
+- Try-on settings could display old usage as current-period quota, creating exactly the kind of UI/back-end mismatch that makes fixes feel inconsistent.
+
+Required fix:
+- Keep merchant-visible and internal usage surfaces aligned to the same enforced meter set.
+- Render the expanded `plan.usage` meters in the merchant UI where space allows, rather than only returning them in JSON.
+- Add a browser/dashboard fixture for a shop with non-zero `STYLIST_TURN`, `VISION_TURN`, and stale prior-period try-on usage.
+
+## Finding 140: Merchant Dashboard Returned Correct Usage Data But Did Not Render It
+
+Severity: P1 for UI/UX trust and billing self-serve. Finding 139 fixed the server/API usage shape so all enforced meters were returned, but the embedded Shopify merchant dashboard still never rendered `d.plan.usage`. That meant quota truth was technically available in JSON, yet invisible to the brand using the product. This is the exact backend/UI split behind the repeated "we fixed it but it still feels broken" pattern.
+
+Evidence:
+- Pre-patch, `apps/shopify-app/app/routes/app.dashboard.tsx` rendered revenue, engagement, Fashion Intelligence, reorder intelligence, and top looks, but did not read `d.plan.usage`.
+- Pre-patch, the route had no visible plan usage section, so merchants could not see personal try-ons, body-model try-ons, style recommendations, fit recommendations, Mira vision turns, or Mira chat turns in one place.
+- This branch adds a visible "Plan usage" dashboard card using `USAGE_METERS` for all six enforced meters.
+- The usage panel labels the current billing period and explains that unlimited meters still show activity without being treated as caps.
+- `scripts/verify-billing-usage-contract.mjs` now checks that the embedded dashboard renders a visible usage panel and includes every enforced meter, not just that the server returns usage JSON.
+
+Impact:
+- A merchant could hit a limit and still have no visible dashboard explanation for which meter was used.
+- Support and ops would need to inspect APIs or internal tools instead of letting the merchant self-diagnose.
+- This is the UI/UX half of quota correctness: enforcement, API truth, and visible brand dashboard now agree.
+
+Required fix:
+- Add browser-level dashboard fixtures proving the usage card is visible and readable on desktop and mobile.
+- Keep `USAGE_METERS` aligned with entitlement/billing meter lists.
+- Eventually add upgrade/action links per exhausted meter so limits lead to conversion or ops support rather than confusion.
+
 ## What Is Actually Fixed In The Closeout Commit
 
 - Browser flows 1-5 passed in the previous closeout.
@@ -3203,6 +3315,11 @@ Required fix:
 - Live storefront card and Try-On E2E now check resolved/rendered image URLs, reject size-guide/swatch/detail/crop image patterns, support exact expected-image fragments for controlled fixtures, and the rebuilt Shopify widget bundle exposes stable resolved-image/fallback hooks.
 - Shopify scope truth now has one runtime string, active env/docs drift guards, extra-stale-scope detection, and internal brand detail live-checks Shopify `currentAppInstallation.accessScopes` before treating permissions as healthy.
 - Storefront and bridge analytics now validate any supplied product evidence against the current shop, not only cart-success events, preventing fake or cross-shop product ids from polluting Mira's learning loop.
+- Internal ops quota percent now uses the same metric boundaries as entitlement enforcement, including style, fit, and Mira turn caps while ignoring unlimited/archival counters, so quota UI no longer divides all activity by try-on-only limits.
+- Prisma runtime ownership is now centralized behind `@stylique/db` for worker/core/web paths, a runtime verifier guards the facade from DB and Shopify app contexts, and full workspace typecheck is green again.
+- Async try-on worker finalization is now idempotent by render row status, so late duplicate completions cannot double-count quota or let failure writes overwrite a successful render.
+- Merchant dashboard usage data, internal usage totals, and try-on settings quota reads now expose the same active meters and current-period semantics as entitlement enforcement, with a billing-usage verifier in the aggregate contract suite.
+- The embedded merchant dashboard now visibly renders all enforced plan usage meters with current-period and unlimited-meter copy, and the billing-usage verifier guards the visible UI surface.
 
 ## Why Fixes Kept Coming Back
 

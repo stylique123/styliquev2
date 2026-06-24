@@ -16,7 +16,7 @@
 //   • Per-shop snapshots stay tenant-scoped (queried only via shopId).
 
 import { prisma } from "../db.server";
-import { Prisma } from "@stylique/db";
+import { PrismaRuntime } from "@stylique/db";
 import { distinctOrderCountFromEvents } from "@stylique/core";
 
 const DAY = 86_400_000;
@@ -39,7 +39,7 @@ export async function recomputeBrandSnapshot(shopId: string): Promise<void> {
   const sessions = await prisma.shopperSession.findMany({
     where: {
       shopifyDomain: shop.shopifyDomain,
-      tasteVectorJson: { not: Prisma.AnyNull },
+      tasteVectorJson: { not: PrismaRuntime.AnyNull },
       signalCount: { gte: 3 },
     },
     select: { tasteVectorJson: true },

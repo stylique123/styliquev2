@@ -25,7 +25,7 @@
  *
  * Requires DATABASE_URL in env. Read-only — never writes.
  */
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@stylique/db";
 
 const args = Object.fromEntries(
   process.argv

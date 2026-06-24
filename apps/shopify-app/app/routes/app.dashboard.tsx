@@ -50,6 +50,28 @@ const sourceLabel = (source: string) => {
   }
 };
 const sourceTone = (source: string): "success" | "attention" => source === "measured" ? "success" : "attention";
+const USAGE_METERS = [
+  ["TRYON_PERSONAL", "Personal try-ons"],
+  ["TRYON_BODY", "Body-model try-ons"],
+  ["STYLE_RECOMMENDATION", "Style recommendations"],
+  ["FIT_RECOMMENDATION", "Fit recommendations"],
+  ["VISION_TURN", "Mira vision turns"],
+  ["STYLIST_TURN", "Mira chat turns"],
+] as const;
+
+function usageValue(row: { used: number; cap: number | null; remaining: number | null } | undefined) {
+  if (!row) return "0 / 0";
+  if (row.cap == null) return `${row.used.toLocaleString()} / Unlimited`;
+  return `${row.used.toLocaleString()} / ${row.cap.toLocaleString()}`;
+}
+
+function usageTone(row: { used: number; cap: number | null; remaining: number | null } | undefined): "success" | "attention" | "critical" {
+  if (!row || row.cap == null || row.cap <= 0) return "success";
+  const ratio = row.used / row.cap;
+  if (ratio >= 1) return "critical";
+  if (ratio >= 0.8) return "attention";
+  return "success";
+}
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -145,6 +167,37 @@ export default function Dashboard() {
                 </Text>
               </BlockStack>
             )}
+          </Card>
+        </Layout.Section>
+
+        {/* ── Plan usage: visible quota truth, same meters entitlement enforces ─ */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="300">
+              <InlineStack align="space-between" blockAlign="center">
+                <Text as="h2" variant="headingMd">Plan usage</Text>
+                <Badge tone="info">{d.plan.tier}</Badge>
+              </InlineStack>
+              <Text as="p" tone="subdued" variant="bodySm">
+                Current billing period. Unlimited meters still show usage so you can see activity without treating it as a cap.
+              </Text>
+              <InlineStack gap="400" wrap>
+                {USAGE_METERS.map(([metric, label]) => {
+                  const row = d.plan.usage[metric];
+                  return (
+                    <Box key={metric} background="bg-surface-secondary" padding="300" borderRadius="200">
+                      <BlockStack gap="100">
+                        <InlineStack align="space-between" blockAlign="center">
+                          <Text as="span" tone="subdued" variant="bodyXs">{label}</Text>
+                          <Badge tone={usageTone(row)}>{row?.cap == null ? "Unlimited" : `${row?.remaining ?? 0} left`}</Badge>
+                        </InlineStack>
+                        <Text as="span" variant="headingMd">{usageValue(row)}</Text>
+                      </BlockStack>
+                    </Box>
+                  );
+                })}
+              </InlineStack>
+            </BlockStack>
           </Card>
         </Layout.Section>
 

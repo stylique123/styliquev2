@@ -9,7 +9,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Queue } from "bullmq";
 import { Redis as IORedis } from "ioredis";
-import { Prisma } from "@stylique/db";
+import { PrismaRuntime } from "@stylique/db";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
 
@@ -96,7 +96,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const [total, withSizeChart] = await Promise.all([
     prisma.product.count({ where: { shopId: shop.id } }),
     prisma.product.count({
-      where: { shopId: shop.id, sizeChartJson: { not: Prisma.AnyNull } },
+      where: { shopId: shop.id, sizeChartJson: { not: PrismaRuntime.AnyNull } },
     }),
   ]);
   const withoutSizeChart = total - withSizeChart;

@@ -1,4 +1,8 @@
-import { createHash } from "node:crypto";
+// Default import (not `{ createHash }`) so a client bundle that transitively
+// pulls this server-only module via the @stylique/core barrel doesn't break the
+// browser build — vite's `__vite-browser-external` stub has no named exports.
+import nodeCrypto from "node:crypto";
+const { createHash } = nodeCrypto;
 
 export type TryOnCacheKeyInput = {
   shopId: string;

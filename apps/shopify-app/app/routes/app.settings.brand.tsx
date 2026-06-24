@@ -13,6 +13,7 @@ import { json, redirect, unstable_parseMultipartFormData, unstable_createFileUpl
 import { Form, useLoaderData, useActionData, useNavigation, useFetcher } from "@remix-run/react";
 import { authenticate } from "../shopify.server";
 import { prisma } from "../db.server";
+import { setBrandSourceStatus, ensureBrandProfile } from "../lib/brand-source.server";
 import { getEffectivePlan } from "../lib/entitlement.server";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -602,56 +603,6 @@ export default function BrandDNAPage() {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function ensureBrandSource(shopId: string, kind: "INSTAGRAM" | "SHOPIFY"): Promise<void> {
-  const existing = await prisma.brandSource.findFirst({ where: { shopId, kind } });
-  if (!existing) {
-    await prisma.brandSource.create({ data: { shopId, kind, status: "PENDING" } });
-  }
-}
-
-async function setBrandSourceStatus(
-  shopId: string,
-  kind: "INSTAGRAM" | "SHOPIFY",
-  data: { status: "PENDING" | "FAILED"; error: string | null },
-): Promise<void> {
-  const existing = await prisma.brandSource.findFirst({
-    where: { shopId, kind },
-    select: { id: true },
-  });
-  if (existing) {
-    await prisma.brandSource.update({
-      where: { id: existing.id },
-      data: {
-        status: data.status,
-        error: data.error,
-        updatedAt: new Date(),
-      },
-    });
-  } else {
-    await prisma.brandSource.create({
-      data: {
-        shopId,
-        kind,
-        status: data.status,
-        error: data.error,
-      },
-    });
-  }
-}
-
-async function ensureBrandProfile(shopId: string): Promise<string> {
-  const existing = await prisma.brandProfile.findUnique({
-    where: { shopId },
-    select: { id: true },
-  });
-  if (existing) return existing.id;
-  const created = await prisma.brandProfile.create({
-    data: { shopId },
-    select: { id: true },
-  });
-  return created.id;
-}
 
 function humanize(str: string): string {
   return str.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

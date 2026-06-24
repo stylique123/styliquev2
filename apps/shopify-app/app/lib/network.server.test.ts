@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Prisma } from "@stylique/db";
+import { PrismaRuntime } from "@stylique/db";
 import { distinctOrderCountFromEvents } from "@stylique/core";
 
 const db = vi.hoisted(() => ({
@@ -64,7 +64,7 @@ describe("recomputeBrandSnapshot", () => {
     expect(db.shopperSession.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         shopifyDomain: "brand.myshopify.com",
-        tasteVectorJson: { not: Prisma.AnyNull },
+        tasteVectorJson: { not: PrismaRuntime.AnyNull },
         signalCount: { gte: 3 },
       }),
     }));

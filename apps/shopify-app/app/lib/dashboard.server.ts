@@ -13,7 +13,7 @@
 //   • recs      — tier-filtered BrandRecommendation rows
 
 import { prisma } from "../db.server";
-import { Prisma } from "@stylique/db";
+import { PrismaRuntime } from "@stylique/db";
 import { getEffectivePlan } from "./entitlement.server";
 import { listRecommendations } from "./recommendations.server";
 import { readBenchmarksForShop, readLatestSnapshot } from "./network.server";
@@ -331,6 +331,8 @@ export async function buildOverview(args: {
     TRYON_BODY:             cap(f.widget.monthlyTryOnBody),
     STYLE_RECOMMENDATION:   cap(f.widget.monthlyStyleRecs),
     FIT_RECOMMENDATION:     cap(f.widget.monthlyFitRecs),
+    VISION_TURN:            cap(f.stylist.monthlyVisionTurns),
+    STYLIST_TURN:           cap(f.stylist.monthlyTurns),
   };
   const usage: Record<string, { used: number; cap: number | null; remaining: number | null }> = {};
   for (const [metric, capValue] of Object.entries(capByMetric)) {
@@ -626,7 +628,7 @@ export async function buildOverview(args: {
   if (plan.tier !== "STARTER" && f.stylist.tasteVectorEnabled) {
     const sessions = await prisma.shopperSession.findMany({
       where: { shopifyDomain: (await prisma.shop.findUnique({ where: { id: args.shopId }, select: { shopifyDomain: true } }))?.shopifyDomain ?? "__none__",
-               tasteVectorJson: { not: Prisma.AnyNull }, signalCount: { gte: 3 } },
+               tasteVectorJson: { not: PrismaRuntime.AnyNull }, signalCount: { gte: 3 } },
       select: { tasteVectorJson: true }, take: 2000,
     });
     const agg = { colorFamily: {} as Record<string, number>, silhouette: {} as Record<string, number>, category: {} as Record<string, number> };

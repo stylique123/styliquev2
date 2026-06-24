@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import PrismaPkg, { PrismaClient } from "@prisma/client";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -42,3 +42,13 @@ export const prisma =
 if (process.env.NODE_ENV !== "production") global.__prisma = prisma;
 
 export * from "@prisma/client";
+
+// `import { Prisma } from "@prisma/client"` is NOT a valid named ESM import: the
+// generated client is CommonJS and `Prisma` (the runtime namespace with AnyNull /
+// JsonNull / TransactionIsolationLevel) is not statically detectable, so the
+// bundled server build throws at boot ("Named export 'Prisma' not found") and the
+// Railway deploy fails. `export *` above still re-exports `Prisma` as a TYPE
+// namespace (erased, safe). For the RUNTIME value, consumers import `PrismaRuntime`
+// — sourced via the default import (whole module.exports), which is runtime-safe
+// everywhere and resolves @prisma/client through the same path as PrismaClient.
+export const PrismaRuntime = PrismaPkg.Prisma;

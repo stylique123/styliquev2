@@ -10,7 +10,9 @@ import {
   missingRequiredShopifyScopes,
   type LiveShopifyScopeCheck,
 } from "./shopify-scopes.server";
+import { PLAN_FEATURES, type PlanFeatures } from "@stylique/core";
 import { decryptField } from "@stylique/core";
+import type { UsageMetric } from "@stylique/types";
 
 const DAY = 86_400_000;
 
@@ -147,6 +149,65 @@ export function internalDemandCatalogGapWhere(shopId: string) {
   };
 }
 
+type InternalQuotaPlan = {
+  monthlyTryOnPersonal: number | null;
+  monthlyTryOnBody: number | null;
+  monthlyStylistTurns: number | null;
+  monthlyStyleRecs: number | null;
+  monthlyFitRecs: number | null;
+} | null | undefined;
+
+type InternalQuotaCounter = {
+  metric: string;
+  count: number;
+};
+
+const STARTER_QUOTAS = PLAN_FEATURES.STARTER;
+const INTERNAL_QUOTA_METRICS: UsageMetric[] = [
+  "TRYON_PERSONAL",
+  "TRYON_BODY",
+  "STYLE_RECOMMENDATION",
+  "FIT_RECOMMENDATION",
+  "STYLIST_TURN",
+];
+
+function quotaOrDefault(value: number | null | undefined, fallback: number | null): number | null {
+  return value === undefined ? fallback : value;
+}
+
+function quotaCapForMetric(plan: InternalQuotaPlan, metric: UsageMetric): number | null {
+  const fallback: PlanFeatures = STARTER_QUOTAS;
+  switch (metric) {
+    case "TRYON_PERSONAL":
+      return quotaOrDefault(plan?.monthlyTryOnPersonal, fallback.widget.monthlyTryOnPersonal);
+    case "TRYON_BODY":
+      return quotaOrDefault(plan?.monthlyTryOnBody, fallback.widget.monthlyTryOnBody);
+    case "STYLE_RECOMMENDATION":
+      return quotaOrDefault(plan?.monthlyStyleRecs, fallback.widget.monthlyStyleRecs);
+    case "FIT_RECOMMENDATION":
+      return quotaOrDefault(plan?.monthlyFitRecs, fallback.widget.monthlyFitRecs);
+    case "STYLIST_TURN":
+      return quotaOrDefault(plan?.monthlyStylistTurns, fallback.stylist.monthlyTurns);
+    default:
+      return null;
+  }
+}
+
+export function internalQuotaUsagePercent(plan: InternalQuotaPlan, counters: InternalQuotaCounter[]): number {
+  const usageByMetric = new Map(counters.map((counter) => [counter.metric, counter.count]));
+  let used = 0;
+  let cap = 0;
+
+  for (const metric of INTERNAL_QUOTA_METRICS) {
+    const metricCap = quotaCapForMetric(plan, metric);
+    if (metricCap === null) continue;
+    used += usageByMetric.get(metric) ?? 0;
+    cap += metricCap;
+  }
+
+  return cap > 0 ? Math.min(1, used / cap) : 0;
+}
+
 export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
   const since7d = new Date(Date.now() - 7 * DAY);
   const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -165,6 +226,9 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
           planFeaturesJson: true,
           monthlyTryOnPersonal: true,
           monthlyTryOnBody: true,
+          monthlyStylistTurns: true,
+          monthlyStyleRecs: true,
+          monthlyFitRecs: true,
         },
       },
       brandProfile: {
@@ -257,13 +321,8 @@ export async function getAllBrandSummaries(): Promise<BrandSummary[]> {
 
     const shopCounters = usageCounters.filter((u) => u.shopId === shop.id);
     const creditsBurned = shopCounters.reduce((sum, u) => sum + u.count, 0);
-
-    // Approximate quota usage from plan caps
     const plan = shop.plan;
-    const monthlyCap = plan
-      ? (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
-      : 250;
-    const quotaUsagePercent = Math.min(1, creditsBurned / monthlyCap);
+    const quotaUsagePercent = internalQuotaUsagePercent(plan, shopCounters);
 
     const hasBrandDNA = !!shop.brandProfile?.paletteJson;
     const missingScopes = missingRequiredShopifyScopes(shop.scopes);
@@ -315,6 +374,9 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
           planFeaturesJson: true,
           monthlyTryOnPersonal: true,
           monthlyTryOnBody: true,
+          monthlyStylistTurns: true,
+          monthlyStyleRecs: true,
+          monthlyFitRecs: true,
         },
       },
       brandProfile: {
@@ -431,9 +493,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
   });
   const creditsBurned = shopCounters.reduce((sum, u) => sum + u.count, 0);
   const plan = shop.plan;
-  const monthlyCap = plan
-    ? (plan.monthlyTryOnPersonal ?? 50) + (plan.monthlyTryOnBody ?? 200)
-    : 250;
+  const quotaUsagePercent = internalQuotaUsagePercent(plan, shopCounters);
 
   // P1-T08: widget-live — placement beacon in the last 7 days.
   const widgetLive = (await prisma.analyticsEvent.count({
@@ -460,7 +520,7 @@ export async function getBrandDetail(shopId: string): Promise<BrandDetail | null
     totalChatMessages: chatMsgCount,
     avgMessagesPerSession: sessionsAllTime > 0 ? Math.round(chatMsgCount / sessionsAllTime) : 0,
     creditsBurnedThisMonth: creditsBurned,
-    quotaUsagePercent: Math.min(1, creditsBurned / monthlyCap),
+    quotaUsagePercent,
     hasBrandDNA,
     brandDNAAge,
     openIssues,
