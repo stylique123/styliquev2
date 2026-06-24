@@ -19,6 +19,7 @@
 //   • Passive proactivity: a quiet nudge on real PDP dwell, never a random pop.
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import {
   buildLook, analyzeColorHarmony, products as catalog, recommendSizeForProduct, confidenceBreakdown, resolveAsset, ASSET_BASE,
@@ -2004,6 +2005,14 @@ export default function MiraWidget() {
   const stylistEnabled = !ASSET_BASE || themeFlag("enableStylist", true);
   const tryOnEnabled = !ASSET_BASE || themeFlag("enableWidget", true);
   const [open, setOpen]           = useState(false);
+  // Portal the whole floating widget to <body> AFTER mount. On a real Shopify
+  // storefront the theme often wraps sections in a CSS `transform`, which makes
+  // our `position:fixed` panel anchor to that ancestor instead of the viewport →
+  // it gets thrown off-screen / clipped. Rendering into document.body escapes any
+  // transformed ancestor so `fixed` always means viewport. First paint stays
+  // inline (SSR/hydration-safe); we move to body once mounted.
+  const [portalMounted, setPortalMounted] = useState(false);
+  useEffect(() => { setPortalMounted(true); }, []);
   // Forward-ref holders so the whitelisted action executor (defined before
   // these callbacks) can call them without a circular dependency. Populated by
   // an effect once the callbacks exist.
@@ -3107,7 +3116,7 @@ export default function MiraWidget() {
     })();
   }, [turnCount, cartValue, currentProduct, emitResponses, stylistEnabled]);
 
-  return (
+  const widgetTree = (
     <div data-stylique-widget="1" data-stylique-state={open ? "open" : "closed"}>
       {/* Floating cart badge */}
       {cartCount > 0 && (
@@ -3502,6 +3511,13 @@ export default function MiraWidget() {
       `}</style>
     </div>
   );
+
+  // After mount, render the floating widget into <body> so `position:fixed`
+  // anchors to the viewport even when a Shopify theme wraps sections in a
+  // CSS transform (which would otherwise capture it and throw it off-screen).
+  return portalMounted && typeof document !== "undefined"
+    ? createPortal(widgetTree, document.body)
+    : widgetTree;
 }
 
 // ── Small components / helpers ─────────────────────────────────────────────────

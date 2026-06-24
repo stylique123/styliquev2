@@ -251,4 +251,47 @@ describe("extractSizeChartMultiSource — image OCR selection", () => {
     expect(result.winner?.source).toBe("image_ocr");
     expect(result.winner?.sizes).toHaveLength(2);
   });
+
+  it("normalizes OCR inch measurements to centimeters before fit bridging", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string | URL) => {
+        const href = String(url);
+        if (href.includes("generativelanguage.googleapis.com")) {
+          return new Response(
+            JSON.stringify({
+              candidates: [{
+                content: {
+                  parts: [{
+                    text: JSON.stringify({
+                      sizes: [
+                        { name: "S", chest: 34, waist: 28 },
+                        { name: "M", chest: 36, waist: 30 },
+                      ],
+                      unit: "in",
+                    }),
+                  }],
+                },
+              }],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        return new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "image/jpeg" },
+        });
+      }),
+    );
+
+    const result = await extractMultiSource({
+      geminiApiKey: "test-key",
+      images: [{ url: "https://cdn.example.com/size-chart.jpg", alt: "Size guide" }],
+    });
+
+    expect(result.winner?.source).toBe("image_ocr");
+    expect(result.winner?.unit).toBe("cm");
+    expect(result.winner?.sizes.find((row) => row.name === "M")?.chest).toBeCloseTo(91.4, 1);
+    expect(result.winner?.sizes.find((row) => row.name === "M")?.waist).toBeCloseTo(76.2, 1);
+  });
 });

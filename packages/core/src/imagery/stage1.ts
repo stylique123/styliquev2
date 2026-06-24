@@ -26,7 +26,7 @@ import type {
 const RX = {
   back:      /(_back|-back|back\.|_rear)/i,
   detail:    /(_detail|-detail|_close|_zoom|_macro|_swatch|_fabric|size[ -]?(chart|guide)|measurement|measurements|sizing)/i,
-  lifestyle: /(_lifestyle|-lifestyle|_model|_editorial|_campaign|_lookbook)/i,
+  lifestyle: /(_lifestyle|-lifestyle|_model|model[ -]?(wearing|shot)|on[ -]?model|worn[ -]?(by|with)?|styled[ -]?(with|look)?|paired[ -]?with|outfit|full[ -]?look|_editorial|_campaign|_lookbook)/i,
   swatch:    /(_swatch|-swatch|_color|_chip)/i,
   front:     /(front[ -]?(view|shot)?|packshot|product[ -]?(only|image|photo)|flat[ -]?lay)/i,
 };

@@ -5,7 +5,7 @@
 // intelligence trio. Both callers (demo route, Shopify adapter) pass their own.
 import type { MiraDecision, MiraBody } from "./schemas.js";
 import type { MiraProduct } from "./products.js";
-import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames, guardVoiceColorClaims, enforceEligibility, injectColourStory } from "./policy.js";
+import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames, guardVoiceColorClaims, enforceEligibility, injectColourStory, guardBoundaries, enforceCategoryIntent } from "./policy.js";
 import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
@@ -277,6 +277,9 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   // the model claimed sold-out sizes were available and pushed women's pieces to
   // men despite the catalog flags. Runs before the name guard so the voice guard
   // sees the final (possibly swapped) product.
+  // The named garment must be what Mira shows: "take me to a skirt" → a real skirt,
+  // never a coat. Runs before eligibility so the swapped piece is then made sellable.
+  decision = enforceCategoryIntent(decision, body.message, activeCatalog);
   decision = enforceEligibility(decision, body, activeCatalog);
   // Deterministic backstop: rewrite any phantom product name the model spoke in
   // its voice that isn't a real catalog title (validateHandle only guards the
@@ -312,7 +315,7 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   // deterministic planner → router → verification → rejection/enforcement rails.
   // Factored into applySalesEngine() so the anti-chatbot eval exercises the EXACT
   // same code path (not a reimplementation).
-  return applySalesEngine({
+  const result = applySalesEngine({
     decision,
     body,
     activeCatalog,
@@ -320,6 +323,11 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
     source: rawDecision ? "gemini" : "fallback",
     model: modelUsed,
   });
+  // FINAL WORD: firm, on-brand boundary on injection / privacy probe / discount-
+  // grab / off-topic — never leak, never fake a code, redirect back to selling.
+  // Runs after the whole sales-engine envelope so nothing can re-clobber it.
+  if (result?.decision) result.decision = guardBoundaries(result.decision, body.message);
+  return result;
 }
 
 export interface SalesEngineInput {

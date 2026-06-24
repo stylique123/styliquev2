@@ -3194,6 +3194,134 @@ Required fix:
 - Keep `USAGE_METERS` aligned with entitlement/billing meter lists.
 - Eventually add upgrade/action links per exhausted meter so limits lead to conversion or ops support rather than confusion.
 
+## Finding 141: External Brand Dashboard Also Hid Plan Usage Despite Typing It
+
+Severity: P1 for merchant UI/UX consistency. The embedded Shopify dashboard now renders plan usage, but the standalone external brand dashboard (`apps/web/app/dashboard/page.tsx`) already typed `plan.usage` in `OverviewData` and still never rendered it. A brand using the external dashboard could see revenue, module KPIs, Fashion Intelligence, learning-loop insights, and try-on health, but not the usage meters that explain billing, quotas, and why Mira or try-on may stop serving an action.
+
+Evidence:
+- Pre-patch, `apps/web/app/dashboard/page.tsx` defined `plan.usage: Record<string, { used, cap, remaining }>` but no JSX read `data.plan.usage`.
+- Pre-patch, the external dashboard had no visible plan-usage card and no fallback copy when the external overview API was unavailable.
+- This branch adds the same six enforced usage meters to the external dashboard: personal try-ons, body-model try-ons, style recommendations, fit recommendations, Mira vision turns, and Mira chat turns.
+- The external usage card labels the current billing period, explains that unlimited meters still show activity without being caps, and shows "Connect overview API" when the external overview payload is unavailable.
+- `scripts/verify-billing-usage-contract.mjs` now guards visible usage panels in both the embedded Shopify dashboard and the external brand dashboard.
+
+Impact:
+- Usage correctness was still surface-dependent: Shopify embedded dashboard was fixed, standalone brand dashboard was not.
+- Brands using external access could hit limits or see support issues without a visible explanation of which meter drove the state.
+- This is another repeated-fix pattern: the data contract was repaired, then one of the UIs using that contract was left behind.
+
+Required fix:
+- Add browser-level dashboard fixtures for both embedded and external dashboards.
+- Keep external and embedded `USAGE_METERS` lists aligned or extract a shared presentation contract.
+- Add upgrade/contact actions for exhausted meters once billing packaging is finalized.
+
+## Finding 142: External Dashboard Usage Fix Had No Browser Proof
+
+Severity: P1 for UI/UX regression risk. Finding 141 repaired the external dashboard JSX, but the only guard was a static contract verifier. That still leaves the failure mode the founder called out: backend/API contracts can be correct while a rendered dashboard silently hides or mis-presents the card because auth, local storage, responsive layout, or async dashboard modules behave differently in the browser.
+
+Evidence:
+- Pre-patch, `apps/web/playwright.config.mjs` only matched `storefront-e2e.spec.mjs` and required a live Shopify storefront. That is valuable for storefront proof, but it could never exercise `/dashboard` with mocked merchant usage.
+- This branch adds `apps/web/playwright.dashboard.config.mjs`, a dedicated desktop/mobile dashboard browser fixture with a local web server.
+- This branch adds `apps/web/scripts/dashboard-usage.spec.mjs`, which seeds the dashboard token/shop local storage, mocks `/api/external-overview`, mutes unrelated same-origin intelligence feeds, and asserts that the Plan usage card, all six enforced meters, current-period copy, unlimited semantics, remaining counts, and exhausted-meter state are visibly rendered.
+- `scripts/verify-billing-usage-contract.mjs` now guards that the dashboard browser fixture exists and keeps asserting the exact quota UI contract.
+
+Impact:
+- Without this, future work could keep server-side usage JSON correct while breaking the actual merchant-visible dashboard.
+- The repeated fix loop would continue because the test boundary stopped before the user-facing surface.
+- Desktop/mobile fixture coverage turns the quota fix from "data exists somewhere" into "the brand can actually see it."
+
+Required fix:
+- Keep the external dashboard fixture in the normal UI verification path before release.
+- Add an embedded Shopify dashboard browser fixture once authenticated embedded-app test scaffolding is available.
+- Consider extracting a shared usage-meter presentation contract so embedded and external dashboards cannot drift independently.
+
+## Finding 143: Embedded Dashboard Usage UI Was Still Only Statically Proved
+
+Severity: P1 for merchant UI/UX regression risk. Finding 140 put the usage card into the embedded Shopify dashboard, but the proof still stopped at source scanning. That is weaker than the bug class we are trying to eliminate: a route can contain the right strings while the rendered Polaris UI fails because of component context, auth boundaries, or a future inline refactor.
+
+Evidence:
+- Pre-patch, the plan-usage JSX lived inline in `apps/shopify-app/app/routes/app.dashboard.tsx`, making it hard to render without a live embedded Shopify admin session.
+- This branch extracts the embedded usage card to `apps/shopify-app/app/components/dashboard-plan-usage.tsx`, preserving the same six enforced meters and the current-period/unlimited-meter copy.
+- This branch adds `apps/shopify-app/app/components/dashboard-plan-usage.test.tsx`, which renders the Polaris card through `AppProvider` and asserts the actual static markup includes every enforced meter, exhausted-meter state, warning/critical tone helpers, unlimited usage, and formatted large counts.
+- `scripts/verify-billing-usage-contract.mjs` now guards the embedded component and its render test, not just the route source.
+
+Impact:
+- The embedded merchant surface now has a direct UI render proof instead of only a string-search proof.
+- This closes another backend/UI split: usage JSON, route composition, and the actual Polaris card all have separate evidence.
+- Full browser proof is still not claimed for the embedded Shopify admin because that needs authenticated embedded-app harnessing, but the no-auth UI component boundary is now covered.
+
+Required fix:
+- Keep the component-level render test in the Shopify app test suite.
+- Add authenticated embedded-app browser testing once the Shopify admin harness is available.
+- Keep the embedded and external usage meter lists aligned, ideally by extracting a shared meter descriptor if another dashboard surface is added.
+
+## Finding 144: Shopify Permissions Were Correct But Not Audited As One Install Contract
+
+Severity: P1 for install reliability. The active scope set is the right least-privilege shape for the current system, but the proof was split across several files: app TOML, runtime env defaults, startup validation, worker Admin GraphQL reads, ScriptTag injection mutations, and webhook declarations. That fragmentation is dangerous because a future permissions edit can leave half the install working and half silently failing.
+
+Evidence:
+- The active app config requests `read_products,read_inventory,read_orders,write_script_tags`, matching current code paths for catalog/product image/size-chart reads, inventory availability, order attribution webhooks, and ScriptTag fallback injection.
+- Runtime OAuth reads `env.SHOPIFY_SCOPES`, and `env.server.ts` defaults that value from `REQUIRED_SHOPIFY_SCOPES_STRING`.
+- Startup validation fails if any required Shopify scope is missing.
+- The worker catalog client uses read-only product, variant, inventory, image, and metafield queries; no active product/theme mutation path was found in this permission pass.
+- ScriptTag install and daily self-heal use `scriptTagCreate`/`scriptTagDelete`, so `write_script_tags` remains required while the fallback injection path exists.
+- This branch adds `scripts/verify-shopify-permissions-contract.mjs` and wires `check:shopify-permissions` into `check:agentic-contracts`, so TOML scopes, env defaults, OAuth setup, startup validation, worker reads, ScriptTag mutations, webhooks, GDPR URLs, and Admin API versions are checked together.
+
+Impact:
+- A missing `read_inventory` would make size/availability truth weak while catalog reads still work.
+- A missing `read_orders` would make attribution and commerce intelligence look empty even if Mira chat works.
+- A missing `write_script_tags` would break auto-injection/self-heal while dashboards and backend services still look healthy.
+- Requesting unnecessary write/theme/product scopes would increase merchant trust and app-review risk without serving current functionality.
+
+Required fix:
+- Keep `check:shopify-permissions` in the aggregate agentic contract suite.
+- Treat any new Shopify Admin mutation as a scope review event, not a casual code change.
+- Still run a live install/re-consent proof before launch, because static permission checks cannot prove a merchant has already granted the updated scope set.
+
+## Finding 145: Image Scoring Still Treated Styled Outfit Photos As Clean Garment Anchors
+
+Severity: P1 for try-on trust and recommendation card quality. Earlier image fixes rejected size guides, swatches, detail crops, and obvious lifestyle filenames, but the Stage 1 heuristic still missed common Shopify alt text such as "front view styled with pants", "model wearing", "full look", or "paired with". Those are not clean garment reference images. For a shirt try-on, using a styled full-outfit image can feed the render model pants, another layer, a model body, or the wrong silhouette context, which is exactly why try-on and cards can feel randomly wrong even when the backend product is correct.
+
+Evidence:
+- Pre-patch, `packages/core/src/imagery/stage1.ts` only recognized a narrow lifestyle set: `_lifestyle`, `_model`, `_editorial`, `_campaign`, and `_lookbook`.
+- A first-position image with alt text like "front view styled with black pants as a full outfit" could fall through to the broad front/product-photo heuristic.
+- This branch expands the lifestyle detector to include model-wearing, on-model, worn-with, styled-with, paired-with, outfit, and full-look language.
+- `packages/core/src/__tests__/imagery-quality.test.ts` now proves that outfit/model/styled-with wording is lifestyle and that a clean packshot beats a first-position styled outfit image for `primaryTryonImageId`.
+- `scripts/verify-catalog-extraction-chain.mjs` now requires this fixture so future image refactors do not regress to first-position or broad-front selection.
+
+Impact:
+- Try-on receives a cleaner garment-only anchor, reducing wrong composite inputs and fewer "why did it grab pants / full outfit / model pose?" failures.
+- Recommendation and look cards are less likely to show a context image when the shopper needs to inspect the actual product.
+- Brand DNA and catalog intelligence become less polluted by lifestyle context when the system is trying to understand product attributes.
+
+Required fix:
+- Keep adding hard negative fixtures for real merchant image failures: mannequin-only, folded flatlay, zoomed collar, fabric macro, variant swatch, model full look, and size guide.
+- Add a live-image review harness that samples top products after sync and shows the selected anchor beside rejected candidates for ops approval.
+- Eventually combine these heuristics with vision classification so alt-text-poor brands still get product-only anchors.
+
+## Finding 146: OCR Size Charts Could Bridge Inches As Centimeters
+
+Severity: P1 for fit recommendation correctness. JSON and HTML size-chart parsers already normalize inch measurements to centimeters, but image OCR returned the model's `unit` as-is and passed numeric rows through unchanged. The worker then writes those values to `ProductVariant.measurementsJson`, while `recommendFit` assumes all per-SKU measurements are centimeters. A 36-inch chest could therefore become 36 cm, making the fit engine choose wildly wrong sizes for OCR-only charts.
+
+Evidence:
+- `packages/core/src/sizing/metafield.ts` converts JSON/HTML inch values to cm.
+- Pre-patch, `packages/core/src/sizing/extractors/image-ocr.ts` returned OCR rows and `unit` directly.
+- `apps/worker/src/jobs/size-chart-extract.ts` bridges winner rows into `ProductVariant.measurementsJson`.
+- `packages/core/src/fit/service.ts` documents and scores `SkuMeasurements` as centimeters.
+- This branch adds OCR normalization in `image-ocr.ts`, converting inch measurements to cm and returning `unit: "cm"`.
+- `packages/core/src/__tests__/sizing-parsers.test.ts` now proves an OCR chart with `unit: "in"` becomes centimeter values before fit bridging.
+- `scripts/verify-catalog-extraction-chain.mjs` now guards both the OCR normalizer and the regression fixture.
+
+Impact:
+- OCR-only size charts become safe inputs for `recommendFit` instead of silently poisoning per-variant measurements.
+- Brands that upload size charts as images now get the same unit semantics as brands using structured metafields or description tables.
+- This removes a high-trust failure mode where Mira confidently recommends the wrong size because extraction succeeded but unit conversion did not.
+
+Required fix:
+- Keep OCR unit-normalization fixtures for inches and centimeters.
+- Add live OCR samples from real merchant charts with mixed labels like `inches`, `"`, and `cm`.
+- Surface chart source/unit in internal diagnostics so ops can inspect why a size recommendation used specific measurements.
+
 ## What Is Actually Fixed In The Closeout Commit
 
 - Browser flows 1-5 passed in the previous closeout.
@@ -3320,6 +3448,7 @@ Required fix:
 - Async try-on worker finalization is now idempotent by render row status, so late duplicate completions cannot double-count quota or let failure writes overwrite a successful render.
 - Merchant dashboard usage data, internal usage totals, and try-on settings quota reads now expose the same active meters and current-period semantics as entitlement enforcement, with a billing-usage verifier in the aggregate contract suite.
 - The embedded merchant dashboard now visibly renders all enforced plan usage meters with current-period and unlimited-meter copy, and the billing-usage verifier guards the visible UI surface.
+- The external brand dashboard now also visibly renders the same enforced usage meters, including fallback copy when the overview API is unavailable, and the billing-usage verifier guards both dashboard surfaces.
 
 ## Why Fixes Kept Coming Back
 

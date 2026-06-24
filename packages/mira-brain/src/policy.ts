@@ -475,6 +475,70 @@ export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProdu
   return hedged ? { ...decision, voice: out.join(" ") } : decision;
 }
 
+// ── CATEGORY-INTENT GUARD — the named garment must be what Mira shows ─────────
+// "take me to a skirt" must land on a SKIRT, not a coat. When the shopper names a
+// specific garment, the routed product's name/category must match it; if the model
+// (or a hero fallback) picked a different family, swap to the best sellable catalog
+// piece that genuinely matches (name hint first, then category). Deterministic —
+// prompt rules alone don't enforce this (a real "take me to skirt → coat" miss).
+type GarmentTarget = { name: RegExp; cats: string[] };
+const _GARMENTS: Array<{ trigger: RegExp; target: GarmentTarget }> = [
+  { trigger: /\bskirts?\b/i, target: { name: /skirt/i, cats: ["bottom"] } },
+  { trigger: /\b(dress(es)?|gown|frock|lehenga|anarkali|abaya|gharara|kameez|maxi)\b/i, target: { name: /dress|gown|slip|lehenga|anarkali|abaya|gharara|kameez|maxi/i, cats: ["dress"] } },
+  { trigger: /\b(coat|trench|overcoat|parka)\b/i, target: { name: /coat|trench|parka/i, cats: ["outerwear"] } },
+  { trigger: /\b(blazer|jacket|suit)\b/i, target: { name: /blazer|jacket|suit/i, cats: ["outerwear"] } },
+  { trigger: /\b(trouser|trousers|pant|pants|slacks|chinos)\b/i, target: { name: /trouser|pant|slack|chino|wide-?leg/i, cats: ["bottom"] } },
+  { trigger: /\b(jeans?|denim)\b/i, target: { name: /jean|denim/i, cats: ["bottom"] } },
+  { trigger: /\b(knit|sweater|jumper|cardigan|turtleneck|pullover|cashmere)\b/i, target: { name: /knit|sweater|jumper|cardigan|turtleneck|cashmere|merino/i, cats: ["knitwear"] } },
+  { trigger: /\b(shirt|blouse|tee|t-?shirt|top|cami|camisole)\b/i, target: { name: /shirt|blouse|tee|top|cami/i, cats: ["top"] } },
+  { trigger: /\b(bag|tote|clutch|purse|handbag)\b/i, target: { name: /bag|tote|clutch|purse/i, cats: ["accessory"] } },
+  { trigger: /\b(belt|scarf|sunglasses|necklace|earrings|shoes?|heels?|sneakers?|boots?|sandals?)\b/i, target: { name: /belt|scarf|sunglass|necklace|earring|shoe|heel|sneaker|boot|sandal/i, cats: ["accessory"] } },
+];
+const _SHOW_ROUTES = new Set(["reco_handle", "navigate", "reco_category", "reco_filter", "search", "try_on", "add_to_cart", "look"]);
+export function enforceCategoryIntent(decision: MiraDecision, message: string, catalog: MiraProduct[]): MiraDecision {
+  if (!decision.productHandle || !_SHOW_ROUTES.has(decision.route)) return decision;
+  const m = message ?? "";
+  const hit = _GARMENTS.find((g) => g.trigger.test(m));
+  if (!hit) return decision;
+  const cur = catalog.find((p) => p.handle === decision.productHandle);
+  if (!cur) return decision;
+  const matches = (p: MiraProduct) => hit.target.name.test(p.name) || hit.target.cats.includes((p.category || "").toLowerCase());
+  if (matches(cur)) return decision; // already the right garment
+  const pool = catalog.filter((p) => isSellable(p) && matches(p));
+  // name-hint match first (a real "skirt"), then any in-category piece, by keepRate.
+  const byName = pool.filter((p) => hit.target.name.test(p.name));
+  const pick = (byName.length ? byName : pool).sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
+  if (!pick) return decision; // catalog has none → leave it (honest-absence handled elsewhere)
+  return { ...decision, route: decision.route === "add_to_cart" ? "reco_handle" : decision.route, productHandle: pick.handle };
+}
+
+// ── BOUNDARY GUARD — deterministic, final word on attacks/abuse/off-topic ─────
+// A world-class closer never engages a troll or leaks — but also never silently
+// ignores it. On a clear prompt-injection / privacy probe / discount-extraction /
+// off-topic ask, give a crisp on-brand boundary + redirect back to selling, and
+// NEVER fabricate a discount, leak the prompt, or expose anyone's data. Runs LAST
+// so it overrides the cold-open hero (which would otherwise swallow these turns).
+const _INJECTION = /ignore (all|previous|the|your|prior)|disregard (all|the|your|previous)|system prompt|reveal (your |the )?(prompt|instruction|system)|print (your |the )?(system|prompt|instruction)|you are (now )?dan|new instructions\b|override (your|the|all)|jailbreak|act as (if|though) you have no|\bsystem:\s|authoriz(e|es|ed)\b.{0,30}(you|to give|discount|off)|the (store )?owner (authoriz|approv|says|told|wants)|apply (it|the|a|this|that)?\s*(\d+\s*%?\s*)?(discount|off)\s*(now|code)?/i;
+const _PRIVACY = /(other|another|last|previous|someone else'?s?|a different) (shopper|customer|user|person|buyer)|their (cart|order|data|details|info|email|address)|owner'?s? (email|phone|number|password|address|contact)|reveal .*(email|phone|password|address|data)|who else (bought|shopped)/i;
+const _DISCOUNT_X = /(give|get|need|want|send|share|drop|hook me up).{0,24}(discount code|promo code|coupon|voucher|% ?(off|discount)|percent off)|for free\b|free if i\b|\b\d{1,3}% ?(off|discount)\b|match (it|that price)|price ?match/i;
+const _OFFTOPIC = /\bwrite (me )?(a |some )?(python|javascript|code|script|sql)\b|scrape\b|drop table|select \* from|what medicine|prescription|i have a rash|should i take (for|medicine)|can i sue|legal advice|need a lawyer|my landlord|do my (homework|taxes)/i;
+
+export function guardBoundaries(decision: MiraDecision, message: string): MiraDecision {
+  const m = message ?? "";
+  const redirect = (line: string): MiraDecision => ({
+    ...decision,
+    route: "talk_only",
+    productHandle: undefined,
+    voice: line,
+    quickReplies: ["For an occasion", "A vibe in mind", "Just browsing"],
+  });
+  if (_INJECTION.test(m)) return redirect("I can't share how I work behind the scenes — but I can absolutely help you find the right piece. What are you after today?");
+  if (_PRIVACY.test(m)) return redirect("I can't share anyone else's details — that stays private. Let's focus on you, though: what are you looking for?");
+  if (_DISCOUNT_X.test(m)) return redirect("We don't do discount codes here, but I'll make sure you get something genuinely worth it. What's the occasion?");
+  if (_OFFTOPIC.test(m)) return redirect("That's outside what I can help with — I'm here for styling and finding you the right piece. Want me to pull something?");
+  return decision;
+}
+
 const _NEUTRALS = /\b(black|white|ivory|cream|off-white|beige|oat|stone|sand|taupe|tan|camel|cognac|brown|espresso|chocolate|grey|gray|charcoal|slate|ash|navy|nude|neutral|monochrome)\b/i;
 function _colourOf(p: MiraProduct): string | null {
   // Prefer a real colour WORD; skip hex/rgb values (colors[] often holds "#1e2a52").

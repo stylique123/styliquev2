@@ -3,6 +3,37 @@
 
 import type { SizeChartCandidate } from "../types.js";
 
+const MEASUREMENT_KEYS = ["chest", "bust", "waist", "hip", "length", "sleeve", "shoulder", "inseam"] as const;
+
+function inchesToCm(value: number): number {
+  return Math.round(value * 2.54 * 10) / 10;
+}
+
+function normalizeOcrChart(parsed: { sizes?: Array<Record<string, unknown>>; unit?: string }) {
+  const unit = typeof parsed.unit === "string" && /^in(?:ch|ches)?$/i.test(parsed.unit.trim()) ? "in" : "cm";
+  const sizes = (parsed.sizes ?? []).map((row) => {
+    const out: Record<string, number | string | undefined> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (key === "name" || key === "size" || key === "label") {
+        out.name = typeof value === "string" ? value : String(value ?? "");
+        continue;
+      }
+      if (!MEASUREMENT_KEYS.includes(key as (typeof MEASUREMENT_KEYS)[number])) {
+        if (typeof value === "string" || typeof value === "number") out[key] = value;
+        continue;
+      }
+      const n = typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number.parseFloat(value.replace(/[^\d.]/g, ""))
+          : NaN;
+      if (Number.isFinite(n)) out[key] = unit === "in" ? inchesToCm(n) : n;
+    }
+    return out;
+  });
+  return { sizes, unit: "cm" as const };
+}
+
 export async function extractFromImageOcr(
   imageUrl: string,
   geminiApiKey: string,
@@ -67,8 +98,9 @@ Return ONLY valid JSON. If no size chart is visible, return {"sizes":[],"unit":"
         text = text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
         if (!text) { await sleep(300); continue; }
         const parsed = JSON.parse(text) as { sizes?: Array<Record<string, unknown>>; unit?: string };
-        if (Array.isArray(parsed.sizes) && parsed.sizes.length >= 2) {
-          const hasAnyMeasurement = parsed.sizes.some(
+        const normalized = normalizeOcrChart(parsed);
+        if (Array.isArray(normalized.sizes) && normalized.sizes.length >= 2) {
+          const hasAnyMeasurement = normalized.sizes.some(
             (s) => s["chest"] || s["bust"] || s["waist"] || s["hip"] || s["length"],
           );
           if (hasAnyMeasurement) {
@@ -76,8 +108,8 @@ Return ONLY valid JSON. If no size chart is visible, return {"sizes":[],"unit":"
               source: "image_ocr",
               confidence: 0.8,
               chart: {
-                sizes: parsed.sizes as Array<{ name: string; [key: string]: number | string | undefined }>,
-                unit: (parsed.unit as "cm" | "in") ?? "cm",
+                sizes: normalized.sizes as Array<{ name: string; [key: string]: number | string | undefined }>,
+                unit: normalized.unit,
                 source: "image_ocr",
               },
             };

@@ -7,6 +7,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const billing = readFileSync(resolve(root, "apps/shopify-app/app/lib/billing.server.ts"), "utf8");
 const dashboard = readFileSync(resolve(root, "apps/shopify-app/app/lib/dashboard.server.ts"), "utf8");
 const dashboardRoute = readFileSync(resolve(root, "apps/shopify-app/app/routes/app.dashboard.tsx"), "utf8");
+const embeddedDashboardUsageComponent = readFileSync(resolve(root, "apps/shopify-app/app/components/dashboard-plan-usage.tsx"), "utf8");
+const embeddedDashboardUsageTest = readFileSync(resolve(root, "apps/shopify-app/app/components/dashboard-plan-usage.test.tsx"), "utf8");
+const externalDashboardRoute = readFileSync(resolve(root, "apps/web/app/dashboard/page.tsx"), "utf8");
+const externalDashboardSpec = readFileSync(resolve(root, "apps/web/scripts/dashboard-usage.spec.mjs"), "utf8");
+const externalDashboardPlaywrightConfig = readFileSync(resolve(root, "apps/web/playwright.dashboard.config.mjs"), "utf8");
 const usageApi = readFileSync(resolve(root, "apps/shopify-app/app/routes/api.usage.tsx"), "utf8");
 const tryonSettings = readFileSync(resolve(root, "apps/shopify-app/app/routes/app.settings.tryon.tsx"), "utf8");
 
@@ -32,18 +37,73 @@ for (const metric of enforcedMetrics) {
   }
 }
 
-if (!/Plan usage/.test(dashboardRoute) || !/USAGE_METERS/.test(dashboardRoute)) {
+if (!/DashboardPlanUsageCard/.test(dashboardRoute) || !/Plan usage/.test(embeddedDashboardUsageComponent) || !/EMBEDDED_USAGE_METERS/.test(embeddedDashboardUsageComponent)) {
   failures.push("embedded merchant dashboard must visibly render plan usage meters, not only return usage JSON");
 }
 
 for (const metric of enforcedMetrics) {
-  if (!new RegExp(`"${metric}"`).test(dashboardRoute)) {
+  if (!new RegExp(`"${metric}"`).test(embeddedDashboardUsageComponent)) {
     failures.push(`embedded merchant dashboard visible usage panel must include ${metric}`);
   }
 }
 
-if (!/Current billing period/.test(dashboardRoute) || !/Unlimited meters still show usage/.test(dashboardRoute)) {
+if (!/Current billing period/.test(embeddedDashboardUsageComponent) || !/Unlimited meters still show usage/.test(embeddedDashboardUsageComponent)) {
   failures.push("embedded merchant dashboard usage panel must explain current-period and unlimited-meter semantics");
+}
+
+for (const required of [
+  "renderToStaticMarkup",
+  "AppProvider",
+  "Plan usage",
+  "Current billing period",
+  "Unlimited meters still show usage",
+  "EMBEDDED_USAGE_METERS",
+  "44 / Unlimited",
+  "critical",
+  "attention",
+]) {
+  if (!embeddedDashboardUsageTest.includes(required)) {
+    failures.push(`embedded dashboard usage render test must assert ${required}`);
+  }
+}
+
+if (!/Plan usage/.test(externalDashboardRoute) || !/USAGE_METERS/.test(externalDashboardRoute)) {
+  failures.push("external brand dashboard must visibly render plan usage meters, not only type the usage JSON");
+}
+
+for (const metric of enforcedMetrics) {
+  if (!new RegExp(`"${metric}"`).test(externalDashboardRoute)) {
+    failures.push(`external brand dashboard visible usage panel must include ${metric}`);
+  }
+}
+
+if (!/Current billing period/.test(externalDashboardRoute) || !/Unlimited meters still show activity/.test(externalDashboardRoute)) {
+  failures.push("external brand dashboard usage panel must explain current-period and unlimited-meter semantics");
+}
+
+if (!externalDashboardPlaywrightConfig.includes("dashboard-usage") || !/webServer/.test(externalDashboardPlaywrightConfig)) {
+  failures.push("external dashboard usage UI must have a dedicated Playwright browser fixture with a local webServer");
+}
+
+for (const required of [
+  "sq_dashboard_token",
+  "sq_dashboard_shop",
+  "**/api/external-overview",
+  "Plan usage",
+  "Current billing period.",
+  "Unlimited meters still show activity",
+  "Personal try-ons",
+  "Body-model try-ons",
+  "Style recommendations",
+  "Fit recommendations",
+  "Mira vision turns",
+  "Mira chat turns",
+  "44 / Unlimited",
+  "Limit reached",
+]) {
+  if (!externalDashboardSpec.includes(required)) {
+    failures.push(`external dashboard browser fixture must assert ${required}`);
+  }
 }
 
 if (!/VISION_TURN:\s*cap\(f\.stylist\.monthlyVisionTurns\)/.test(dashboard)) {

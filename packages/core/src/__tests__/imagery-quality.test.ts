@@ -72,7 +72,7 @@ describe("filename heuristics — expected garmentRole assignments", () => {
   const RX = {
     back:      /(_back|-back|back\.|_rear)/i,
     detail:    /(_detail|-detail|_close|_zoom|_macro|_swatch|_fabric)/i,
-    lifestyle: /(_lifestyle|-lifestyle|_model|_editorial|_campaign|_lookbook)/i,
+    lifestyle: /(_lifestyle|-lifestyle|_model|model[ -]?(wearing|shot)|on[ -]?model|worn[ -]?(by|with)?|styled[ -]?(with|look)?|paired[ -]?with|outfit|full[ -]?look|_editorial|_campaign|_lookbook)/i,
     swatch:    /(_swatch|-swatch|_color|_chip)/i,
   };
 
@@ -93,6 +93,12 @@ describe("filename heuristics — expected garmentRole assignments", () => {
   it("_lifestyle → lifestyle pattern", () => {
     expect(RX.lifestyle.test("dress_lifestyle.jpg")).toBe(true);
     expect(RX.lifestyle.test("editorial_campaign.jpg")).toBe(true);
+  });
+
+  it("outfit/model/styled-with wording is lifestyle, not a clean garment reference", () => {
+    expect(RX.lifestyle.test("model wearing ivory shirt with trousers")).toBe(true);
+    expect(RX.lifestyle.test("front view styled with pants")).toBe(true);
+    expect(RX.lifestyle.test("full look paired with blazer")).toBe(true);
   });
 
   it("plain front-shot filename matches no pattern (treated as FRONT)", () => {
@@ -143,5 +149,30 @@ describe("scoreProductImages primary selection", () => {
     expect(result.primaryTryonImageId).toBe("img-front");
     expect(result.perImage.find((img) => img.imageId === "img-size-guide")?.garmentRole).toBe("DETAIL");
     expect(result.perImage.find((img) => img.imageId === "img-front")?.garmentRole).toBe("FRONT");
+  });
+
+  it("does not use a styled full-outfit image as the try-on garment anchor when a clean front shot exists", async () => {
+    const result = await scoreProductImages({
+      productId: "prod-shirt-outfit",
+      images: [
+        {
+          id: "img-outfit",
+          url: "https://cdn.example/shirt-front-styled.jpg",
+          position: 1,
+          altText: "front view styled with black pants as a full outfit",
+        },
+        {
+          id: "img-clean-front",
+          url: "https://cdn.example/shirt-packshot.jpg",
+          position: 2,
+          altText: "shirt front product-only packshot on white background",
+        },
+      ],
+      stage2: { key: "aws_rekognition_disabled", async score() { return []; } },
+    });
+
+    expect(result.primaryTryonImageId).toBe("img-clean-front");
+    expect(result.perImage.find((img) => img.imageId === "img-outfit")?.garmentRole).toBe("LIFESTYLE");
+    expect(result.perImage.find((img) => img.imageId === "img-clean-front")?.garmentRole).toBe("FRONT");
   });
 });

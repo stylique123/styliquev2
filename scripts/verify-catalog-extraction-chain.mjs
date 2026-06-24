@@ -79,6 +79,16 @@ if (!/measurementsJson:\s*Prisma\.JsonNull/.test(sizeChart)) {
   failures.push("size-chart worker must clear stale bridge-owned variant measurements");
 }
 
+const sizingTests = readFileSync(resolve(root, "packages/core/src/__tests__/sizing-parsers.test.ts"), "utf8");
+const imageOcrExtractor = readFileSync(resolve(root, "packages/core/src/sizing/extractors/image-ocr.ts"), "utf8");
+if (!/normalizes OCR inch measurements to centimeters before fit bridging/.test(sizingTests) || !/unit:\s*"in"/.test(sizingTests)) {
+  failures.push("sizing parser tests must prove OCR inch charts normalize to centimeters before bridge writes");
+}
+
+if (!/normalizeOcrChart/.test(imageOcrExtractor) || !/inchesToCm/.test(imageOcrExtractor) || !/unit:\s*normalized\.unit/.test(imageOcrExtractor)) {
+  failures.push("image OCR extractor must normalize inch measurements to cm before returning a chart");
+}
+
 // Brand DNA should see scored product imagery and rich metadata.
 if (!/where:\s*\{ shopId, tryonReady: true \}/.test(brandDnaWorker)) {
   failures.push("Brand DNA catalog job should prefer try-on-ready products");
@@ -160,6 +170,10 @@ if (!/altText\)\.toBe\("Oxford shirt size guide"\)/.test(testsCatalog) || !/rese
 
 if (!/uses Shopify alt text to reject size-guide\/detail images/.test(testsImage) || !/does not fall back to a first-position size guide/.test(testsImage)) {
   failures.push("image tests must prove alt-aware primary image selection");
+}
+
+if (!/does not use a styled full-outfit image as the try-on garment anchor/.test(testsImage) || !/model wearing ivory shirt with trousers/.test(testsImage)) {
+  failures.push("image tests must prove outfit/model/styled-with imagery is not used as the try-on garment anchor");
 }
 
 if (!/uses the role-aware product image instead of first-position size-guide imagery/.test(testsSerialize)) {

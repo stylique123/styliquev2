@@ -225,6 +225,30 @@ function timeAgo(iso: string): string {
   return `${Math.round(h / 24)}d ago`;
 }
 
+const USAGE_METERS = [
+  ["TRYON_PERSONAL", "Personal try-ons"],
+  ["TRYON_BODY", "Body-model try-ons"],
+  ["STYLE_RECOMMENDATION", "Style recommendations"],
+  ["FIT_RECOMMENDATION", "Fit recommendations"],
+  ["VISION_TURN", "Mira vision turns"],
+  ["STYLIST_TURN", "Mira chat turns"],
+] as const;
+
+function usageText(row: { used: number; cap: number | null; remaining: number | null } | undefined): string {
+  if (!row) return "Unavailable";
+  if (row.cap == null) return `${fmt(row.used)} / Unlimited`;
+  return `${fmt(row.used)} / ${fmt(row.cap)}`;
+}
+
+function usageStatus(row: { used: number; cap: number | null; remaining: number | null } | undefined): { label: string; color: string } {
+  if (!row) return { label: "Overview unavailable", color: "var(--mute)" };
+  if (row.cap == null) return { label: "Unlimited", color: "#7FE3C0" };
+  const ratio = row.cap > 0 ? row.used / row.cap : 1;
+  if (ratio >= 1) return { label: "Limit reached", color: "#E89090" };
+  if (ratio >= 0.8) return { label: `${fmt(row.remaining ?? 0)} left`, color: "#E8A86B" };
+  return { label: `${fmt(row.remaining ?? 0)} left`, color: "#7FE3C0" };
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────
 
 function KpiCard({
@@ -1827,6 +1851,58 @@ export default function DashboardPage() {
             sub={overviewSource === "live" ? "email captured" : "overview unavailable"}
             accent="pink"
           />
+        </div>
+
+        {/* ─── Plan usage — the same meters runtime entitlement enforces ─── */}
+        <div
+          style={{
+            background: "#161616",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 3,
+            padding: "28px 26px",
+            marginBottom: 48,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
+            <div>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.35em", textTransform: "uppercase", color: "var(--electric)" }}>
+                Plan usage
+              </span>
+              <h2 style={{ fontFamily: "var(--serif)", fontSize: 28, fontStyle: "italic", fontWeight: 400, margin: "8px 0 0" }}>
+                Current billing period.
+              </h2>
+            </div>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.25em", textTransform: "uppercase", color: overviewSource === "live" ? "var(--pink)" : "var(--mute)" }}>
+              {overviewSource === "live" ? `${tier} tier` : "Connect overview API"}
+            </span>
+          </div>
+          <p style={{ fontFamily: "var(--sans)", fontSize: 13, color: "var(--mute)", margin: "0 0 20px", lineHeight: 1.55 }}>
+            Unlimited meters still show activity so you can see what shoppers use without reading it as a cap.
+          </p>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+              gap: 1,
+              background: "rgba(255,255,255,0.05)",
+            }}
+          >
+            {USAGE_METERS.map(([metric, label]) => {
+              const row = data?.plan.usage[metric];
+              const status = usageStatus(row);
+              return (
+                <div key={metric} style={{ background: "#1A1A1A", padding: "16px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span style={{ fontFamily: "var(--sans)", fontSize: 12, color: "var(--mute)" }}>{label}</span>
+                  <span style={{ fontFamily: "var(--serif)", fontSize: 26, fontStyle: "italic", color: "var(--text)", lineHeight: 1 }}>
+                    {usageText(row)}
+                  </span>
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 9.5, letterSpacing: "0.18em", textTransform: "uppercase", color: status.color }}>
+                    {status.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* ─── Module cards ─────────────────────────────────────────── */}
