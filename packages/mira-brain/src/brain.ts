@@ -21,6 +21,23 @@ import { enforceConversationContract } from "./contract.js";
 import { classifySupportIntent, supportNeedsHandoff, buildSafeHandoff, type SupportIntent } from "./support.js";
 import { isSellable } from "./products.js";
 
+// TIER-ROUTER signal: does THIS turn deserve the stronger (Pro) model? Escalate
+// only the reasoning-heavy turns where understanding actually shows — suitability
+// / honest-opinion, objections, comparisons, and multi-constraint asks — so 90%
+// of traffic stays on fast/reliable Flash and Pro's cost+latency is spent where
+// it converts. Cheap pure-string heuristic; never throws.
+const _DEEP_REASONING =
+  /\b(suit|right for me|good on me|would you wear|honest opinion|do you (really )?(think|like)|does (this|it) (work|suit|look)|worth it|convince|talk me|not sure|on the fence|too (expensive|much|pricey)|what if|compare|difference between|which (is|one)|vs\.?|versus|better)\b/i;
+const _CONSTRAINT =
+  /\b(and|,|but|also|under|over|modest|petite|tall|plus[ -]?size|budget|wedding|funeral|interview|work|office|casual|warm|cold|light|summer|winter|cropped|oversized|fitted|loose|cover(ed)?|sleeves?)\b/gi;
+export function wantsDeepReasoning(message?: string): boolean {
+  const m = (message ?? "").toLowerCase();
+  if (!m) return false;
+  if (_DEEP_REASONING.test(m)) return true;
+  const constraints = (m.match(_CONSTRAINT) ?? []).length;
+  return m.split(/\s+/).length >= 18 || constraints >= 4;
+}
+
 // The complete-the-look engine AND the closing-intelligence are now part of the
 // package, so there are NO per-surface injected seams left. decideMira needs only
 // the catalog + knowledge fallback. defaultCatalog is used when the caller injects
@@ -265,6 +282,7 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
     buildPrompt(body, activeCatalog),
     buildSystem(activeKnowledge, activeCatalog, activeBrand, activeCurrency),
     activeCatalog,
+    { escalate: wantsDeepReasoning(body.message) },
   );
   // Deterministic navigation execution, force the route+handle when the shopper
   // clearly asked to act on the product they're viewing but the model dead-ended.

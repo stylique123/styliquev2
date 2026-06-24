@@ -125,20 +125,23 @@ async function attemptModel(
   return { decision: decision.data, retryable: false };
 }
 
-export async function callGemini(prompt: string, system: string, activeCatalog: MiraProduct[]): Promise<{ decision: MiraDecision | null; model: string | null }> {
+export async function callGemini(prompt: string, system: string, activeCatalog: MiraProduct[], opts?: { escalate?: boolean }): Promise<{ decision: MiraDecision | null; model: string | null }> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { decision: null, model: null };
-  // Mira's understanding is the whole point, she runs on the stronger model
-  // (gemini-2.5-pro) so she genuinely reads intent, emotion and mixed asks.
-  // But pro is frequently 503-overloaded; rather than silently dropping to the
-  // regex fallback (which can't navigate or reason), we retry once with a short
-  // backoff, then fall through to gemini-2.5-flash, far more available and
-  // still grounded by the same prompt. Regex stays the last-resort safety net.
-  // Flash is the reliability default for the live sales surface. Pro remains an
-  // opt-in via MIRA_MODEL, but its overload/latency caused one-third of pilot
-  // turns to return blank before Flash got a useful recovery window.
-  const primary = process.env.MIRA_MODEL ?? "gemini-2.5-flash";
-  const fallbackModel = process.env.MIRA_FALLBACK_MODEL ?? "gemini-2.5-flash";
+  // TIERED MODEL ROUTING. Flash is the reliability default for the live sales
+  // surface (Pro as a blanket primary 503-overloaded one-third of pilot turns to
+  // blank). But the *hard* turns — suitability, objections, multi-constraint
+  // styling — are where understanding actually shows, so those escalate to the
+  // stronger model (gemini-2.5-pro) with Flash as the reliable fallback: a Pro
+  // 503 falls through to Flash, never to a blank. Simple turns stay on Flash.
+  //   • MIRA_MODEL — explicit override; if set, always primary (manual pin).
+  //   • MIRA_PRO_MODEL — the escalation model (default gemini-2.5-pro).
+  //   • MIRA_TIER_ROUTER=0 — disable escalation (everything on Flash).
+  const flashModel = "gemini-2.5-flash";
+  const proModel = process.env.MIRA_PRO_MODEL ?? "gemini-2.5-pro";
+  const routerOn = process.env.MIRA_TIER_ROUTER !== "0";
+  const primary = process.env.MIRA_MODEL ?? ((routerOn && opts?.escalate) ? proModel : flashModel);
+  const fallbackModel = process.env.MIRA_FALLBACK_MODEL ?? flashModel;
   const chain = primary === fallbackModel ? [primary] : [primary, fallbackModel];
 
   for (let i = 0; i < chain.length; i++) {

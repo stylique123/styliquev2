@@ -96,6 +96,69 @@ export function createOpenAIEmbedProvider(opts: {
   };
 }
 
+// ─── FashionSigLIP provider (open-weight, fashion-domain) ──────────────
+// Marqo-FashionSigLIP / FashionCLIP — trained on fashion catalogs, so it beats a
+// general text embedder at "find me something like this", visual catalog search
+// and the near-miss/gap signal (the learning-loop moat). Image+text joint space,
+// so reference-photo match can embed the IMAGE directly (no Gemini-caption hop).
+//
+// Provider-agnostic by design: it POSTs to a configurable inference endpoint
+// (HF Inference API, Fal, or our own worker sidecar) — we never run torch in
+// this Node package. Returns the embedding vector. ACTIVATION is env-gated:
+// dormant (Gemini stays primary) until FASHION_EMBED_ENDPOINT is set, then a
+// re-backfill (worker, idempotent on modelKey change — D32) re-embeds the catalog.
+export function createFashionSiglipProvider(opts: {
+  endpoint: string;            // inference URL; receives { inputs: text } → number[] | { embedding|data: number[] }
+  apiKey?: string;             // bearer token (HF / Fal)
+  model?: string;              // default marqo-fashionSigLIP
+  dims?: number;               // marqo-fashionSigLIP = 768
+  fetchImpl?: typeof fetch;
+}): EmbedProvider {
+  const model = opts.model ?? "marqo-fashionSigLIP";
+  const dims = opts.dims ?? 768;
+  const f = opts.fetchImpl ?? fetch;
+  return {
+    key: "fashion-siglip",
+    model,
+    dims,
+    modelKey: `fashion-siglip:${model}:${dims}`,
+    async embed(text) {
+      const res = await f(opts.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(opts.apiKey ? { Authorization: `Bearer ${opts.apiKey}` } : {}),
+        },
+        body: JSON.stringify({ inputs: text }),
+      });
+      if (!res.ok) throw new Error(`fashion_embed_http_${res.status}`);
+      const j: unknown = await res.json();
+      // tolerate the common shapes: [..], {embedding:[..]}, {data:[..]}, [[..]]
+      const vec = Array.isArray(j)
+        ? (Array.isArray((j as unknown[])[0]) ? (j as number[][])[0] : (j as number[]))
+        : ((j as { embedding?: number[]; data?: number[] }).embedding ?? (j as { data?: number[] }).data);
+      if (!Array.isArray(vec) || vec.length === 0) throw new Error("fashion_embed_bad_shape");
+      return vec as number[];
+    },
+  };
+}
+
+// Env selector: prefer the fashion model when an endpoint is configured, else
+// fall back to Gemini (today's default). One line at every binding site; a no-op
+// until FASHION_EMBED_ENDPOINT is set — matches the stub-when-env-absent pattern.
+export function selectEmbedProvider(env: Record<string, string | undefined>, fetchImpl?: typeof fetch): EmbedProvider {
+  if (env.FASHION_EMBED_ENDPOINT) {
+    return createFashionSiglipProvider({
+      endpoint: env.FASHION_EMBED_ENDPOINT,
+      apiKey: env.FASHION_EMBED_TOKEN,
+      model: env.FASHION_EMBED_MODEL,
+      dims: env.FASHION_EMBED_DIMS ? Number(env.FASHION_EMBED_DIMS) : undefined,
+      fetchImpl,
+    });
+  }
+  return createGeminiEmbedProvider({ apiKey: env.GEMINI_API_KEY ?? "", fetchImpl });
+}
+
 // ─── Service ───────────────────────────────────────────────────────────
 
 export function createEmbeddingsService(provider: EmbedProvider): EmbeddingsService {

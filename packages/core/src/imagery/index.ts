@@ -18,6 +18,7 @@ export {
 export * from "./types.js";
 export { createStage1Provider } from "./stage1.js";
 export { createAwsRekognitionProvider, type AwsRekognitionConfig } from "./aws-rekognition.js";
+export { createOpenClipQualityProvider, selectStage2Provider, CLIP_LABELS, type OpenClipConfig } from "./openclip.js";
 export {
   generateProductDetailsFromImage,
   type GeneratedProductDetails,
