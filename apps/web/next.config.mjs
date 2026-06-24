@@ -29,7 +29,15 @@ const nextConfig = {
   // tsx + Node ESM but webpack needs to be told the `.js` request can resolve to
   // a `.ts` source file. This mirrors what Node's ESM loader does and what vitest
   // already does natively.
-  webpack: (config) => {
+  // Native server-only deps (sharp + the background-removal native .node binary)
+  // must NOT be bundled by webpack — it chokes parsing the binary, and the local
+  // darwin build wouldn't run on Railway's linux anyway. require() them at runtime.
+  serverExternalPackages: ["@imgly/background-removal-node", "sharp"],
+
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals = [...(config.externals ?? []), "@imgly/background-removal-node", "sharp"];
+    }
     config.resolve.extensionAlias = {
       ...(config.resolve.extensionAlias ?? {}),
       ".js":  [".ts", ".tsx", ".js"],
