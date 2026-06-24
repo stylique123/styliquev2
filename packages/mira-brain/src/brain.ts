@@ -5,7 +5,7 @@
 // intelligence trio. Both callers (demo route, Shopify adapter) pass their own.
 import type { MiraDecision, MiraBody } from "./schemas.js";
 import type { MiraProduct } from "./products.js";
-import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames, guardVoiceColorClaims, enforceEligibility } from "./policy.js";
+import { budgetFactsBlock, situationalLead, enforceExecution, applySalesPolicy, guardVoiceProductNames, guardVoiceColorClaims, enforceEligibility, injectColourStory } from "./policy.js";
 import { extractBodyContext } from "./text.js";
 import { buildSystem, type BrandIdentity } from "./system.js";
 import { callGemini } from "./gemini.js";
@@ -285,6 +285,9 @@ export async function decideMira(body: MiraBody, deps: BrainDeps): Promise<MiraR
   // Deterministic backstop: a blank colourway must never become an invented
   // "classic neutral / versatile shade" — hedge honestly when colors[] is empty.
   decision = guardVoiceColorClaims(decision, activeCatalog, body.message);
+  // Deterministic colour story: on a colour question, state the ACTUAL palette
+  // from the focal piece + its real pairings so Mira always NAMES the combination.
+  decision = injectColourStory(decision, body, activeCatalog, buildLook);
 
   // ── ANTI-REPEAT GUARD ──────────────────────────────────────────────────────
   // When the model returns text byte-identical to the previous mira turn, prefix

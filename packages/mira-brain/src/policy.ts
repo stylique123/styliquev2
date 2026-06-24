@@ -105,7 +105,12 @@ export function budgetFactsBlock(message: string, activeCatalog: MiraProduct[], 
 // kept unless it asked the dead-ending question, in which case we replace it.
 export function enforceExecution(decision: MiraDecision, message: string, curHandle: string | null | undefined, hasBody = false, activeCatalog: MiraProduct[], historyLen = 0): MiraDecision {
   const mlow = message.toLowerCase();
-  if (!curHandle && decision.route === "talk_only" && /^\s*(just )?(looking|browsing|nothing|idk|i dont know|i don'?t know|surprise me|not sure|hmm+|hi+|hey+|hello)\b/i.test(mlow)) {
+  // Any COLD dead-end (no product on the page, model fell to talk_only) → SHOW a
+  // confident hero + a light steer, never a bare greeting or an empty qualifier.
+  // This is the maximal show-first move: it recovers gibberish/emoji/noise input
+  // ("asdkfjaslkdfj", "🤡🤡🤡") and a bare "something" by leading with a real piece
+  // instead of "what brought you in today?".
+  if (!curHandle && decision.route === "talk_only") {
     // Cold-open heroes: pick from injected catalog (top 5 by keepRate desc) so
     // a real merchant gets THEIR best pieces, not the demo's hardcoded handles.
     // Prefer pieces that are PHOTOGRAPHED and IN STOCK as the opener — a cold-open
@@ -153,6 +158,15 @@ export function enforceExecution(decision: MiraDecision, message: string, curHan
   const deadEnd = /which (piece|one)|what are we|building (it|the look) around|do you have your eye/i.test(decision.voice ?? "");
   if (/(show|build|complete|see|put together|create|make)\b.{0,24}(look|outfit)|what (goes|pairs|works) with|style (this|it)|full look|the look/.test(m)) {
     return { ...decision, route: "look", productHandle: curHandle, voice: deadEnd ? `Let me build the full look around the ${product.name}.` : decision.voice };
+  }
+  // OTHER OPTIONS — "show me another / something else / what else / other options"
+  // is a directive to SHOW a fresh piece, not talk. Pull the best sellable piece in
+  // the same category as the current one (else top sellable), DIFFERENT from it.
+  if (/show me (another|other|something else|more)|other options|what else|something (else|different)|not (this|that one)|anything else/i.test(m)) {
+    const pool = activeCatalog.filter((p) => isSellable(p) && p.handle !== curHandle);
+    const sameCat = pool.filter((p) => p.category === product.category);
+    const alt = (sameCat.length ? sameCat : pool).sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0))[0];
+    if (alt) return { ...decision, route: "reco_handle", productHandle: alt.handle, voice: `Sure — here's another direction: the ${alt.name}. Want to compare, or see more?`, quickReplies: ["Compare", "Show another", "I like this"] };
   }
   // Measurements typed in THIS message also count as "body known" — never make a
   // shopper fill a form for height/weight they just stated (council fix #2).
@@ -437,6 +451,11 @@ export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProdu
   // colour word in a styling/budget line would wrongly trigger the disclaimer and
   // derail the turn (caught in a full-journey self-test on the look + budget turns).
   if (!message || !_COLOR_QUESTION.test(message)) return decision;
+  // A COMBINATION / PAIRING question ("what colours go WITH this", "show me colour
+  // combinations", "what pairs with it", "what goes with what") is about the LOOK,
+  // not the focal piece's own colourway — so the missing-colour hedge must NOT fire
+  // (it was clobbering every colour-combination answer → colour component 0/5).
+  if (/(go(es)?\s+with|pairs?|combination|combo|match|wear\s+with|style\s+with|what\s+goes)/i.test(message)) return decision;
   const focal = decision.productHandle ? catalog.find((p) => p.handle === decision.productHandle) : undefined;
   const colourKnown = (focal?.colors?.filter(Boolean).length ?? 0) > 0;
   if (!focal || colourKnown) return decision;
@@ -454,6 +473,64 @@ export function guardVoiceColorClaims(decision: MiraDecision, catalog: MiraProdu
     out.push(s);
   }
   return hedged ? { ...decision, voice: out.join(" ") } : decision;
+}
+
+const _NEUTRALS = /\b(black|white|ivory|cream|off-white|beige|oat|stone|sand|taupe|tan|camel|cognac|brown|espresso|chocolate|grey|gray|charcoal|slate|ash|navy|nude|neutral|monochrome)\b/i;
+function _colourOf(p: MiraProduct): string | null {
+  // Prefer a real colour WORD; skip hex/rgb values (colors[] often holds "#1e2a52").
+  const word = (p.colors ?? []).map((c) => c?.trim()).find((c) => c && !c.startsWith("#") && !/^rgb/i.test(c) && _COLOR_WORD.test(c));
+  if (word) { const m = word.match(_COLOR_WORD); return (m ? m[0] : word).toLowerCase(); }
+  const m = p.name.match(_COLOR_WORD);
+  return m ? m[0].toLowerCase() : null;
+}
+// Name the piece WITHOUT repeating a colour already in its title ("camel wrap coat
+// camel" → "the camel wrap coat"); strip a leading colour word from the name first.
+function _pieceWithColour(colour: string | null, p: MiraProduct): string {
+  const bare = p.name.toLowerCase().replace(_COLOR_WORD, "").replace(/\s+/g, " ").trim() || p.name.toLowerCase();
+  const nameHasColour = colour ? _COLOR_WORD.test(p.name) : false;
+  if (!colour) return `the ${p.name.toLowerCase()}`;
+  return nameHasColour ? `the ${colour} ${bare}` : `a ${colour} ${p.name.toLowerCase()}`;
+}
+// DETERMINISTIC COLOUR STORY — on a colour question, state the ACTUAL palette built
+// from the focal piece + its best real pairings, so Mira always NAMES the
+// combination (never a vague "it's versatile"). This makes the colour answer
+// impressive and reliable instead of depending on the model to volunteer colours.
+export function injectColourStory(
+  decision: MiraDecision,
+  body: z.infer<typeof BodySchema>,
+  catalog: MiraProduct[],
+  buildLookFn: (anchor: MiraProduct, cat: MiraProduct[], n: number) => Array<{ product: MiraProduct }>,
+): MiraDecision {
+  const msg = body.message ?? "";
+  if (!_COLOR_QUESTION.test(msg)) return decision;
+  // "What goes with THIS" anchors on the piece they're standing on (the PDP), which
+  // carries the colour — prefer currentProductHandle over a colourless look anchor.
+  const focalHandle = body.currentProductHandle ?? decision.productHandle ?? undefined;
+  const focal = focalHandle ? catalog.find((p) => p.handle === focalHandle) : undefined;
+  if (!focal) return decision;
+  let pieces = buildLookFn(focal, catalog.filter(isSellable), 3).map((e) => e.product);
+  let fc = _colourOf(focal);
+  let named = pieces.map((p) => ({ p, c: _colourOf(p) })).filter((x): x is { p: MiraProduct; c: string } => !!x.c);
+  // If neither the focal nor its pairings name a colour, fall back to the best
+  // colour-named sellable pieces so a colour question is ALWAYS answered with colours.
+  if (!fc && !named.length) {
+    const coloured = catalog.filter((p) => isSellable(p) && _colourOf(p) && p.handle !== focal.handle)
+      .sort((a, b) => (b.keepRate ?? 0) - (a.keepRate ?? 0)).slice(0, 2);
+    if (!coloured.length) return decision;
+    pieces = coloured;
+    named = coloured.map((p) => ({ p, c: _colourOf(p)! }));
+  }
+  const parts: string[] = [];
+  parts.push(_pieceWithColour(fc, focal));
+  named.slice(0, 2).forEach(({ p, c }) => parts.push(_pieceWithColour(c, p).replace(/^the /, "a ")));
+  const palette = [fc, ...named.map((x) => x.c)].filter(Boolean) as string[];
+  const allNeutral = palette.every((c) => _NEUTRALS.test(c));
+  const harmony = allNeutral
+    ? "warm neutrals, one clean tonal line — reads quietly expensive"
+    : "one anchor colour against neutrals, balanced and easy to wear";
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0]!;
+  const voice = `${list.charAt(0).toUpperCase()}${list.slice(1)} — ${harmony}.`;
+  return { ...decision, route: pieces.length ? "look" : decision.route, productHandle: focal.handle, voice };
 }
 
 // ── ELIGIBILITY ENFORCEMENT (re-audit: prompt rules ≠ enforcement) ───────────
@@ -500,8 +577,21 @@ export function enforceEligibility(
 
   let next = decision;
 
+  // 1a. A LOOK is about the colour/styling combination, not a single sell — so if
+  //     its anchor is ineligible, swap the handle SILENTLY and KEEP Mira's voice
+  //     (the colour story). Case 3 below surgically rewrites any ineligible piece
+  //     NAMED in that voice. (Without this, the generic "isn't quite ready" swap
+  //     line clobbered every colour-combination answer → colour component 0/5.)
+  if (next.productHandle && next.route === "look") {
+    const product = catalog.find((p) => p.handle === next.productHandle);
+    if (product && !eligible(product)) {
+      const swap = bestSwap(product);
+      next = swap ? { ...next, productHandle: swap.handle } : { ...next, productHandle: undefined };
+    }
+  }
+
   // 1. Sell-route grounded product must be sellable → swap or be honest.
-  if (next.productHandle && _SELL_ROUTES.has(next.route)) {
+  else if (next.productHandle && _SELL_ROUTES.has(next.route)) {
     const product = catalog.find((p) => p.handle === next.productHandle);
     if (product && !eligible(product)) {
       const swap = bestSwap(product, budgetObjection ? product.priceUsd : undefined);
